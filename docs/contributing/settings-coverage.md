@@ -345,6 +345,12 @@ from submitting dependency data, executing scans or generating fixes.
 | Private reporting: Trusted reporters | Eligible | Observed, 2026-11-13 | Unconfirmed membership read/update contract | Not implemented |
 | Other secret-scanning patterns, notifications and bypass controls | Eligible if configurable at repository scope | Complete target control inventory unconfirmed | Unconfirmed complete settings contracts; alert bypass or user-level settings are not substitutes | Not implemented |
 
+GitHub's [custom auto-triage guide][dependabot-triage-guide] describes rules for
+public repositories that can dismiss or snooze alerts or select alerts for pull
+requests. Rules apply to existing and future alerts, so a future management
+contract must account for effects beyond the rule configuration itself. The
+guide establishes UI behavior, not a complete settings read/update API.
+
 The [2026-11-08 investigation][security-inventory] and its
 [API recheck][security-api-recheck] are dated evidence. Their old Free-only,
 Preview and custom-rule exclusions are superseded by the adopted scope; their
@@ -483,6 +489,7 @@ being confused with the missing implementations above.
 [security-inventory]: https://github.com/daiksud/gh-settings/issues/323#issuecomment-6719839333
 [security-api-recheck]: https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507
 [dependabot-triage]: https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules
+[dependabot-triage-guide]: https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/auto-triage-dependabot-alerts
 [pages-api]: https://docs.github.com/en/rest/pages/pages
 [environments-api]: https://docs.github.com/en/rest/deployments/environments
 [deployment-patterns-api]: https://docs.github.com/en/rest/deployments/branch-policies
