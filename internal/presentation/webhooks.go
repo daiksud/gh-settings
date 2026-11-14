@@ -10,6 +10,10 @@ func WebhookLine(c settings.WebhookChange) string {
 	if settings.ValidateWebhookChanges([]settings.WebhookChange{c}) != nil {
 		return settings.WebhooksPath + ": invalid comparison"
 	}
+	if c.After == nil {
+		d := c.Before
+		return fmt.Sprintf("%s (id %d): delete payload_url: %q, content_type: %q, active: %t, events: %q (irreversible whole-webhook deletion removes its opaque Secret)", settings.WebhooksPath, d.ID, *d.PayloadURL, *d.ContentType, *d.Active, *d.Events)
+	}
 	if c.Before == nil {
 		d := c.After
 		return fmt.Sprintf("%s: create payload_url: %q, content_type: %q, active: %t, events: %q (GitHub sends an automatic ping; no Secret supplied)", settings.WebhooksPath, *d.PayloadURL, *d.ContentType, *d.Active, *d.Events)

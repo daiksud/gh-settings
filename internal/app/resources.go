@@ -29,6 +29,7 @@ type EnvironmentWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	WebhookPrune          func(repository.Repository) (settings.WebhookPruneObservation, error)
 	Webhooks              func(repository.Repository, []int64) (settings.WebhookObservation, error)
 	Runners               func(repository.Repository, []settings.RunnerLabels) (settings.RunnerObservation, error)
 	AllRunners            func(repository.Repository) (settings.RunnerObservation, error)
@@ -82,6 +83,8 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadWebhookPrune           func(repository.Repository) (settings.WebhookPruneObservation, error)
+	DeleteWebhook              func(repository.Repository, settings.WebhookPruneObservation, int64) (bool, error)
 	ReadWebhooks               func(repository.Repository, []int64) (settings.WebhookObservation, error)
 	CreateWebhook              func(repository.Repository, settings.WebhookObservation, settings.Webhook) (settings.WebhookCreateResult, error)
 	Webhook                    func(repository.Repository, settings.WebhookSelection) (bool, error)

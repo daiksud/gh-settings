@@ -123,7 +123,6 @@ func TestWebhookCreationReportUnionAndStatusPrivacy(t *testing.T) {
 		t.Fatal("status-only exposed input")
 	}
 	for _, bad := range []string{
-		`{"before":{"id":7,"payload_url":"https://selected.example","content_type":"application/json","active":false,"events":[]}}`,
 		`{"after":{"id":7,"payload_url":"https://selected.example","content_type":"application/json","active":false,"events":[]}}`,
 		`{"after":{"payload_url":"https://selected.example","content_type":"application/json","active":false,"events":[],"secret":"PRIVATE"}}`,
 	} {

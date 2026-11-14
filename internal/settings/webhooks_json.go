@@ -65,8 +65,8 @@ func (c *WebhookChange) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if raw["after"] == nil {
-		return fmt.Errorf("webhook report requires desired projection")
+	if raw["after"] == nil && raw["before"] == nil {
+		return fmt.Errorf("webhook report requires a projection")
 	}
 	type plain WebhookChange
 	var value plain

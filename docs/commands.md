@@ -273,8 +273,8 @@ Use `gh settings plan --prune labels,rulesets` and
 `gh settings apply --prune labels,rulesets`. This adds deletions without limiting
 other declared work. `--no-writeback` may be combined with apply. Current scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators`,
-`branch-protection-rules`, `autolinks` and `deploy-keys`.
-Standalone `all` selects every supported scope. Mixed `all`, unknown/duplicate
+`branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`.
+Standalone `all` selects every supported scope, including whole-webhook deletion for present declarations. An existing empty list selects all acquired hooks and their opaque Secrets; review the plan before applying. Mixed `all`, unknown/duplicate
 names, empty elements and repeated flags fail locally. Export and validate reject
 prune. Omitted collections stay unmanaged; explicit [] selects all acquired
 objects. Environment pruning retains every listed parent, including variable-only
@@ -452,8 +452,7 @@ existing IDs for URL/Content type reconciliation and optional Active/events
 matching guards. An IDless entry must declare all four controls to create a hook
 without a Secret and with SSL verification enabled; GitHub documents an automatic
 creation ping. A needed parent Active/events change fails before the family's
-first write. Omission and `webhooks: []` make no family requests; no prune scope
-owns deletion. Bound-only work reads selected IDs, while creation requires complete
+first write. Omission and ordinary `webhooks: []` make no family requests. `--prune webhooks` and standalone `all` select fixed unlisted IDs for whole-object deletion, including their opaque Secrets; an empty present list selects all. Bound-only work reads selected IDs, while creation requires complete
 inventory and exact URL collision checks before any family write. Export writes
 IDs and all four controls from complete observations.
 
@@ -463,4 +462,4 @@ retain the reported ID in a reviewed configuration change before retrying. An
 IDless repeat colliding with an existing URL stops without creation. Failure keeps
 earlier verified progress and never rolls it back. Detailed plans show selected
 controls and creation consequences; status-only hides values. The CLI does not
-send extra pings/tests, fetch destinations or manage Secret values.
+send extra pings/tests, fetch destinations or manage Secret values. See the [explicit pruning contract](settings.md#explicit-webhook-pruning) for irreversible effects, verification and the non-atomic Secret boundary.

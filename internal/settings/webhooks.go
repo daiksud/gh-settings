@@ -322,15 +322,33 @@ type WebhookChange struct {
 
 func ValidateWebhookChanges(changes []WebhookChange) error {
 	desired := make([]Webhook, 0, len(changes))
+	seenIDs := map[int64]bool{}
+	deletionURLs := map[string]bool{}
+	creationURLs := map[string]bool{}
 	for _, c := range changes {
-		if c.After == nil || c.After.Validate() != nil {
+		if c.After == nil {
+			if c.Before == nil || c.Before.ID <= 0 || c.Before.PayloadURL == nil || c.Before.ContentType == nil || c.Before.Active == nil || c.Before.Events == nil || c.Before.Validate() != nil || seenIDs[c.Before.ID] {
+				return fmt.Errorf("invalid webhook deletion comparison")
+			}
+			seenIDs[c.Before.ID] = true
+			deletionURLs[*c.Before.PayloadURL] = true
+			continue
+		}
+		if c.After.Validate() != nil {
 			return fmt.Errorf("invalid webhook comparison")
+		}
+		if c.After.ID > 0 {
+			if seenIDs[c.After.ID] {
+				return fmt.Errorf("duplicate webhook comparison identity")
+			}
+			seenIDs[c.After.ID] = true
 		}
 		desired = append(desired, *c.After)
 		if c.Before == nil {
 			if c.After.ID != 0 {
 				return fmt.Errorf("webhook create comparison must omit id")
 			}
+			creationURLs[*c.After.PayloadURL] = true
 			continue
 		}
 		a, b := c.Before, c.After
@@ -343,6 +361,11 @@ func ValidateWebhookChanges(changes []WebhookChange) error {
 		same := (a.PayloadURL == nil || *a.PayloadURL == *b.PayloadURL) && (a.ContentType == nil || *a.ContentType == *b.ContentType)
 		if same {
 			return fmt.Errorf("webhook comparison has no change")
+		}
+	}
+	for url := range creationURLs {
+		if deletionURLs[url] {
+			return fmt.Errorf("webhook creation collides with deletion candidate")
 		}
 	}
 	return ValidateWebhooks(desired)

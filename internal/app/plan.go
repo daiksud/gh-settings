@@ -167,10 +167,23 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.AgentsVariables = changes
 	}
-	if desired.Webhooks != nil && len(*desired.Webhooks) > 0 {
+	if desired.Webhooks != nil && (len(*desired.Webhooks) > 0 || prune.Has("webhooks")) {
 		var observed settings.WebhookObservation
+		var prepared settings.WebhookPruneObservation
 		var err error
-		if read.Webhooks == nil {
+		if prune.Has("webhooks") {
+			if read.WebhookPrune == nil {
+				err = fmt.Errorf("webhook prune reader unavailable")
+			} else {
+				prepared, err = read.WebhookPrune(repo)
+			}
+			if err == nil {
+				prepared, err = settings.PrepareWebhookPrune(prepared, *desired.Webhooks)
+			}
+			if err == nil {
+				observed = prepared.Inventory()
+			}
+		} else if read.Webhooks == nil {
 			err = fmt.Errorf("webhook reader unavailable")
 		} else {
 			observed, err = read.Webhooks(repo, webhookIDs(*desired.Webhooks))
@@ -178,6 +191,22 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		var changes []settings.WebhookChange
 		if err == nil {
 			_, changes, err = settings.PrepareWebhooks(observed, *desired.Webhooks)
+		}
+		if err == nil && prune.Has("webhooks") {
+			var candidates []int64
+			candidates, err = prepared.Candidates()
+			if err == nil {
+				for _, id := range candidates {
+					state, found := prepared.Find(id)
+					if !found {
+						err = fmt.Errorf("webhook candidate unavailable")
+						break
+					}
+					url, mime, active, events := state.State.Config.PayloadURL, state.State.Config.ContentType, state.State.Active, append([]string{}, state.State.Events...)
+					before := settings.Webhook{ID: id, PayloadURL: &url, ContentType: &mime, Active: &active, Events: &events}
+					changes = append(changes, settings.WebhookChange{Before: &before})
+				}
+			}
 		}
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.WebhooksPath, Target: repo, Err: err}

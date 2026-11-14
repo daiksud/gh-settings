@@ -17,13 +17,31 @@ func webhookIDs(desired []settings.Webhook) []int64 {
 	}
 	return ids
 }
-func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []settings.Webhook, write Writer) (bool, error) {
+func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []settings.Webhook, write Writer, frozen ...*settings.WebhookPruneObservation) (bool, error) {
 	index := len(result.Operations)
 	result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
 	var observed settings.WebhookObservation
 	var err error
 	ids := webhookIDs(desired)
-	if write.ReadWebhooks == nil {
+	var prune *settings.WebhookPruneObservation
+	if len(frozen) > 0 && frozen[0] != nil {
+		value := frozen[0].Clone()
+		prune = &value
+	}
+	if prune != nil {
+		if write.ReadWebhookPrune == nil || write.DeleteWebhook == nil {
+			err = fmt.Errorf("webhook prune reader or writer unavailable")
+		} else {
+			var current settings.WebhookPruneObservation
+			current, err = write.ReadWebhookPrune(repo)
+			if err == nil {
+				err = prune.Verify(current)
+			}
+			if err == nil {
+				observed = prune.Inventory()
+			}
+		}
+	} else if write.ReadWebhooks == nil {
 		err = fmt.Errorf("webhook reader unavailable")
 	} else {
 		observed, err = write.ReadWebhooks(repo, ids)
@@ -57,7 +75,26 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 		result.failOperation(index, status)
 		return wrote, fmt.Errorf("apply webhooks%s%s: %w", environmentProgress(*result), uncertain, err)
 	}
+	strictRead := func() (settings.WebhookPruneObservation, error) {
+		if prune == nil {
+			return settings.WebhookPruneObservation{}, nil
+		}
+		fresh, e := write.ReadWebhookPrune(repo)
+		if e == nil {
+			e = prune.Verify(fresh)
+		}
+		return fresh, e
+	}
 	for _, s := range selected {
+		if prune != nil {
+			_, e := strictRead()
+			if e != nil {
+				i := len(result.Operations)
+				result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
+				result.failOperation(i, OperationFailedRead)
+				return wrote, fmt.Errorf("webhook inventory changed before write%s: %w", environmentProgress(*result), e)
+			}
+		}
 		index = len(result.Operations)
 		if s.Desired.ID == 0 {
 			result.Operations = append(result.Operations, ApplyOperation{Kind: WebhookCreate})
@@ -86,10 +123,30 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 					return wrote, fmt.Errorf("webhook created with id %d but local ID recording failed: %w", applied.RecoveryID, e)
 				}
 			}
+			if prune != nil {
+				fresh, readErr := write.ReadWebhookPrune(repo)
+				state, found := applied.Observation.Find(applied.RecoveryID)
+				if readErr == nil && found {
+					var next settings.WebhookPruneObservation
+					next, readErr = prune.WithCreated(state, fresh)
+					if readErr == nil {
+						prune = &next
+						expected = next.Inventory()
+					}
+				} else if readErr == nil {
+					readErr = fmt.Errorf("created webhook evidence unavailable")
+				}
+				if readErr != nil {
+					i := len(result.Operations)
+					result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
+					result.failOperation(i, OperationFailedRead)
+					return wrote, fmt.Errorf("webhook created but prune inventory confirmation failed%s: %w", environmentProgress(*result), readErr)
+				}
+			}
 			continue
 		}
 		result.Operations = append(result.Operations, ApplyOperation{Kind: WebhookUpdate})
-		if ids == nil {
+		if ids == nil || prune != nil {
 			snapshot := expected.Clone()
 			s.Expected = &snapshot
 		}
@@ -102,13 +159,38 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 		if changed {
 			result.Operations[index].Status = OperationCompleted
 			wrote = true
-			if ids == nil {
+			if ids == nil && prune == nil {
 				expected, e = expected.WithUpdated(s.Desired)
 				if e != nil {
 					return fail(index, true, e)
 				}
 			}
 		}
+		if prune != nil {
+			fresh, readErr := write.ReadWebhookPrune(repo)
+			if readErr == nil {
+				if changed {
+					var next settings.WebhookPruneObservation
+					next, readErr = prune.WithUpdated(s.Desired, fresh)
+					if readErr == nil {
+						prune = &next
+						expected = next.Inventory()
+					}
+				} else {
+					readErr = prune.Verify(fresh)
+				}
+			}
+			if readErr != nil {
+				i := len(result.Operations)
+				result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
+				result.failOperation(i, OperationFailedRead)
+				return wrote, fmt.Errorf("webhook prune inventory confirmation failed%s: %w", environmentProgress(*result), readErr)
+			}
+		}
+	}
+	if prune != nil {
+		deleted, e := applyWebhookDeletes(result, repo, *prune, write)
+		return wrote || deleted, e
 	}
 	return wrote, nil
 }

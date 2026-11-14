@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	webhooks             *settings.WebhookPruneObservation
 	deployKeys           *settings.DeployKeyObservation
 	autolinks            settings.AutolinkObservation
 	collaborators        settings.CollaboratorPruneObservation
@@ -36,6 +37,23 @@ type prunePreparation struct {
 // Subsequent family reads must not widen or change these deletion candidates.
 func preparePrune(repo repository.Repository, desired settings.Declaration, prune settings.PruneScopes, write Writer) (prunePreparation, error) {
 	var result prunePreparation
+	if prune.Has("webhooks") && desired.Webhooks != nil {
+		if write.ReadWebhookPrune == nil || write.DeleteWebhook == nil {
+			return result, fmt.Errorf("webhook prune reader or writer unavailable")
+		}
+		observed, err := write.ReadWebhookPrune(repo)
+		if err != nil {
+			return result, err
+		}
+		prepared, err := settings.PrepareWebhookPrune(observed, *desired.Webhooks)
+		if err != nil {
+			return result, err
+		}
+		if err := prepared.ValidateApply(desired.Repository.Archived != nil && !*desired.Repository.Archived); err != nil {
+			return result, err
+		}
+		result.webhooks = &prepared
+	}
 	if prune.Has("deploy-keys") && desired.DeployKeys != nil {
 		observed, err := write.ReadDeployKeys(repo)
 		if err != nil {
