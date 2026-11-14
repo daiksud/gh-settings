@@ -40,7 +40,7 @@ func webhookSelected(t *testing.T) settings.WebhookSelection {
 	return settings.WebhookSelection{Target: settings.WebhookTarget{ID: 1, OwnerID: 2, FullName: "owner/current"}, Before: s, Desired: settings.Webhook{ID: 7, ContentType: &want}}
 }
 func TestWebhookPartialPatchAndVerification(t *testing.T) {
-	modes := []string{"content", "url", "both", "noop", "archived-noop", "archived-change", "pre-read-error", "HTTP-error", "transport-error", "bad-json", "empty-ack", "null-ack", "missing-ack", "unknown-ack", "ack-drift", "readback-denied", "selected-matching-drift", "omitted-url-drift", "ssl-drift", "active-drift", "events-drift", "created-drift", "target-drift", "pre-target-drift", "secret-missing", "secret-changing", "event-order", "fresh-companions", "fresh-match", "fresh-created-drift"}
+	modes := []string{"content", "url", "both", "ssl-enable", "ssl-disable", "ssl-noop", "ssl-ack-drift", "ssl-readback-drift", "noop", "archived-noop", "archived-change", "pre-read-error", "HTTP-error", "transport-error", "bad-json", "empty-ack", "null-ack", "missing-ack", "unknown-ack", "ack-drift", "readback-denied", "selected-matching-drift", "omitted-url-drift", "ssl-drift", "active-drift", "events-drift", "created-drift", "target-drift", "pre-target-drift", "secret-missing", "secret-changing", "event-order", "fresh-companions", "fresh-match", "fresh-created-drift"}
 	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
 			selected := webhookSelected(t)
@@ -51,6 +51,13 @@ func TestWebhookPartialPatchAndVerification(t *testing.T) {
 			currentParent := webhookRow(7, cfg)
 			url := "https://NEW.example:8443/a%2Fb?case=%2f"
 			switch mode {
+			case "ssl-enable", "ssl-disable", "ssl-noop", "ssl-ack-drift", "ssl-readback-drift":
+				selected.Desired.ContentType = nil
+				value := mode != "ssl-disable" && mode != "ssl-noop"
+				selected.Desired.SSLVerification = &value
+				if mode == "ssl-disable" {
+					cfg["insecure_ssl"] = "0"
+				}
 			case "url":
 				selected.Desired.ContentType = nil
 				selected.Desired.PayloadURL = &url
@@ -92,6 +99,16 @@ func TestWebhookPartialPatchAndVerification(t *testing.T) {
 					if selected.Desired.ContentType != nil && cfg["content_type"] != "form" {
 						want["content_type"] = "form"
 					}
+					if selected.Desired.SSLVerification != nil {
+						current := cfg["insecure_ssl"] == "1"
+						if current == *selected.Desired.SSLVerification {
+							value := "0"
+							if !*selected.Desired.SSLVerification {
+								value = "1"
+							}
+							want["insecure_ssl"] = value
+						}
+					}
 					if !reflect.DeepEqual(payload, want) || len(payload) == 0 || strings.Contains(string(data), "PRIVATE") {
 						t.Fatalf("payload %s expected %v", data, want)
 					}
@@ -119,6 +136,8 @@ func TestWebhookPartialPatchAndVerification(t *testing.T) {
 						delete(ack, "url")
 					case "unknown-ack":
 						ack["PRIVATE_UNKNOWN_CANARY"] = true
+					case "ssl-ack-drift":
+						ack["insecure_ssl"] = "1"
 					case "ack-drift":
 						ack["content_type"] = "json"
 					case "secret-missing":
@@ -153,6 +172,8 @@ func TestWebhookPartialPatchAndVerification(t *testing.T) {
 						cfg["url"] = "https://drift.example"
 					case "ssl-drift":
 						cfg["insecure_ssl"] = "0"
+					case "ssl-readback-drift":
+						cfg["insecure_ssl"] = "1"
 					case "active-drift":
 						currentParent["active"] = true
 					case "events-drift":
@@ -174,7 +195,7 @@ func TestWebhookPartialPatchAndVerification(t *testing.T) {
 				}
 			})
 			wrote, err := c.ApplyWebhook(webhookRepo, selected)
-			success := mode == "content" || mode == "url" || mode == "both" || mode == "noop" || mode == "archived-noop" || mode == "secret-missing" || mode == "secret-changing" || mode == "event-order" || mode == "fresh-companions" || mode == "fresh-match"
+			success := mode == "ssl-enable" || mode == "ssl-disable" || mode == "ssl-noop" || mode == "content" || mode == "url" || mode == "both" || mode == "noop" || mode == "archived-noop" || mode == "secret-missing" || mode == "secret-changing" || mode == "event-order" || mode == "fresh-companions" || mode == "fresh-match"
 			if (err == nil) != success {
 				t.Fatal(mode, wrote, err, requests)
 			}
@@ -187,7 +208,7 @@ func TestWebhookPartialPatchAndVerification(t *testing.T) {
 				if !errors.As(err, &marker) || patches != 0 || wrote {
 					t.Fatal("prewrite failure classification", err, patches)
 				}
-			} else if mode == "noop" || mode == "archived-noop" || mode == "fresh-match" {
+			} else if mode == "ssl-noop" || mode == "noop" || mode == "archived-noop" || mode == "fresh-match" {
 				if patches != 0 || wrote {
 					t.Fatal("matching write")
 				}

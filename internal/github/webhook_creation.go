@@ -40,6 +40,9 @@ func (c *Client) CreateWebhook(repo repository.Repository, expected settings.Web
 		Active bool              `json:"active"`
 		Events []string          `json:"events"`
 	}{"web", map[string]string{"url": *desired.PayloadURL, "content_type": native, "insecure_ssl": "0"}, *desired.Active, *desired.Events}
+	if desired.SSLVerification != nil && !*desired.SSLVerification {
+		payload.Config["insecure_ssl"] = "1"
+	}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return pre(fmt.Errorf("invalid webhook creation request"))

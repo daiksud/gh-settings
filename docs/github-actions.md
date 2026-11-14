@@ -468,10 +468,12 @@ clean up hosts.
 ## Webhook configuration and creation in current source
 
 The Action uses the shared [webhook contract](settings.md#webhook-configuration-and-creation).
-Detailed plans/Summary show selected controls and creation's automatic ping/no
-supplied Secret consequences. Status-only hides IDs and values; URLs must not carry
+Detailed plans/Summary show selected controls, the security consequence of disabled
+SSL verification, and creation's automatic ping/no supplied Secret consequences.
+Omitted SSL verification preserves an existing hook and enables verification for
+creation; explicit `false` disables it and risks man-in-the-middle attacks. Status-only hides IDs and values; URLs must not carry
 secrets. Raw API/debug/error bodies and unselected companion state stay private.
-Export saves all four observed public controls in local YAML without copying it
+Export saves all five observed public controls in local YAML without copying it
 into Summary. Active/events on bound hooks are matching guards only.
 
 Apply never records created IDs in source or changes checkout HEAD. Retain the

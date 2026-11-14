@@ -51,22 +51,24 @@ func TestWebhookPruneMixedExecutable(t *testing.T) {
 				case "PATCH /repos/owner/current/hooks/7/config":
 					var body map[string]any
 					json.NewDecoder(r.Body).Decode(&body)
-					if !reflect.DeepEqual(body, map[string]any{"content_type": "form"}) {
+					if !reflect.DeepEqual(body, map[string]any{"content_type": "form", "insecure_ssl": "1"}) {
 						t.Error("unexpected config", body)
 					}
 					writes = append(writes, "update:7")
 					rows[7]["config"].(map[string]any)["content_type"] = "form"
+					rows[7]["config"].(map[string]any)["insecure_ssl"] = "1"
 					rows[7]["updated_at"] = "2026-11-14T02:00:00Z"
 					json.NewEncoder(w).Encode(rows[7]["config"])
 				case "POST /repos/owner/current/hooks":
 					var body map[string]any
 					json.NewDecoder(r.Body).Decode(&body)
-					expected := map[string]any{"name": "web", "active": false, "events": []any{"push"}, "config": map[string]any{"url": "https://created.example/hook", "content_type": "json", "insecure_ssl": "0"}}
+					expected := map[string]any{"name": "web", "active": false, "events": []any{"push"}, "config": map[string]any{"url": "https://created.example/hook", "content_type": "json", "insecure_ssl": "1"}}
 					if !reflect.DeepEqual(body, expected) {
 						t.Error("unexpected create payload", body)
 					}
 					writes = append(writes, "create:9")
 					rows[9] = row(9, "https://created.example/hook")
+					rows[9]["config"].(map[string]any)["insecure_ssl"] = "1"
 					if mode == "record-failure" {
 						if err := os.WriteFile(path, []byte("# concurrent edit\n"), 0600); err != nil {
 							t.Error(err)
@@ -103,13 +105,13 @@ func TestWebhookPruneMixedExecutable(t *testing.T) {
 			if err = setupOrdinaryOrigin(f.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := repositoryInput("settings: {webhooks: [{id: 7, content_type: application/x-www-form-urlencoded, active: false, events: [push]}, {payload_url: https://created.example/hook, content_type: application/json, active: false, events: [push]}]}\n")
+			input := repositoryInput("settings: {webhooks: [{id: 7, content_type: application/x-www-form-urlencoded, ssl_verification: false, active: false, events: [push]}, {payload_url: https://created.example/hook, content_type: application/json, ssl_verification: false, active: false, events: [push]}]}\n")
 			path = filepath.Join(f.work, ".github/settings.yml")
 			if err = writeSettingsFile(f.work, input); err != nil {
 				t.Fatal(err)
 			}
 			plan, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"plan", "--prune", "webhooks"}, false)
-			if e != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), "removed.example") || !strings.Contains(plan.stdout.String(), "automatic ping") || !strings.Contains(plan.stdout.String(), "opaque Secret") {
+			if e != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), "removed.example") || !strings.Contains(plan.stdout.String(), "automatic ping") || !strings.Contains(plan.stdout.String(), "opaque Secret") || !strings.Contains(plan.stdout.String(), "man-in-the-middle") {
 				t.Fatal(e, plan.runErr, plan.stdout.String(), plan.stderr.String())
 			}
 			result, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"apply", "--prune", "webhooks"}, false)

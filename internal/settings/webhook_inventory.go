@@ -69,7 +69,7 @@ func (o WebhookObservation) WithCreated(s WebhookState) (WebhookObservation, err
 	return o, nil
 }
 func WebhookCreationMatches(s WebhookState, d Webhook) bool {
-	return d.ID == 0 && d.Validate() == nil && s.Validate() == nil && !s.Config.InsecureSSL && s.Config.PayloadURL == *d.PayloadURL && s.Config.ContentType == *d.ContentType && s.Active == *d.Active && WebhookEventsEqual(s.Events, *d.Events)
+	return d.ID == 0 && d.Validate() == nil && s.Validate() == nil && s.Config.InsecureSSL == (d.SSLVerification != nil && !*d.SSLVerification) && s.Config.PayloadURL == *d.PayloadURL && s.Config.ContentType == *d.ContentType && s.Active == *d.Active && WebhookEventsEqual(s.Events, *d.Events)
 }
 
 type WebhookCreateResult struct {

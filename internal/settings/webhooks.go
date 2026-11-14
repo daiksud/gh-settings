@@ -12,11 +12,12 @@ const WebhooksPath = "repository.settings.webhooks"
 
 // Webhook contains only selected public controls. Credentials never enter this model.
 type Webhook struct {
-	ID          int64     `json:"id,omitempty"`
-	PayloadURL  *string   `json:"payload_url,omitempty"`
-	ContentType *string   `json:"content_type,omitempty"`
-	Active      *bool     `json:"active,omitempty"`
-	Events      *[]string `json:"events,omitempty"`
+	ID              int64     `json:"id,omitempty"`
+	PayloadURL      *string   `json:"payload_url,omitempty"`
+	ContentType     *string   `json:"content_type,omitempty"`
+	SSLVerification *bool     `json:"ssl_verification,omitempty"`
+	Active          *bool     `json:"active,omitempty"`
+	Events          *[]string `json:"events,omitempty"`
 }
 
 func ValidateWebhookURL(value string) error {
@@ -36,7 +37,7 @@ func ValidateWebhookURL(value string) error {
 	return nil
 }
 func (v Webhook) Validate() error {
-	if v.ID < 0 || v.PayloadURL == nil && v.ContentType == nil && v.Active == nil && v.Events == nil {
+	if v.ID < 0 || v.PayloadURL == nil && v.ContentType == nil && v.SSLVerification == nil && v.Active == nil && v.Events == nil {
 		return fmt.Errorf("webhook requires selected controls and a positive id when present")
 	}
 	if v.ID == 0 && (v.PayloadURL == nil || v.ContentType == nil || v.Active == nil || v.Events == nil) {
@@ -65,6 +66,10 @@ func (v Webhook) Clone() Webhook {
 	if v.ContentType != nil {
 		x := *v.ContentType
 		v.ContentType = &x
+	}
+	if v.SSLVerification != nil {
+		x := *v.SSLVerification
+		v.SSLVerification = &x
 	}
 	if v.Active != nil {
 		x := *v.Active
@@ -150,6 +155,10 @@ func (c WebhookConfig) Selected(d Webhook) Webhook {
 		x := c.ContentType
 		v.ContentType = &x
 	}
+	if d.SSLVerification != nil {
+		x := !c.InsecureSSL
+		v.SSLVerification = &x
+	}
 	return v
 }
 func (c WebhookConfig) Overlay(d Webhook) WebhookConfig {
@@ -158,6 +167,9 @@ func (c WebhookConfig) Overlay(d Webhook) WebhookConfig {
 	}
 	if d.ContentType != nil {
 		c.ContentType = *d.ContentType
+	}
+	if d.SSLVerification != nil {
+		c.InsecureSSL = !*d.SSLVerification
 	}
 	return c
 }
@@ -215,7 +227,8 @@ func (o WebhookObservation) Declaration() ([]Webhook, error) {
 	for _, s := range o.Values {
 		u, c := s.Config.PayloadURL, s.Config.ContentType
 		a, e := s.Active, slices.Clone(s.Events)
-		values = append(values, Webhook{ID: s.ID, PayloadURL: &u, ContentType: &c, Active: &a, Events: &e}.Clone())
+		ssl := !s.Config.InsecureSSL
+		values = append(values, Webhook{ID: s.ID, PayloadURL: &u, ContentType: &c, SSLVerification: &ssl, Active: &a, Events: &e}.Clone())
 	}
 	slices.SortFunc(values, func(a, b Webhook) int {
 		if a.ID < b.ID {
@@ -327,7 +340,7 @@ func ValidateWebhookChanges(changes []WebhookChange) error {
 	creationURLs := map[string]bool{}
 	for _, c := range changes {
 		if c.After == nil {
-			if c.Before == nil || c.Before.ID <= 0 || c.Before.PayloadURL == nil || c.Before.ContentType == nil || c.Before.Active == nil || c.Before.Events == nil || c.Before.Validate() != nil || seenIDs[c.Before.ID] {
+			if c.Before == nil || c.Before.ID <= 0 || c.Before.PayloadURL == nil || c.Before.ContentType == nil || c.Before.SSLVerification == nil || c.Before.Active == nil || c.Before.Events == nil || c.Before.Validate() != nil || seenIDs[c.Before.ID] {
 				return fmt.Errorf("invalid webhook deletion comparison")
 			}
 			seenIDs[c.Before.ID] = true
@@ -352,13 +365,13 @@ func ValidateWebhookChanges(changes []WebhookChange) error {
 			continue
 		}
 		a, b := c.Before, c.After
-		if a.Validate() != nil || a.ID <= 0 || a.ID != b.ID || (a.PayloadURL == nil) != (b.PayloadURL == nil) || (a.ContentType == nil) != (b.ContentType == nil) || (a.Active == nil) != (b.Active == nil) || (a.Events == nil) != (b.Events == nil) {
+		if a.Validate() != nil || a.ID <= 0 || a.ID != b.ID || (a.PayloadURL == nil) != (b.PayloadURL == nil) || (a.ContentType == nil) != (b.ContentType == nil) || (a.SSLVerification == nil) != (b.SSLVerification == nil) || (a.Active == nil) != (b.Active == nil) || (a.Events == nil) != (b.Events == nil) {
 			return fmt.Errorf("invalid webhook comparison")
 		}
 		if a.Active != nil && *a.Active != *b.Active || a.Events != nil && !WebhookEventsEqual(*a.Events, *b.Events) {
 			return fmt.Errorf("webhook parent changes are unsupported")
 		}
-		same := (a.PayloadURL == nil || *a.PayloadURL == *b.PayloadURL) && (a.ContentType == nil || *a.ContentType == *b.ContentType)
+		same := (a.PayloadURL == nil || *a.PayloadURL == *b.PayloadURL) && (a.ContentType == nil || *a.ContentType == *b.ContentType) && (a.SSLVerification == nil || *a.SSLVerification == *b.SSLVerification)
 		if same {
 			return fmt.Errorf("webhook comparison has no change")
 		}

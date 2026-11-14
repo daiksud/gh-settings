@@ -132,3 +132,37 @@ func TestWebhookCreationReportUnionAndStatusPrivacy(t *testing.T) {
 		}
 	}
 }
+
+func TestWebhookSSLReportAndPrivateSummary(t *testing.T) {
+	before, after := true, false
+	change := settings.WebhookChange{Before: &settings.Webhook{ID: 7, SSLVerification: &before}, After: &settings.Webhook{ID: 7, SSLVerification: &after}}
+	path := filepath.Join(t.TempDir(), "report.json")
+	var out, diag bytes.Buffer
+	plan := func() (app.PlanResult, error) {
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, Webhooks: []settings.WebhookChange{change}}}, nil
+	}
+	if actions.Run([]string{"plan", path}, &out, &diag, "dev", plan) != 0 {
+		t.Fatal(diag.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report actions.PlanReport
+	if json.Unmarshal(data, &report) != nil {
+		t.Fatal(string(data))
+	}
+	summary, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || !strings.Contains(summary, "ssl_verification") || !strings.Contains(summary, "man-in-the-middle") {
+		t.Fatal(summary, err)
+	}
+	t.Setenv("SETTINGS_TARGET", "owner/current")
+	private := filepath.Join(t.TempDir(), "summary")
+	if actions.Run([]string{"summary", path, private, "status-only"}, &out, &diag, "dev", nil) != 0 {
+		t.Fatal(diag.String())
+	}
+	data, err = os.ReadFile(private)
+	if err != nil || strings.Contains(string(data)+out.String()+diag.String(), "ssl_verification") {
+		t.Fatal(string(data), err)
+	}
+}

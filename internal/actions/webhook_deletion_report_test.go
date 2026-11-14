@@ -17,8 +17,9 @@ import (
 
 func TestWebhookDeletionReportUnionAndStatusPrivacy(t *testing.T) {
 	deletedURL, mime, active, events := "https://deleted-canary.example/hook", "application/json", false, []string{"push", "future_event"}
+	ssl := false
 	newURL := "https://created-canary.example/hook"
-	change := settings.WebhookChange{Before: &settings.Webhook{ID: 9007199254740993, PayloadURL: &deletedURL, ContentType: &mime, Active: &active, Events: &events}}
+	change := settings.WebhookChange{Before: &settings.Webhook{ID: 9007199254740993, PayloadURL: &deletedURL, ContentType: &mime, SSLVerification: &ssl, Active: &active, Events: &events}}
 	create := settings.WebhookChange{After: &settings.Webhook{PayloadURL: &newURL, ContentType: &mime, Active: &active, Events: &events}}
 	path := filepath.Join(t.TempDir(), "report.json")
 	var out, diag bytes.Buffer
@@ -54,7 +55,7 @@ func TestWebhookDeletionReportUnionAndStatusPrivacy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range []string{"deleted-canary", "created-canary", "future_event", "9007199254740993"} {
+	for _, value := range []string{"deleted-canary", "created-canary", "future_event", "ssl_verification", "9007199254740993"} {
 		if strings.Contains(string(hidden)+out.String()+diag.String(), value) {
 			t.Fatal("status-only leaked", value)
 		}
@@ -79,7 +80,8 @@ func TestWebhookDeletionReportUnionAndStatusPrivacy(t *testing.T) {
 
 func TestWebhookDeletionReportRejectsCreationCollision(t *testing.T) {
 	url, mime, active, events := "https://hooks.example/old", "application/json", true, []string{"push"}
-	before := settings.Webhook{ID: 7, PayloadURL: &url, ContentType: &mime, Active: &active, Events: &events}
+	ssl := true
+	before := settings.Webhook{ID: 7, PayloadURL: &url, ContentType: &mime, SSLVerification: &ssl, Active: &active, Events: &events}
 	after := before.Clone()
 	after.ID = 0
 	if err := settings.ValidateWebhookChanges([]settings.WebhookChange{{Before: &before}, {After: &after}}); err == nil {

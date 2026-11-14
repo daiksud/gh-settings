@@ -203,7 +203,8 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 						break
 					}
 					url, mime, active, events := state.State.Config.PayloadURL, state.State.Config.ContentType, state.State.Active, append([]string{}, state.State.Events...)
-					before := settings.Webhook{ID: id, PayloadURL: &url, ContentType: &mime, Active: &active, Events: &events}
+					ssl := !state.State.Config.InsecureSSL
+					before := settings.Webhook{ID: id, PayloadURL: &url, ContentType: &mime, SSLVerification: &ssl, Active: &active, Events: &events}
 					changes = append(changes, settings.WebhookChange{Before: &before})
 				}
 			}

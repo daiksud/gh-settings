@@ -179,11 +179,14 @@ func TestWebhooksExecutableLifecycle(t *testing.T) {
 	}
 }
 func TestWebhooksExecutableExportRetention(t *testing.T) {
-	for _, mode := range []string{"complete", "empty", "initial", "retained", "idless-retained", "replaced-empty-retained", "replaced-empty-initial", "short-next-retained", "short-next-initial"} {
+	for _, mode := range []string{"complete", "complete-disabled", "empty", "initial", "retained", "idless-retained", "replaced-empty-retained", "replaced-empty-initial", "short-next-retained", "short-next-initial"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			repositoryID := 1
 			cfg := map[string]any{"url": "https://example.test/exact%2f?q=%2F", "content_type": "form", "insecure_ssl": 0, "secret": "PRIVATE_EXPORT_SECRET"}
+			if mode == "complete-disabled" {
+				cfg["insecure_ssl"] = "1"
+			}
 			row := map[string]any{"id": 7, "type": "Repository", "name": "web", "active": true, "events": []string{"push"}, "created_at": "2026-11-14T00:00:00Z", "url": "https://api.github.com/repos/owner/current/hooks/7", "config": cfg}
 			f, e := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
@@ -272,14 +275,14 @@ func TestWebhooksExecutableExportRetention(t *testing.T) {
 			} else if !strings.Contains(text, want) {
 				t.Fatal(text, r.stderr.String())
 			}
-			if mode == "complete" && (!strings.Contains(text, "active: true") || !strings.Contains(text, "events:") || !strings.Contains(text, "- push")) {
+			if strings.HasPrefix(mode, "complete") && (!strings.Contains(text, "ssl_verification: "+fmt.Sprint(mode == "complete")) || !strings.Contains(text, "active: true") || !strings.Contains(text, "events:") || !strings.Contains(text, "- push")) {
 				t.Fatal("incomplete parent export", text)
 			}
 			v, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"validate"}, true)
 			if e != nil || v.runErr != nil {
 				t.Fatal(e, v.runErr, v.stderr.String())
 			}
-			if mode == "complete" {
+			if strings.HasPrefix(mode, "complete") {
 				applied, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"apply"}, false)
 				if e != nil || applied.runErr != nil {
 					t.Fatal("exported declaration was not a no-op", e, applied.runErr, applied.stderr.String())

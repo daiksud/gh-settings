@@ -474,6 +474,13 @@ func (c *Client) ApplyWebhook(repo repository.Repository, selected settings.Webh
 		}
 		payload["content_type"] = native
 	}
+	if selected.Desired.SSLVerification != nil && before.Config.InsecureSSL == *selected.Desired.SSLVerification {
+		value := "0"
+		if !*selected.Desired.SSLVerification {
+			value = "1"
+		}
+		payload["insecure_ssl"] = value
+	}
 	var raw map[string]json.RawMessage
 	link, err := c.webhookRequest(http.MethodPatch, webhookPath(repo, before.ID)+"/config", payload, &raw)
 	if err != nil {
