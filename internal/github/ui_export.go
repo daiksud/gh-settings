@@ -33,8 +33,12 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		values := make([]uimodel.Webhook, 0, len(*source.Webhooks))
 		for _, raw := range *source.Webhooks {
 			d := raw.Clone()
-			id := d.ID
-			values = append(values, uimodel.Webhook{ID: &id, PayloadURL: d.PayloadURL, ContentType: d.ContentType})
+			var id *int64
+			if d.ID > 0 {
+				value := d.ID
+				id = &value
+			}
+			values = append(values, uimodel.Webhook{ID: id, PayloadURL: d.PayloadURL, ContentType: d.ContentType, Active: d.Active, Events: d.Events})
 		}
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}

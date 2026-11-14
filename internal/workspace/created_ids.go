@@ -33,7 +33,7 @@ func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "deploy_keys" && collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules" && collection != "autolinks") {
+		if id <= 0 || (collection != "webhooks" && collection != "deploy_keys" && collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules" && collection != "autolinks") {
 			return fmt.Errorf("invalid object identity")
 		}
 		var document yaml.Node
@@ -57,6 +57,10 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		repository := mappingValue(document.Content[0], "repository")
 		entries := mappingValue(repository, "labels")
 		nameKey, path := "name", "repository.labels"
+		if collection == "webhooks" {
+			entries = mappingValue(mappingValue(repository, "settings"), "webhooks")
+			nameKey, path = "payload_url", settings.WebhooksPath
+		}
 		if collection == "deploy_keys" {
 			entries = mappingValue(mappingValue(repository, "settings"), "deploy_keys")
 			nameKey, path = "key", settings.DeployKeysPath

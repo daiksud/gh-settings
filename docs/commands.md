@@ -322,7 +322,7 @@ The four shared GraphQL access controls use identity plus selected-member acquis
 
 Apply never consumes a saved plan. Concurrent remote changes can affect or invalidate an update; fresh checks and response verification are not a lock. Earlier writes remain applied after a later failure, with no automatic rollback/retry.
 
-Success prints `Applied repository settings.` for managed work, followed by created IDs when applicable. Normal CLI apply adds new IDs to the original settings file; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Existing IDs are not replaced, comments are preserved as practicable and formatting may normalize. A changed/unsafe file or persistence failure after remote creation is a nonzero partial failure that reports recoverable IDs. Retain those IDs before retrying; no Git commit or push is made. Output errors can occur after remote/local changes succeed; created label/Ruleset IDs remain in stderr recovery diagnostics. Rulesets use the same writeback/opt-out mechanism as labels.
+Success prints `Applied repository settings.` for managed work, followed by created IDs when applicable. Normal CLI apply adds new IDs to the original settings file; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Existing IDs are not replaced, comments are preserved as practicable and formatting may normalize. A changed/unsafe file or persistence failure after remote creation is a nonzero partial failure that reports recoverable IDs. Retain those IDs before retrying; no Git commit or push is made. Output errors can occur after remote/local changes succeed; created resource IDs remain in stderr recovery diagnostics. Rulesets use the same writeback/opt-out mechanism as labels.
 
 ## Failures and limits for mutation
 
@@ -445,12 +445,22 @@ and uncertain effects. Explicit empty custom sets clear labels; empty runner
 selections do nothing. No ID recovery, writeback, runner deletion or pruning is
 part of these commands.
 
-## Existing webhook configuration in current source
+## Webhook configuration and creation in current source
 
-[Webhook declarations](settings.md#existing-webhook-configuration) select existing
-IDs and optional Payload URL/Content type. `export` acquires the complete family;
-`plan` and direct `apply` read only selected IDs. Matching complete state skips
-PATCH. Omission and `webhooks: []` make no family requests, and no prune scope
-owns hook deletion. Detailed plans show selected URLs; status-only hides them.
-Failed verification stops later work and does not roll back earlier writes.
-The CLI does not ping/test hooks or fetch destinations, and does not edit YAML.
+[Webhook declarations](settings.md#webhook-configuration-and-creation) select
+existing IDs for URL/Content type reconciliation and optional Active/events
+matching guards. An IDless entry must declare all four controls to create a hook
+without a Secret and with SSL verification enabled; GitHub documents an automatic
+creation ping. A needed parent Active/events change fails before the family's
+first write. Omission and `webhooks: []` make no family requests; no prune scope
+owns deletion. Bound-only work reads selected IDs, while creation requires complete
+inventory and exact URL collision checks before any family write. Export writes
+IDs and all four controls from complete observations.
+
+Ordinary CLI apply records a new ID only after independent verification and guarded
+source checks. `--no-writeback` and `GITHUB_ACTIONS=true` leave input unchanged;
+retain the reported ID in a reviewed configuration change before retrying. An
+IDless repeat colliding with an existing URL stops without creation. Failure keeps
+earlier verified progress and never rolls it back. Detailed plans show selected
+controls and creation consequences; status-only hides values. The CLI does not
+send extra pings/tests, fetch destinations or manage Secret values.

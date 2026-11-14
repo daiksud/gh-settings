@@ -179,7 +179,7 @@ func TestWebhooksExecutableLifecycle(t *testing.T) {
 	}
 }
 func TestWebhooksExecutableExportRetention(t *testing.T) {
-	for _, mode := range []string{"complete", "empty", "initial", "retained", "replaced-empty-retained", "replaced-empty-initial", "short-next-retained", "short-next-initial"} {
+	for _, mode := range []string{"complete", "empty", "initial", "retained", "idless-retained", "replaced-empty-retained", "replaced-empty-initial", "short-next-retained", "short-next-initial"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			repositoryID := 1
@@ -216,7 +216,7 @@ func TestWebhooksExecutableExportRetention(t *testing.T) {
 				case "/repos/owner/current/hooks/7":
 					json.NewEncoder(w).Encode(row)
 				case "/repos/owner/current/hooks/7/config":
-					if mode == "initial" || mode == "retained" {
+					if mode == "initial" || mode == "retained" || mode == "idless-retained" {
 						w.WriteHeader(403)
 						fmt.Fprint(w, `{"message":"PRIVATE_EXPORT_ERROR"}`)
 					} else {
@@ -240,7 +240,11 @@ func TestWebhooksExecutableExportRetention(t *testing.T) {
 			path := filepath.Join(f.work, ".github/settings.yml")
 			if strings.HasSuffix(mode, "retained") {
 				os.MkdirAll(filepath.Dir(path), 0700)
-				os.WriteFile(path, []byte(repositoryInput("settings: {webhooks: [{id: 9, content_type: application/json}]}\n")), 0600)
+				prior := "settings: {webhooks: [{id: 9, content_type: application/json}]}\n"
+				if mode == "idless-retained" {
+					prior = "settings: {webhooks: [{payload_url: 'https://new.example', content_type: application/json, active: false, events: []}]}\n"
+				}
+				os.WriteFile(path, []byte(repositoryInput(prior)), 0600)
 			}
 			r, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"export"}, false)
 			if e != nil || r.runErr != nil {
@@ -257,6 +261,9 @@ func TestWebhooksExecutableExportRetention(t *testing.T) {
 			}
 			if strings.HasSuffix(mode, "retained") {
 				want = "id: 9"
+				if mode == "idless-retained" {
+					want = "payload_url: https://new.example"
+				}
 			}
 			if strings.HasSuffix(mode, "initial") {
 				if strings.Contains(text, "webhooks:") {
@@ -265,9 +272,22 @@ func TestWebhooksExecutableExportRetention(t *testing.T) {
 			} else if !strings.Contains(text, want) {
 				t.Fatal(text, r.stderr.String())
 			}
+			if mode == "complete" && (!strings.Contains(text, "active: true") || !strings.Contains(text, "events:") || !strings.Contains(text, "- push")) {
+				t.Fatal("incomplete parent export", text)
+			}
 			v, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"validate"}, true)
 			if e != nil || v.runErr != nil {
 				t.Fatal(e, v.runErr, v.stderr.String())
+			}
+			if mode == "complete" {
+				applied, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"apply"}, false)
+				if e != nil || applied.runErr != nil {
+					t.Fatal("exported declaration was not a no-op", e, applied.runErr, applied.stderr.String())
+				}
+				after, _ := os.ReadFile(path)
+				if string(after) != text {
+					t.Fatal("export repeat changed source")
+				}
 			}
 		})
 	}

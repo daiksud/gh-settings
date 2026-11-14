@@ -99,6 +99,7 @@ const (
 	ClassicProtectionRead
 	WebhooksRead
 	WebhookUpdate
+	WebhookCreate
 	DeployKeysRead
 	DeployKeyCreate
 	DeployKeyDelete

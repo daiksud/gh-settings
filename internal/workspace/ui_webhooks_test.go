@@ -23,7 +23,7 @@ func TestUIWebhooksLiteralRoundtrip(t *testing.T) {
 }
 
 func TestUIWebhooksRejectInvalidShapes(t *testing.T) {
-	for _, value := range []string{"null", "[{id: null, content_type: application/json}]", "[{id: '7', content_type: application/json}]", "[{id: 7, content_type: null}]", "[{id: 7, Content_type: application/json}]", "[{id: 7, content_type: application/json, content_type: application/json}]", "[{id: 7, payload_url: false}]", "[{id: 7, url: https://example.com}]", "[{id: 7, secret: PRIVATE}]", "[{id: 7, insecure_ssl: false}]", "[{id: 7, active: true}]", "[{id: 7, events: []}]"} {
+	for _, value := range []string{"null", "[{id: null, content_type: application/json}]", "[{id: '7', content_type: application/json}]", "[{id: 7, content_type: null}]", "[{id: 7, Content_type: application/json}]", "[{id: 7, content_type: application/json, content_type: application/json}]", "[{id: 7, payload_url: false}]", "[{id: 7, url: https://example.com}]", "[{id: 7, secret: PRIVATE}]", "[{id: 7, insecure_ssl: false}]"} {
 		if _, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    webhooks: " + value + "\n")); err == nil {
 			t.Fatalf("accepted %s", value)
 		}

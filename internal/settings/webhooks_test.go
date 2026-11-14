@@ -40,7 +40,7 @@ func TestWebhookURLAndPartialValidation(t *testing.T) {
 func TestWebhookOwnershipAndPreservation(t *testing.T) {
 	s := WebhookState{ID: 7, CreatedAt: "stamp", Config: WebhookConfig{PayloadURL: "https://private.example/omitted", ContentType: "application/json", InsecureSSL: true}, Events: []string{"future-event", "push"}, Active: false}
 	d := Webhook{ID: 7, ContentType: webhookPtr("application/x-www-form-urlencoded")}
-	o := WebhookObservation{Target: WebhookTarget{ID: 1, OwnerID: 2, FullName: "o/r"}, Values: []WebhookState{s}}
+	o := WebhookObservation{Complete: true, Target: WebhookTarget{ID: 1, OwnerID: 2, FullName: "o/r"}, Values: []WebhookState{s}}
 	selected, changes, err := PrepareWebhooks(o, []Webhook{d})
 	if err != nil || len(selected) != 1 || len(changes) != 1 || changes[0].Before.PayloadURL != nil {
 		t.Fatal("partial intent leaked", err)

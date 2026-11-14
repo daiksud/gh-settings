@@ -185,7 +185,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
-| Existing webhook configuration (current source) | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH and independent preservation verification |
+| Webhook configuration/creation (current source) | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH or guarded creation POST, then independent verification |
 | Deploy keys (current source) | Administration read, complete personal-public target and key inventory | Administration write; immutable creation or explicit guarded deletion with independent readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
@@ -461,14 +461,20 @@ precedes output publication. A failed acknowledgment or readback fails the Actio
 without success outputs, even when labels may have changed. The Action never
 modifies input YAML, registers/removes a runner or issues registration credentials.
 
-## Existing webhook configuration in current source
+## Webhook configuration and creation in current source
 
-The Action uses the shared [existing webhook contract](settings.md#existing-webhook-configuration).
-Detailed plans/Summary show selected ID and URL/Content type, so a destination
-change is reviewable. Status-only hides those values; URLs must not carry secrets.
-Private companion state and raw API/debug/error bodies stay out of reports/logs.
-Export saves local YAML without copying it into Summary. Apply preserves input
-files and checkout HEAD, and publishes success outputs only after verification.
-The Action never creates/removes hooks, pings, tests deliveries or fetches URLs.
-Support depends on the selected immutable package; permissions are not granted
-or broadened automatically.
+The Action uses the shared [webhook contract](settings.md#webhook-configuration-and-creation).
+Detailed plans/Summary show selected controls and creation's automatic ping/no
+supplied Secret consequences. Status-only hides IDs and values; URLs must not carry
+secrets. Raw API/debug/error bodies and unselected companion state stay private.
+Export saves all four observed public controls in local YAML without copying it
+into Summary. Active/events on bound hooks are matching guards only.
+
+Apply never records created IDs in source or changes checkout HEAD. Retain the
+reported verified or recovery-only ID, independently verify uncertain results,
+and add the binding through a reviewed follow-up before retrying. A repeated
+IDless request with a live matching URL fails rather than creating again. Success
+outputs appear only after required verification; earlier confirmed creations
+remain when later work fails. The Action makes no extra ping, test, redelivery or
+destination request, and does not delete hooks. Support depends on the selected
+immutable package; permissions are not granted or broadened automatically.

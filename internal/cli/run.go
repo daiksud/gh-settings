@@ -172,6 +172,8 @@ func createdCollectionPath(collection string) string {
 		return settings.DeployKeysPath
 	case "autolinks":
 		return settings.AutolinksPath
+	case "webhooks":
+		return settings.WebhooksPath
 	case "branch_protection_rules":
 		return settings.ClassicProtectionPath
 	default:
@@ -189,7 +191,7 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		}
 		path := ""
 		switch op.Kind {
-		case app.WebhooksRead, app.WebhookUpdate:
+		case app.WebhooksRead, app.WebhookUpdate, app.WebhookCreate:
 			path = settings.WebhooksPath
 		case app.DeployKeysRead, app.DeployKeyCreate, app.DeployKeyDelete:
 			path = settings.DeployKeysPath
