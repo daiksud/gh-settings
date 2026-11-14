@@ -61,6 +61,26 @@ func verifyArchivedGroups(repo repository.Repository, desired settings.Declarati
 			return err
 		}
 	}
+	if !desired.Actions.WorkflowPermissionsEmpty() {
+		if read.ReadWorkflowPermissions == nil {
+			return fmt.Errorf("verify archived workflow permissions: reader unavailable")
+		}
+		observed, err := read.ReadWorkflowPermissions(repo)
+		if err != nil {
+			return fmt.Errorf("verify archived workflow permissions: %w", err)
+		}
+		selected := 0
+		if desired.Actions.DefaultWorkflowPermissions != nil {
+			selected++
+		}
+		if desired.Actions.CanApprovePullRequestReviews != nil {
+			selected++
+		}
+		managed, changes, err := settings.CompareWorkflowPermissions(observed, desired.Actions)
+		if err != nil || managed != selected || len(changes) != 0 {
+			return fmt.Errorf("archived workflow permissions differ or lack selected evidence")
+		}
+	}
 	if desired.Actions.ForkApprovalPolicy != nil {
 		if err := archivedGroup(repo, desired.Actions, read.ReadForkApproval, settings.CompareForkApproval, "Actions fork approval"); err != nil {
 			return err
