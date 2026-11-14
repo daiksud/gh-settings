@@ -17,7 +17,7 @@ import (
 
 func TestBuiltCompositeArchivedMatching(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "mixed empty collections", "mixed empty topics differ", "mixed empty exemptions differ", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown", "ruleset matching", "ruleset differs", "ruleset unknown", "ruleset denied"} {
+	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "mixed limits duplicate", "mixed limits alias", "mixed empty collections", "mixed empty topics differ", "mixed empty exemptions differ", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown", "ruleset matching", "ruleset differs", "ruleset unknown", "ruleset denied"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
@@ -104,7 +104,7 @@ repository:
 				t.Fatal(err)
 			}
 			var mu sync.Mutex
-			reads, writes := 0, 0
+			reads, writes, capReads := 0, 0, 0
 			rulesetListReads, rulesetDetailReads := 0, 0
 			var graphReads []string
 			server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +184,15 @@ repository:
 					}
 					_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "full_name": "owner/config", "archived": true, "visibility": "public", "description": description, "homepage": "", "default_branch": "main", "has_issues": true, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false})
 				case "/repos/owner/config/interaction-limits/pulls/creation-cap":
-					fmt.Fprint(w, `{"enabled":true,"max_open_pull_requests":5,"include_drafts":false}`)
+					capReads++
+					switch scenario {
+					case "mixed limits duplicate":
+						fmt.Fprint(w, `{"enabled":false,"enabled":true,"max_open_pull_requests":5,"include_drafts":false}`)
+					case "mixed limits alias":
+						fmt.Fprint(w, `{"ENABLED":false,"enabled":true,"max_open_pull_requests":5,"include_drafts":false}`)
+					default:
+						fmt.Fprint(w, `{"enabled":true,"max_open_pull_requests":5,"include_drafts":false}`)
+					}
 				case "/repos/owner/config/interaction-limits/pulls/bypass-list":
 					if scenario == "mixed empty exemptions differ" {
 						fmt.Fprint(w, `[{"id":7,"login":"person","type":"User"}]`)
@@ -285,6 +293,9 @@ repository:
 				if rulesetListReads != 1 || rulesetDetailReads != wantDetails {
 					t.Fatalf("Rulesets reads list=%d detail=%d; action result=%+v", rulesetListReads, rulesetDetailReads, result)
 				}
+			}
+			if (scenario == "mixed limits duplicate" || scenario == "mixed limits alias") && capReads != 1 {
+				t.Fatalf("expected one limits observation, got %d", capReads)
 			}
 			if writes != 0 {
 				t.Fatalf("unexpected remote writes: %d", writes)
