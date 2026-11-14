@@ -17,7 +17,7 @@ func applyCopilotReviewEffort(result *ApplyResult, repo repository.Repository, d
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply Copilot review effort (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply Copilot review effort: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
 	if wrote {

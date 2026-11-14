@@ -64,7 +64,7 @@ func applySelectedCollaborators(result *ApplyResult, repo repository.Repository,
 		if err != nil {
 			status := OperationFailedUnknown
 			var pre PreWriteReadFailure
-			if !observed.Attempted && errors.As(err, &pre) {
+			if !observed.Attempted && !observed.Invited && errors.As(err, &pre) {
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
@@ -75,7 +75,11 @@ func applySelectedCollaborators(result *ApplyResult, repo repository.Repository,
 			return wrote, err
 		}
 		if observed.Person.ID != person.Person.ID || (observed.Status != "active" && observed.Status != "pending") {
-			result.failOperation(index, OperationFailedUnknown)
+			status := OperationFailedUnknown
+			if !observed.Attempted && !observed.Invited {
+				status = OperationFailedRead
+			}
+			result.failOperation(index, status)
 			return wrote, fmt.Errorf("collaborator writer did not return a verified identity and state")
 		}
 		result.Operations[index].Status = OperationUnchanged

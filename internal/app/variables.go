@@ -24,7 +24,7 @@ func applyVariables(result *ApplyResult, repo repository.Repository, desired set
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			return wroteAny, fmt.Errorf("apply repository variable %q (earlier successful writes remain applied): %w", value.Name, err)
+			return wroteAny, fmt.Errorf("apply repository variable %q: %w", value.Name, err)
 		}
 		result.Operations[index].Status = OperationUnchanged
 		if wrote {

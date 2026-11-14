@@ -15,12 +15,12 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 	observed, err := write.ReadRulesets(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read Rulesets for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read Rulesets for apply: %w", err)
 	}
 	changes, err := settings.ReconcileRulesetsWithPrune(observed, desired, prune)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare Rulesets (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("prepare Rulesets: %w", err)
 	}
 	if prune && !sameRulesetDeletions(initial, changes) {
 		result.failOperation(index, OperationFailedRead)
@@ -78,7 +78,7 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 				status = OperationFailedRead
 			}
 			result.failOperation(first+i, status)
-			return false, fmt.Errorf("%s Ruleset %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
+			return false, fmt.Errorf("%s Ruleset %q: %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted
 		if change.Operation() == "delete" {

@@ -13,12 +13,12 @@ func applyPages(result *ApplyResult, repo repository.Repository, d settings.Page
 	o, err := write.ReadPages(repo)
 	if err != nil {
 		result.failOperation(i, OperationFailedRead)
-		return false, fmt.Errorf("read Pages for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read Pages for apply: %w", err)
 	}
 	_, _, err = settings.ComparePages(o, d)
 	if err != nil {
 		result.failOperation(i, OperationFailedRead)
-		return false, fmt.Errorf("preflight Pages (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("preflight Pages: %w", err)
 	}
 	result.Operations[i].Status = OperationCompleted
 	i = len(result.Operations)
@@ -38,7 +38,7 @@ func applyPages(result *ApplyResult, repo repository.Repository, d settings.Page
 			status = OperationFailedRead
 		}
 		result.failOperation(i, status)
-		return false, fmt.Errorf("apply Pages (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply Pages: %w", err)
 	}
 	if wrote {
 		result.Operations[i].Status = OperationCompleted

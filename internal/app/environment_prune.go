@@ -19,7 +19,7 @@ func checkEnvironmentPrune(result *ApplyResult, repo repository.Repository, desi
 	}
 	if err != nil {
 		result.failOperation(i, OperationFailedRead)
-		return fmt.Errorf("recheck Environment prune%s: %w", environmentProgress(*result), err)
+		return fmt.Errorf("recheck Environment prune: %w", err)
 	}
 	result.Operations[i].Status = OperationCompleted
 	return nil
@@ -44,7 +44,7 @@ func applyEnvironmentPrune(result *ApplyResult, repo repository.Repository, prep
 				status = OperationFailedRead
 			}
 			result.failOperation(i, status)
-			return wrote, fmt.Errorf("delete Environment %q%s: %w", candidate.Name(), environmentProgress(*result), err)
+			return wrote, fmt.Errorf("delete Environment %q: %w", candidate.Name(), err)
 		}
 		result.Operations[i].Status = OperationCompleted
 		wrote = true

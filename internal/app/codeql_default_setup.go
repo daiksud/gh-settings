@@ -14,12 +14,12 @@ func applyCodeQLDefaultSetup(result *ApplyResult, repo repository.Repository, d 
 	observed, err := write.ReadCodeQLDefaultSetup(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read CodeQL default setup for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read CodeQL default setup for apply: %w", err)
 	}
 	_, changes, err := settings.CompareCodeQLDefaultSetup(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("compare CodeQL default setup (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("compare CodeQL default setup: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -36,7 +36,7 @@ func applyCodeQLDefaultSetup(result *ApplyResult, repo repository.Repository, d 
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply CodeQL default setup (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply CodeQL default setup: %w", err)
 	}
 	if changed {
 		result.Operations[index].Status = OperationCompleted

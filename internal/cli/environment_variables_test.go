@@ -18,7 +18,11 @@ func TestEnvironmentVariablePresentationAndFailure(t *testing.T) {
 	}
 	for _, status := range []app.ApplyOperationStatus{app.OperationFailedRead, app.OperationFailedUnknown} {
 		err := applyDiagnostic(errors.New("uncertain"), app.ApplyResult{Operations: []app.ApplyOperation{{Kind: app.EnvironmentVariableUpsert, EnvironmentName: "prod/blue", VariableName: "SHARED", Status: status}}})
-		if err.Error() != "repository.settings.environments[\"prod/blue\"].variables[\"SHARED\"]: uncertain" {
+		want := "repository.settings.environments[\"prod/blue\"].variables[\"SHARED\"]: uncertain"
+		if status == app.OperationFailedUnknown {
+			want += " (write effects are unconfirmed)"
+		}
+		if err.Error() != want {
 			t.Fatal(err)
 		}
 	}

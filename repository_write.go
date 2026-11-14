@@ -29,9 +29,9 @@ func writeRepositoryWithWriters(repo repository.Repository, desired settings.Rep
 	if err != nil && restWrote {
 		err = &repositoryWriteEffectsFailure{cause: err}
 		if desired.IssueCreationPolicy != nil || desired.HasSponsorships != nil {
-			return true, fmt.Errorf("apply repository access (earlier repository writes remain applied): %w", err)
+			return true, fmt.Errorf("apply repository access: %w", err)
 		}
-		return true, fmt.Errorf("apply PR access (earlier repository writes remain applied): %w", err)
+		return true, fmt.Errorf("apply PR access: %w", err)
 	}
 	if err != nil {
 		return accessWrote, err
@@ -43,6 +43,9 @@ func writeRepositoryWithWriters(repo repository.Repository, desired settings.Rep
 // access failure while preventing its prerequisite marker from erasing progress.
 type repositoryWriteEffectsFailure struct{ cause error }
 
-func (failure *repositoryWriteEffectsFailure) Error() string           { return failure.cause.Error() }
+func (failure *repositoryWriteEffectsFailure) Error() string {
+	return "earlier repository writes remain applied: " + failure.cause.Error()
+}
 func (failure *repositoryWriteEffectsFailure) Unwrap() error           { return failure.cause }
 func (*repositoryWriteEffectsFailure) RepositoryWritesMayHaveApplied() {}
+func (*repositoryWriteEffectsFailure) ConfirmedWriteProgressReported() {}

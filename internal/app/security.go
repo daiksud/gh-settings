@@ -14,12 +14,12 @@ func applySecretScanning(result *ApplyResult, repo repository.Repository, d sett
 	observed, err := write.ReadSecretScanning(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read Secret scanning for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read Secret scanning for apply: %w", err)
 	}
 	changes, err := settings.SecretScanningTransitions(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("preflight Secret scanning (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("preflight Secret scanning: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	wrote := false
@@ -34,7 +34,7 @@ func applySecretScanning(result *ApplyResult, repo repository.Repository, d sett
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			return wrote, fmt.Errorf("apply %s (earlier successful writes remain applied): %w", change.Field(), err)
+			return wrote, fmt.Errorf("apply %s: %w", change.Field(), err)
 		}
 		if changed {
 			result.Operations[index].Status = OperationCompleted

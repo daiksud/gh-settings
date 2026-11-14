@@ -15,12 +15,12 @@ func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desir
 	observed, err := write.ReadActionsPolicies(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read Actions policies for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read Actions policies for apply: %w", err)
 	}
 	changes, err := settings.ReconcileActionsPoliciesWithPrune(observed, desired, prune)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare Actions policies (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("prepare Actions policies: %w", err)
 	}
 	if prune && !reflect.DeepEqual(prepared, actionsPolicyDeletions(changes)) {
 		result.failOperation(index, OperationFailedRead)
@@ -72,7 +72,7 @@ func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desir
 				status = OperationFailedRead
 			}
 			result.failOperation(first+i, status)
-			return false, fmt.Errorf("%s Actions policy %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
+			return false, fmt.Errorf("%s Actions policy %q: %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted
 		knownIDs[id] = true

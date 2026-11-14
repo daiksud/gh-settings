@@ -18,7 +18,7 @@ func applyDependabot(result *ApplyResult, repo repository.Repository, d settings
 	}
 	if err != nil {
 		result.failOperation(i, OperationFailedRead)
-		return false, fmt.Errorf("preflight Dependabot (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("preflight Dependabot: %w", err)
 	}
 	result.Operations[i].Status = OperationCompleted
 	wrote := false
@@ -29,11 +29,14 @@ func applyDependabot(result *ApplyResult, repo repository.Repository, d settings
 		if err != nil {
 			status := OperationFailedUnknown
 			var before PreWriteReadFailure
-			if errors.As(err, &before) {
+			if !outcome.Wrote && errors.As(err, &before) {
 				status = OperationFailedRead
 			}
 			result.failOperation(i, status)
-			return wrote, fmt.Errorf("apply Dependabot (earlier writes may have applied): %w", err)
+			if outcome.Wrote {
+				result.Outcome = ApplyPartialFailure
+			}
+			return wrote || outcome.Wrote, fmt.Errorf("apply Dependabot: %w", err)
 		}
 		result.Operations[i].Status = OperationUnchanged
 		if outcome.Wrote {

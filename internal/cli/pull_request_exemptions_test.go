@@ -19,7 +19,11 @@ func TestPullRequestExemptionsPresentation(t *testing.T) {
 	}
 	for _, status := range []app.ApplyOperationStatus{app.OperationFailedRead, app.OperationFailedUnknown} {
 		err := applyDiagnostic(errors.New("failed"), app.ApplyResult{Operations: []app.ApplyOperation{{Kind: app.PullRequestExemptionsUpdate, Status: status}}})
-		if err.Error() != settings.PullRequestExemptionsPath+": failed" {
+		want := settings.PullRequestExemptionsPath + ": failed"
+		if status == app.OperationFailedUnknown {
+			want += " (write effects are unconfirmed)"
+		}
+		if err.Error() != want {
 			t.Fatal(err)
 		}
 	}

@@ -328,6 +328,11 @@ Success prints `Applied repository settings.` for managed work, followed by crea
 
 Local validation cannot establish remote permissions or server-side acceptance. Permission and API failures return a nonzero status.[^github-update-repository]
 
+Failure diagnostics identify confirmed earlier writes separately from a failed
+operation whose write effects are unconfirmed. A prewrite read failure does not
+by itself establish that any write occurred. Local ID bookkeeping is not a
+repository write; retain reported creation IDs before retrying.
+
 Updates have no transaction, automatic retry or rollback. A failed command can leave repository settings or topics updated when a later label read or mutation fails, and earlier label changes can remain applied. After a failed/cancelled apply or output error, inspect current GitHub settings before deciding whether to retry; retrying reconciles REST-backed repository controls, Topics and Labels from fresh reads.
 
 Contributors can find the [behavior specifications](features/README.md), [testing guide](contributing/testing.md) and [internal Action interfaces](contributing/actions-internals.md) separately.

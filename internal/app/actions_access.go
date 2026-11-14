@@ -14,12 +14,12 @@ func applyActionsAccess(result *ApplyResult, repo repository.Repository, d setti
 	observed, err := write.ReadActionsAccess(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read Actions access for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read Actions access for apply: %w", err)
 	}
 	_, changes, err := settings.CompareActionsAccess(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("preflight Actions access (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("preflight Actions access: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -35,7 +35,7 @@ func applyActionsAccess(result *ApplyResult, repo repository.Repository, d setti
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply Actions access (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply Actions access: %w", err)
 	}
 	if wrote {
 		result.Operations[index].Status = OperationCompleted

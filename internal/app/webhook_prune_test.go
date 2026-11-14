@@ -107,7 +107,7 @@ func TestWebhookDeleteFixedCandidatesAndHonestProgress(t *testing.T) {
 				t.Fatal("incorrect partial progress", wrote, result)
 			}
 			last := result.Operations[len(result.Operations)-1].Status
-			if (last == OperationFailedRead) != strings.HasSuffix(mode, "read") {
+			if (last == OperationFailedRead) != (strings.HasSuffix(mode, "read") || mode == "missing-attempt") {
 				t.Fatal("incorrect failure status", last)
 			}
 		})

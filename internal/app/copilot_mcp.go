@@ -17,7 +17,7 @@ func applyCopilotMCP(result *ApplyResult, repo repository.Repository, desired bo
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply Copilot MCP tools (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply Copilot MCP tools: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
 	if wrote {

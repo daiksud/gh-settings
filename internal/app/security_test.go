@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -40,6 +41,9 @@ func TestSecretScanningApplyOrderAndPartialProgress(t *testing.T) {
 			if result.Outcome != want || (err == nil) != (failure < 0) {
 				t.Fatal(enable, failure, result, err)
 			}
+			if err != nil && strings.Contains(err.Error(), "earlier successful writes remain applied") != (want == ApplyPartialFailure) {
+				t.Fatal("diagnostic does not match confirmed progress", enable, failure, result, err)
+			}
 			if failure == 1 && (result.Operations[1].Status != OperationCompleted || result.Operations[2].Status != OperationFailedUnknown) {
 				t.Fatal("earlier confirmed write lost", result)
 			}
@@ -68,6 +72,9 @@ func TestSecretScanningReadFailureAndOmission(t *testing.T) {
 		}
 		if !good && result.Outcome != ApplyFailed {
 			t.Fatal("read-only progress counted as write", failure, result)
+		}
+		if err != nil && strings.Contains(err.Error(), "earlier successful writes remain applied") {
+			t.Fatal("read-only failure invented earlier writes", failure, err)
 		}
 		if failure == "matching" && calls != 0 {
 			t.Fatal("matching state wrote")

@@ -164,10 +164,17 @@ func (result ApplyResult) Completed() bool {
 func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus) {
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
+	if result.hasConfirmedRemoteWrites() {
+		result.Outcome = ApplyPartialFailure
+	}
+}
+
+// Read-only operations and local bindings do not establish a remote write.
+func (result ApplyResult) hasConfirmedRemoteWrites() bool {
 	for _, operation := range result.Operations {
 		if operation.Status == OperationCompleted && operation.Kind != WebhooksRead && operation.Kind != RunnersRead && operation.Kind != DeployKeysRead && operation.Kind != AutolinksRead && operation.Kind != ClassicProtectionRead && operation.Kind != CollaboratorsRead && operation.Kind != CollaboratorIdentityBinding && operation.Kind != VariablesRead && operation.Kind != AgentVariablesRead && operation.Kind != EnvironmentVariablesRead && operation.Kind != ActionsPoliciesRead && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != CodeQLConfigurationRead && operation.Kind != CodeQLDefaultSetupRead && operation.Kind != AIScanPullRequestsRead && operation.Kind != AIScanRepositoriesRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
-			result.Outcome = ApplyPartialFailure
-			break
+			return true
 		}
 	}
+	return false
 }

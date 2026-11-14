@@ -14,12 +14,12 @@ func applyCacheRetention(result *ApplyResult, repo repository.Repository, d sett
 	observed, err := write.ReadCacheRetention(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read cache retention for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read cache retention for apply: %w", err)
 	}
 	_, changes, err := settings.CompareCacheRetention(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("preflight cache retention (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("preflight cache retention: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -35,7 +35,7 @@ func applyCacheRetention(result *ApplyResult, repo repository.Repository, d sett
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply cache retention (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply cache retention: %w", err)
 	}
 	if wrote {
 		result.Operations[index].Status = OperationCompleted

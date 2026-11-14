@@ -15,8 +15,18 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 	}
 	unarchived := false
 	defer func() {
-		if err != nil && unarchived {
-			err = fmt.Errorf("repository was unarchived before subsequent settings failed; earlier changes remain applied: %w", err)
+		if err != nil {
+			if result.hasConfirmedRemoteWrites() {
+				result.Outcome = ApplyPartialFailure
+			}
+			if unarchived {
+				err = fmt.Errorf("repository was unarchived before subsequent settings failed; earlier changes remain applied: %w", err)
+			} else if result.Outcome == ApplyPartialFailure {
+				var reported interface{ ConfirmedWriteProgressReported() }
+				if !errors.As(err, &reported) {
+					err = fmt.Errorf("earlier successful writes remain applied: %w", err)
+				}
+			}
 		}
 	}()
 	desired, err := Validate(load)
@@ -110,9 +120,6 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			if result.Outcome == ApplyPartialFailure && !unarchived {
-				return result, fmt.Errorf("earlier repository settings update remains applied: %w", err)
-			}
 			return result, err
 		}
 		result.Operations[index].Status = OperationUnchanged
@@ -123,19 +130,15 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 	}
 	hasWrites := repositoryWrote || topicsWrote || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
 	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
-		progress := ""
-		if hasWrites {
-			progress = " (earlier resource writes remain applied)"
-		}
 		current, err := write.ReadLabels(repo)
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
-			return result, fmt.Errorf("read labels for apply%s: %w", progress, err)
+			return result, fmt.Errorf("read labels for apply: %w", err)
 		}
 		comparison, err := settings.CompareLabelsWithPrune(current, desired.Labels, prune.Has("labels"))
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
-			return result, fmt.Errorf("compare labels for apply%s: %w", progress, err)
+			return result, fmt.Errorf("compare labels for apply: %w", err)
 		}
 		if prune.Has("labels") && !sameLabelDeletions(prepared.labels, comparison.Labels.Values()) {
 			result.failOperation(index, OperationFailedRead)
@@ -197,11 +200,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 					status = OperationFailedRead
 				}
 				result.failOperation(index, status)
-				progress := ""
-				if result.Outcome == ApplyPartialFailure {
-					progress = " (earlier successful writes remain applied)"
-				}
-				return result, fmt.Errorf("%s label %q%s: %w", change.Operation(), change.Name(), progress, err)
+				return result, fmt.Errorf("%s label %q: %w", change.Operation(), change.Name(), err)
 			}
 			result.Operations[index].Status = OperationCompleted
 		}
@@ -344,11 +343,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			progress := ""
-			if hasWrites {
-				progress = " (earlier resource writes remain applied)"
-			}
-			return result, fmt.Errorf("apply Actions policy%s: %w", progress, err)
+			return result, fmt.Errorf("apply Actions policy: %w", err)
 		}
 		result.Operations[index].Status = OperationUnchanged
 		if wrote {
@@ -367,11 +362,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			progress := ""
-			if hasWrites {
-				progress = " (earlier resource writes remain applied)"
-			}
-			return result, fmt.Errorf("apply workflow permissions%s: %w", progress, err)
+			return result, fmt.Errorf("apply workflow permissions: %w", err)
 		}
 		result.Operations[index].Status = OperationUnchanged
 		if wrote {

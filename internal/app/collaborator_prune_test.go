@@ -167,43 +167,48 @@ func TestCollaboratorPruneOrderingFrozenSelectionAndProgress(t *testing.T) {
 func TestCollaboratorDeleteExplicitAttemptEvidence(t *testing.T) {
 	for _, earlierWrite := range []bool{false, true} {
 		for _, attempted := range []bool{false, true} {
-			t.Run(fmt.Sprintf("earlier=%t/attempted=%t", earlierWrite, attempted), func(t *testing.T) {
-				empty, _ := settings.NewCollaboratorDeclarations(nil)
-				rows := []settings.CollaboratorState{{Person: settings.CollaboratorIdentity{ID: 3, Username: "active"}, Status: "active"}}
-				initial := appCollaboratorPrune(t, empty, rows, true)
-				result := ApplyResult{}
-				if earlierWrite {
-					result.Operations = append(result.Operations, ApplyOperation{Kind: RepositoryUpdate, Status: OperationCompleted})
-				}
-				failure := errors.New("configure client failed before request")
-				// Even a wrapped prerequisite marker must not override explicit evidence
-				// that the deletion request was attempted.
-				if attempted {
-					failure = &collaboratorTestPrerequisite{errors.New("request effect unknown")}
-				}
-				_, err := applyCollaboratorPrune(&result, repository.Repository{Owner: "owner", Name: "current"}, initial, Writer{
-					RefreshCollaboratorPrune: func(repository.Repository, settings.CollaboratorPruneObservation, *settings.CollaboratorWriteResult) (settings.CollaboratorPruneObservation, error) {
-						return initial, nil
-					},
-					DeleteCollaborator: func(_ repository.Repository, old settings.CollaboratorPruneObservation, d settings.CollaboratorDeletion) (settings.CollaboratorPruneObservation, settings.CollaboratorDeleteResult, error) {
-						return old, settings.CollaboratorDeleteResult{Deletion: d, Attempted: attempted}, failure
-					},
+			for _, invalidResult := range []bool{false, true} {
+				t.Run(fmt.Sprintf("earlier=%t/attempted=%t/invalid=%t", earlierWrite, attempted, invalidResult), func(t *testing.T) {
+					empty, _ := settings.NewCollaboratorDeclarations(nil)
+					rows := []settings.CollaboratorState{{Person: settings.CollaboratorIdentity{ID: 3, Username: "active"}, Status: "active"}}
+					initial := appCollaboratorPrune(t, empty, rows, true)
+					result := ApplyResult{}
+					if earlierWrite {
+						result.Operations = append(result.Operations, ApplyOperation{Kind: RepositoryUpdate, Status: OperationCompleted})
+					}
+					failure := errors.New("configure client failed before request")
+					// Even a wrapped prerequisite marker must not override explicit evidence
+					// that the deletion request was attempted.
+					if attempted {
+						failure = &collaboratorTestPrerequisite{errors.New("request effect unknown")}
+					}
+					if invalidResult {
+						failure = nil
+					}
+					_, err := applyCollaboratorPrune(&result, repository.Repository{Owner: "owner", Name: "current"}, initial, Writer{
+						RefreshCollaboratorPrune: func(repository.Repository, settings.CollaboratorPruneObservation, *settings.CollaboratorWriteResult) (settings.CollaboratorPruneObservation, error) {
+							return initial, nil
+						},
+						DeleteCollaborator: func(_ repository.Repository, old settings.CollaboratorPruneObservation, d settings.CollaboratorDeletion) (settings.CollaboratorPruneObservation, settings.CollaboratorDeleteResult, error) {
+							return old, settings.CollaboratorDeleteResult{Deletion: d, Attempted: attempted}, failure
+						},
+					})
+					want := OperationFailedRead
+					if attempted {
+						want = OperationFailedUnknown
+					}
+					if err == nil || result.Operations[len(result.Operations)-1].Status != want {
+						t.Fatal("incorrect attempt classification", result, err)
+					}
+					outcome := ApplyFailed
+					if earlierWrite {
+						outcome = ApplyPartialFailure
+					}
+					if result.Outcome != outcome {
+						t.Fatal("earlier verified write classification changed", result)
+					}
 				})
-				want := OperationFailedRead
-				if attempted {
-					want = OperationFailedUnknown
-				}
-				if err == nil || result.Operations[len(result.Operations)-1].Status != want {
-					t.Fatal("incorrect attempt classification", result, err)
-				}
-				outcome := ApplyFailed
-				if earlierWrite {
-					outcome = ApplyPartialFailure
-				}
-				if result.Outcome != outcome {
-					t.Fatal("earlier verified write classification changed", result)
-				}
-			})
+			}
 		}
 	}
 }

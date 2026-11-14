@@ -157,7 +157,7 @@ func TestAccessNoopAndWriteBeforeLaterReadFailure(t *testing.T) {
 			if !errors.Is(err, cause) || result.Outcome != wantOutcome || !reflect.DeepEqual(result.Operations, []app.ApplyOperation{{Kind: app.RepositoryUpdate, Status: wantStatus}, {Kind: app.TopicsUpdate, Status: app.OperationFailedRead}}) {
 				t.Fatal("later read lost actual access progress", result, err)
 			}
-			if strings.Contains(err.Error(), "earlier repository settings update remains applied") != accessWrote {
+			if strings.Contains(err.Error(), "earlier successful writes remain applied") != accessWrote {
 				t.Fatal("diagnostic invented earlier writes", err)
 			}
 		})

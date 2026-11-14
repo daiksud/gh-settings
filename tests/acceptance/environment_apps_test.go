@@ -217,7 +217,7 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 				t.Fatal(err)
 			}
 			if mode == "parent-update-app-rejected" {
-				if applied.runErr == nil || !strings.Contains(applied.stderr.String(), "earlier successful writes remain applied") || !strings.Contains(applied.stderr.String(), "enable custom environment protection App 2") || !strings.Contains(applied.stderr.String(), "write may have applied") {
+				if applied.runErr == nil || !strings.Contains(applied.stderr.String(), "earlier verified environment writes remain applied") || !strings.Contains(applied.stderr.String(), "enable custom environment protection App 2") || !strings.Contains(applied.stderr.String(), "write may have applied") {
 					t.Fatal(applied)
 				}
 			} else if mode == "readback-failure" {

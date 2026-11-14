@@ -93,7 +93,7 @@ func applyPrunedVariables(result *ApplyResult, repo repository.Repository, desir
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return wroteAny, fmt.Errorf("apply variable prune (earlier successful writes remain applied): %w", err)
+		return wroteAny, fmt.Errorf("apply variable prune: %w", err)
 	}
 	for i, value := range values {
 		wrote, err := upsert(repo, value)

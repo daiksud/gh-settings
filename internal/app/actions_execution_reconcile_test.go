@@ -45,7 +45,7 @@ func TestActionsExecutionReconcileProgress(t *testing.T) {
 				if stage == "read failure" {
 					status = OperationFailedRead
 				}
-				if err == nil || result.Outcome != want || result.Operations[len(result.Operations)-1].Status != status || strings.Contains(err.Error(), "earlier resource writes remain applied") != earlier {
+				if err == nil || result.Outcome != want || result.Operations[len(result.Operations)-1].Status != status || strings.Contains(err.Error(), "earlier successful writes remain applied") != earlier {
 					t.Fatal(stage, earlier, result, err)
 				}
 				continue
