@@ -18,7 +18,7 @@ The target stays the checkout's GitHub.com origin. There is no repository creati
 
 A declared archive plan/apply and `export` require a complete fresh repository identity: positive numeric ID, canonical owner/name matching the selected target, and a present boolean `archived`. Missing/null/incorrect types, 401/403/404, redirects, wrong IDs, and unavailable canonical names fail. Absence is never interpreted as active, archived, or a missing repository to create.
 
-Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archive_this_repository: true` plus other managed resources remains readable: plan completely observes those resources and reports an honest matching, changed, or failed result without attempting to make them writable. Apply still rejects that combination before any write because changing an archived repository requires explicit `archive_this_repository: false`. A failed or partial observation never becomes a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export observes archive; automatic export writes it only after all selected reads complete and preserves the previous file on failure.
+Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archive_this_repository: true` plus other managed resources remains readable: plan completely observes those resources and reports an honest matching, changed, or failed result without attempting to make them writable. Apply allows a read-only match only when the other declaration is limited to General/About, Topics, Labels, pull request limits and exemptions, Copilot review effort, Actions retention and fork approval, Security, and Pages and every selected value is independently observed and equal. When other managed settings are present, unsupported declarations, any prune selector, changed or unavailable observations fail before any write; actual changes require explicit `archive_this_repository: false`. With archive-only intent, a prune selector for an omitted collection remains unmanaged and makes no write. A failed or partial observation never becomes a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export observes archive; automatic export writes it only after all selected reads complete and preserves the previous file on failure.
 
 ## Transition and operation order
 
@@ -30,10 +30,12 @@ Plan adds one native boolean comparison and preserves current nonzero error beha
 | Active | true | None | Archive and verify |
 | Active | true | Present | Perform ordinary updates; then freshly verify target/state, archive and verify |
 | Archived | true | None | Matching read; no lifecycle write |
-| Archived | true | Present | Plan completely observes and compares; apply rejects before any write; do not implicitly unarchive and rearchive |
+| Archived | true | Present | Plan observes and compares; apply allows the documented read-only match for the selected families and otherwise rejects before any write |
 | Unknown or mismatched | Either | Any | Fail before starting writes |
 
 Ordinary resource order is unchanged between lifecycle boundaries. Unarchive uses a separate body containing only `archived: false`; final archive uses only `archived: true`. Do not combine either with unrelated fields. A fresh pre-archive observation is required after earlier resource work, and response/readback ID and canonical name must match the initial identity.
+
+A null configured Copilot review effort can hide an unavailable saved override and is not accepted as independently verified default intent in the read-only match. A mixed declaration containing unsupported families, any prune selector, missing observations or write-required normalizations remains fail-closed. The observed multi-resource values are not an atomic snapshot.
 
 A concurrent state change is not an authorization to undo it blindly. Re-read at the transition boundary and stop on an unexpected identity or incompatible state. Read/response checks cannot provide a transaction, lock, or unconditional protection against a name being reassigned between requests. No successful plan or prior read is used as an apply precondition token.
 
@@ -62,7 +64,7 @@ repository:
       danger_zone: {archive_this_repository: false}
 ```
 
-A plan for an archived target shows `repository.settings.general.danger_zone.archive_this_repository: true → false` and identifies that unarchive precedes the description update. Applying it performs the isolated unarchive first. With `archive_this_repository: true` on an active target, the description update precedes archival. With both fields on an already archived target, plan reads and reports whether the description matches or differs, but the unchanged boolean does not imply that the description is writable: apply rejects and requires explicit unarchive intent.
+A plan for an archived target shows `repository.settings.general.danger_zone.archive_this_repository: true → false` and identifies that unarchive precedes the description update. Applying it performs the isolated unarchive first. With `archive_this_repository: true` on an active target, the description update precedes archival. With both fields on an already archived target, plan reads and reports whether the description matches or differs. Apply independently checks the same identity and description; it succeeds without a write only when the description matches. A difference or unavailable observation requires explicit unarchive intent before changes.
 
 A source CLI/Action failure identifies `repository.archive` progress without inventing success for later operations. Status-only reporting must retain its existing bounded outcomes and confidentiality: do not expose hidden values merely to explain a lifecycle failure.
 

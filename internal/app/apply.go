@@ -61,7 +61,19 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			return result, fmt.Errorf("read archive state before apply: %w", err)
 		}
 		result.Operations[0].Status = OperationCompleted
+		if archiveState.Archived && *desired.Repository.Archived && !archivedSchemaCompatible() {
+			result.failOperation(0, OperationFailedRead)
+			return result, fmt.Errorf("archived repository declaration schema requires review before apply")
+		}
 		if archiveState.Archived && *desired.Repository.Archived && (archiveConflictsWithOtherManaged(desired) || prune.Manages(desired)) {
+			if archivedMatchingScope(desired, prune) {
+				if err := verifyArchivedMatching(repo, desired, archiveState, write); err != nil {
+					result.failOperation(0, OperationFailedRead)
+					return result, fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false: %w", err)
+				}
+				result.Outcome = ApplyMatchingLabels
+				return result, nil
+			}
 			result.failOperation(0, OperationFailedRead)
 			return result, fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false")
 		}

@@ -174,4 +174,11 @@ type Writer struct {
 	Ruleset                 func(repository.Repository, settings.RulesetChange) (int64, error)
 	ReadEnvironments        func(repository.Repository, []string) (settings.EnvironmentObservation, error)
 	Environment             func(repository.Repository, settings.EnvironmentDeclaration) (bool, error)
+
+	// Additional observations used by the archived read-only matching path.
+	ReadPullRequestExemptions func(repository.Repository) (settings.PullRequestExemptionsObservation, error)
+	ReadPullRequestLimits     func(repository.Repository) (settings.PullRequestLimitsObservation, error)
+	ReadCopilotReviewEffort   func(repository.Repository) (settings.CopilotReviewEffortObservation, error)
+	ObserveRepository         func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error)
+	ReadTopics                func(repository.Repository) ([]string, error)
 }
