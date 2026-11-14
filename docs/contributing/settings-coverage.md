@@ -102,6 +102,15 @@ Merge queue, secret-scanning merge protection, metadata restrictions and license
 compliance were not present on this form. These bounded observations do not
 establish universal absence or make acquired unsupported protections safe to drop.
 
+After the owner approved GitHub's reauthentication on 2026-11-14, the personal-public
+`daiksud/gh-settings` Collaborators page identified the repository as public and
+showed zero collaborators. Its Add people dialog offered search by username, full
+name or email; Add to repository was disabled with an empty query. The dialog was
+canceled without a search, invitation or access change. This observation does not
+establish successful email-only invitations, selectable permissions or a complete
+API observation and redeclaration path. The separate privileged App-token
+observation remains deferred as recorded in [#381][privileged-app-evidence].
+
 Copilot Code review again showed effort, maximum effort, instructions, MCP,
 approvals/path patterns and external-license blocking. No severity-filter control
 was visible; a read-only API value for that field does not establish a target UI
@@ -200,7 +209,7 @@ separately under [explicit boundaries](#explicit-product-and-target-boundaries).
 | --- | --- | --- | --- | --- |
 | Collaborators: existing personal-repository membership | Eligible | [Documented personal-repository control][personal-access] | Read/add/remove: [Collaborators REST][collaborators-api]; arbitrary role selection is organization-only | Implemented: [user-ID binding, active/pending reconciliation](../settings.md#personal-collaborators); [explicit guarded removal](../settings.md#collaborator-pruning) implemented |
 | Pending collaborator invitations and cancellation | Eligible | [Documented personal invitations][personal-invitations] | Read/cancel: [Invitations REST][invitations-api]; creation uses Collaborators REST and may return a pending invitation | Implemented: complete export, initial invitation and independent readback; pending remains distinct from accepted access. Explicit cancellation with independent readback implemented; email-only roundtrip remains a gap |
-| Email-only collaborator invitation | Eligible | Documented in the personal invitation guide | Partial: the confirmed collaborator setter addresses a username; complete email-only observation/redeclaration is unconfirmed | Not implemented; do not silently discard unresolved identities |
+| Email-only collaborator invitation | Eligible | Personal-public Add people search offered email on 2026-11-14; no query or invitation submitted; [personal invitation guide][personal-invitations] | Partial: the confirmed collaborator setter addresses a username; complete email-only observation/redeclaration is unconfirmed | Not implemented; a search affordance does not establish invitation or permission-selection behavior; do not silently discard unresolved identities |
 | Persistent PR creation cap, draft counting and Exemption list | Eligible | [Recorded personal-public controls](../features/pull-request-limits.feature.md), 2026-11-11 | Read/write: [repository interaction-limit creation-cap and bypass-list endpoints][interactions-api] | Implemented: [cap](../settings.md#persistent-pull-request-limits), [Exemption list](../settings.md#pull-request-limit-exemption-list) |
 | Temporary interaction restrictions | Excluded by explicit product decision, 2026-11-14 | Three audiences and five finite Enable durations observed; expiry automatically restores normal access | Known read/set/remove: [repository interaction restrictions REST][interactions-api]; this is not an API-unavailability claim | Not implemented and outside the managed scope; no renewal/receipt implementation is pending |
 | PR limit automatic exemption rules | Eligible | Referenced by the [current cap contract](../settings.md#persistent-pull-request-limits); full target UI inventory unconfirmed | Unconfirmed complete rule read/update contract | Not implemented |
@@ -406,6 +415,7 @@ being confused with the missing implementations above.
 [labels-api]: https://docs.github.com/en/rest/issues/labels
 [personal-access]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/permission-levels-for-a-personal-account-repository
 [personal-invitations]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/inviting-collaborators-to-a-personal-repository
+[privileged-app-evidence]: https://github.com/daiksud/gh-settings/issues/381
 [collaborators-api]: https://docs.github.com/en/rest/collaborators/collaborators
 [invitations-api]: https://docs.github.com/en/rest/collaborators/invitations
 [interactions-api]: https://docs.github.com/en/rest/interactions/repos
