@@ -28,7 +28,7 @@ func applyDeployKeys(result *ApplyResult, repo repository.Repository, desired *s
 	}
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare deploy keys%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("prepare deploy keys: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	wrote := false
@@ -39,7 +39,7 @@ func applyDeployKeys(result *ApplyResult, repo repository.Repository, desired *s
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return wrote, fmt.Errorf("apply deploy keys%s: %w", environmentProgress(*result), err)
+		return wrote, fmt.Errorf("apply deploy keys: %w", err)
 	}
 	for _, selection := range selected {
 		if !selection.Create() {

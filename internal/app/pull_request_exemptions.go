@@ -23,7 +23,7 @@ func applyPullRequestExemptions(result *ApplyResult, repo repository.Repository,
 		if wrote {
 			result.Outcome = ApplyPartialFailure
 		}
-		return wrote, fmt.Errorf("apply pull request limit exemptions (earlier successful writes remain applied): %w", err)
+		return wrote, fmt.Errorf("apply pull request limit exemptions: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
 	if wrote {

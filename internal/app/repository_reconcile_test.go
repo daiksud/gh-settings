@@ -67,7 +67,7 @@ func TestLabelAcquisitionFailureReportsActualEarlierRepositoryWrites(t *testing.
 				if failure == "read" && !errors.Is(err, cause) {
 					t.Fatal("lost original read failure", err)
 				}
-				if strings.Contains(err.Error(), "earlier resource writes remain applied") != wrote {
+				if strings.Contains(err.Error(), "earlier successful writes remain applied") != wrote {
 					t.Fatal("diagnostic did not follow actual earlier writes", err)
 				}
 			})

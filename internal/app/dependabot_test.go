@@ -3,11 +3,28 @@ package app
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
+
+func TestDependabotConfirmedWriteAndErrorRetainsPartialProgress(t *testing.T) {
+	d := settings.Declaration{Security: settings.SecurityDeclaration{DependabotAlerts: appSecurityBool(true)}}
+	cause := errors.New("failure after confirmed write")
+	result, err := Apply(func() (settings.Declaration, error) { return d, nil }, exemptionTarget, Writer{
+		ReadDependabot: func(repository.Repository) (settings.DependabotObservation, error) {
+			return appDependabot(false, false), nil
+		},
+		Dependabot: func(repository.Repository, settings.SecurityChange) (settings.DependabotWriteResult, error) {
+			return settings.DependabotWriteResult{Wrote: true}, cause
+		},
+	})
+	if !errors.Is(err, cause) || result.Outcome != ApplyPartialFailure || result.Operations[1].Status != OperationFailedUnknown || strings.Count(err.Error(), "earlier successful writes remain applied") != 1 {
+		t.Fatal(result, err)
+	}
+}
 
 func appDependabot(a, u bool) settings.DependabotObservation {
 	ao := settings.NewDependabotAlerts404Observation()

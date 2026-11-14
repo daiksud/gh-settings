@@ -60,7 +60,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 	}
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare webhooks%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("prepare webhooks: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	expected := observed.Clone()
@@ -73,7 +73,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 			uncertain = " (unconfirmed effects may remain)"
 		}
 		result.failOperation(index, status)
-		return wrote, fmt.Errorf("apply webhooks%s%s: %w", environmentProgress(*result), uncertain, err)
+		return wrote, fmt.Errorf("apply webhooks%s: %w", uncertain, err)
 	}
 	strictRead := func() (settings.WebhookPruneObservation, error) {
 		if prune == nil {
@@ -92,7 +92,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 				i := len(result.Operations)
 				result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
 				result.failOperation(i, OperationFailedRead)
-				return wrote, fmt.Errorf("webhook inventory changed before write%s: %w", environmentProgress(*result), e)
+				return wrote, fmt.Errorf("webhook inventory changed before write: %w", e)
 			}
 		}
 		index = len(result.Operations)
@@ -140,7 +140,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 					i := len(result.Operations)
 					result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
 					result.failOperation(i, OperationFailedRead)
-					return wrote, fmt.Errorf("webhook created but prune inventory confirmation failed%s: %w", environmentProgress(*result), readErr)
+					return wrote, fmt.Errorf("webhook created but prune inventory confirmation failed: %w", readErr)
 				}
 			}
 			continue
@@ -184,7 +184,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 				i := len(result.Operations)
 				result.Operations = append(result.Operations, ApplyOperation{Kind: WebhooksRead})
 				result.failOperation(i, OperationFailedRead)
-				return wrote, fmt.Errorf("webhook prune inventory confirmation failed%s: %w", environmentProgress(*result), readErr)
+				return wrote, fmt.Errorf("webhook prune inventory confirmation failed: %w", readErr)
 			}
 		}
 	}

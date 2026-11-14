@@ -5,6 +5,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +67,36 @@ func TestPullRequestExemptionsApplyProgress(t *testing.T) {
 			// Existing matching-resource success uses ApplyMatchingLabels for no-write outcomes.
 			if result.Outcome != tc.outcome {
 				t.Fatal(result.Outcome, tc.outcome)
+			}
+			if err != nil && strings.Contains(err.Error(), "earlier successful writes remain applied") != (tc.outcome == ApplyPartialFailure) {
+				t.Fatal("diagnostic does not match confirmed progress", result, err)
+			}
+		})
+	}
+}
+
+func TestPullRequestExemptionsFailureDistinguishesRemoteAndLocalProgress(t *testing.T) {
+	desired, _ := settings.NewPullRequestExemptionsDeclaration([]string{})
+	for _, prior := range []struct {
+		name       string
+		operations []ApplyOperation
+		partial    bool
+	}{
+		{"none", nil, false},
+		{"local identity binding", []ApplyOperation{{Kind: CollaboratorIdentityBinding, Status: OperationCompleted}}, false},
+		{"read only", []ApplyOperation{{Kind: LabelsRead, Status: OperationCompleted}}, false},
+		{"confirmed remote update", []ApplyOperation{{Kind: RepositoryUpdate, Status: OperationCompleted}}, true},
+	} {
+		t.Run(prior.name, func(t *testing.T) {
+			result := ApplyResult{Operations: prior.operations}
+			cause := &mcpReadFailure{errors.New("denied before write")}
+			_, err := applyPullRequestExemptions(&result, repository.Repository{}, desired, Writer{
+				PullRequestExemptions: func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error) {
+					return false, cause
+				},
+			})
+			if !errors.Is(err, cause) || (result.Outcome == ApplyPartialFailure) != prior.partial {
+				t.Fatal(result, err)
 			}
 		})
 	}
@@ -134,7 +165,7 @@ func TestPullRequestExemptionsArchiveAndPriorWrite(t *testing.T) {
 	}, exemptionTarget, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil }, PullRequestExemptions: func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error) {
 		return false, errors.New("uncertain")
 	}})
-	if err == nil || result.Outcome != ApplyPartialFailure || result.Operations[0].Status != OperationCompleted {
+	if err == nil || result.Outcome != ApplyPartialFailure || result.Operations[0].Status != OperationCompleted || strings.Count(err.Error(), "earlier successful writes remain applied") != 1 {
 		t.Fatal(result, err)
 	}
 }

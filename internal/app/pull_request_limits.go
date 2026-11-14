@@ -19,7 +19,7 @@ func applyPullRequestLimits(result *ApplyResult, repo repository.Repository, des
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply pull request limits (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply pull request limits: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
 	if wrote {

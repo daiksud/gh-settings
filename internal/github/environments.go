@@ -585,5 +585,6 @@ type environmentWriteEffectsFailure struct{ cause error }
 func (e *environmentWriteEffectsFailure) Error() string {
 	return "earlier verified environment writes remain applied: " + e.cause.Error()
 }
-func (e *environmentWriteEffectsFailure) Unwrap() error             { return e.cause }
-func (*environmentWriteEffectsFailure) EnvironmentWritesCompleted() {}
+func (e *environmentWriteEffectsFailure) Unwrap() error                 { return e.cause }
+func (*environmentWriteEffectsFailure) EnvironmentWritesCompleted()     {}
+func (*environmentWriteEffectsFailure) ConfirmedWriteProgressReported() {}

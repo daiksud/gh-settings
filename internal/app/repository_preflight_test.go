@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -18,6 +19,24 @@ type repositoryCompletedWriteFailure struct{ error }
 
 func (*repositoryCompletedWriteFailure) RepositoryWritesMayHaveApplied() {}
 func (failure *repositoryCompletedWriteFailure) Unwrap() error           { return failure.error }
+
+type repositoryReportedWriteFailure struct{ error }
+
+func (*repositoryReportedWriteFailure) RepositoryWritesMayHaveApplied() {}
+func (*repositoryReportedWriteFailure) ConfirmedWriteProgressReported() {}
+
+func TestApplyDoesNotDuplicateSpecificProgressDiagnostic(t *testing.T) {
+	description := "changed"
+	cause := &repositoryReportedWriteFailure{errors.New("earlier repository writes remain applied: access denied")}
+	result, err := Apply(func() (settings.Declaration, error) {
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &description}}, nil
+	}, exemptionTarget, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
+		return true, cause
+	}})
+	if !errors.Is(err, cause) || result.Outcome != ApplyPartialFailure || strings.Count(err.Error(), "writes remain applied") != 1 || strings.Contains(err.Error(), "earlier successful writes") {
+		t.Fatal(result, err)
+	}
+}
 
 var repositoryFixtureCause = errors.New("fixture access step failed")
 

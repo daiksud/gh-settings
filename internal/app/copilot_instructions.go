@@ -17,7 +17,7 @@ func applyCopilotInstructions(result *ApplyResult, repo repository.Repository, d
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply Copilot custom instructions (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply Copilot custom instructions: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
 	if wrote {

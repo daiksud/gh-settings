@@ -35,7 +35,7 @@ func applyEnvironmentVariables(result *ApplyResult, repo repository.Repository, 
 					status = OperationFailedRead
 				}
 				result.failOperation(index, status)
-				return wroteAny, fmt.Errorf("apply environment %q variable %q (earlier successful writes remain applied): %w", selected.Environment, value.Name, err)
+				return wroteAny, fmt.Errorf("apply environment %q variable %q: %w", selected.Environment, value.Name, err)
 			}
 			result.Operations[index].Status = OperationUnchanged
 			if wrote {

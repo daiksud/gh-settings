@@ -14,12 +14,12 @@ func applyImmutableReleases(result *ApplyResult, repo repository.Repository, d s
 	observed, err := write.ReadImmutableReleases(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read immutable releases for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read immutable releases for apply: %w", err)
 	}
 	_, changes, err := settings.CompareImmutableReleases(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("compare immutable releases (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("compare immutable releases: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -35,7 +35,7 @@ func applyImmutableReleases(result *ApplyResult, repo repository.Repository, d s
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply immutable releases (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply immutable releases: %w", err)
 	}
 	if changed {
 		result.Operations[index].Status = OperationCompleted

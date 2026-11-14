@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"strings"
 	"testing"
 )
 
@@ -74,6 +75,9 @@ func TestCollaboratorApplyBindingAndRemoteProgress(t *testing.T) {
 				if result.Outcome != want {
 					t.Fatal("local binding confused with remote write", result)
 				}
+				if strings.Contains(err.Error(), "earlier successful writes remain applied") != (want == ApplyPartialFailure) {
+					t.Fatal("failure diagnostic did not distinguish remote writes", result, err)
+				}
 			}
 			if mode == "prewrite failure" || mode == "uncertain failure" || mode == "verified invitation failure" {
 				if bound != 0 || result.Collaborators[0].BindingVerified {
@@ -92,6 +96,25 @@ func TestCollaboratorApplyBindingAndRemoteProgress(t *testing.T) {
 type collaboratorTestPrerequisite struct{ error }
 
 func (*collaboratorTestPrerequisite) ReadFailedBeforeWrite() {}
+
+func TestCollaboratorInvalidResultDistinguishesAttempt(t *testing.T) {
+	person := settings.CollaboratorIdentity{ID: 3, Username: "person"}
+	selected := []settings.CollaboratorSelection{{Person: person, DeclaredUsername: "person"}}
+	for _, tc := range []struct {
+		attempted, invited bool
+		want               ApplyOperationStatus
+	}{{false, false, OperationFailedRead}, {true, false, OperationFailedUnknown}, {false, true, OperationFailedUnknown}} {
+		result := ApplyResult{}
+		_, err := applySelectedCollaborators(&result, repository.Repository{}, selected, Writer{
+			Collaborator: func(repository.Repository, settings.CollaboratorSelection) (settings.CollaboratorWriteResult, error) {
+				return settings.CollaboratorWriteResult{Person: person, Attempted: tc.attempted, Invited: tc.invited}, nil
+			},
+		}, nil)
+		if err == nil || len(result.Operations) != 1 || result.Operations[0].Status != tc.want {
+			t.Fatal(tc, result, err)
+		}
+	}
+}
 
 func TestCollaboratorsObserveAfterOwnUnarchive(t *testing.T) {
 	archived, desiredArchive := true, false

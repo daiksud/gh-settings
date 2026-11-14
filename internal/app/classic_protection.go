@@ -20,7 +20,7 @@ func applyClassicProtection(result *ApplyResult, repo repository.Repository, des
 	}
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare classic protection%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("prepare classic protection: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	known := map[int64]bool{}
@@ -57,7 +57,7 @@ func applyClassicProtection(result *ApplyResult, repo repository.Repository, des
 			if status == OperationFailedUnknown {
 				uncertainty = " (unconfirmed effects may remain)"
 			}
-			return wrote, fmt.Errorf("classic protection %q%s%s: %w", s.Desired.BranchNamePattern, environmentProgress(*result), uncertainty, err)
+			return wrote, fmt.Errorf("classic protection %q%s: %w", s.Desired.BranchNamePattern, uncertainty, err)
 		}
 		result.Operations[first+i].Status = OperationUnchanged
 		if applied.Wrote {
@@ -100,7 +100,7 @@ func applyClassicPrune(result *ApplyResult, repo repository.Repository, prepared
 				status, uncertainty = OperationFailedRead, ""
 			}
 			result.failOperation(first+i, status)
-			return wrote, fmt.Errorf("delete classic protection %q id %d node %q%s%s: %w", candidate.Pattern(), candidate.ID(), candidate.NodeID(), environmentProgress(*result), uncertainty, err)
+			return wrote, fmt.Errorf("delete classic protection %q id %d node %q%s: %w", candidate.Pattern(), candidate.ID(), candidate.NodeID(), uncertainty, err)
 		}
 		result.Operations[first+i].Status = OperationCompleted
 		wrote = true

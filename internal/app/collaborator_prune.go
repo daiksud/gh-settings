@@ -48,14 +48,18 @@ func applyCollaboratorPrune(result *ApplyResult, repo repository.Repository, pre
 			status := OperationFailedUnknown
 			// The deletion result explicitly records whether any request was sent,
 			// including client construction failures without a transport marker.
-			if !observed.Attempted {
+			if !observed.Attempted && !observed.Acknowledged && !observed.Verified {
 				status = OperationFailedRead
 			}
 			result.failOperation(i, status)
 			return wrote, err
 		}
 		if observed.Deletion != d || !observed.Attempted || !observed.Acknowledged || !observed.Verified {
-			result.failOperation(i, OperationFailedUnknown)
+			status := OperationFailedUnknown
+			if !observed.Attempted && !observed.Acknowledged && !observed.Verified {
+				status = OperationFailedRead
+			}
+			result.failOperation(i, status)
 			return wrote, fmt.Errorf("collaborator deletion was not independently verified")
 		}
 		current = next

@@ -13,7 +13,7 @@ func applyCodeQLConfiguration(result *ApplyResult, repo repository.Repository, d
 	o, err := w.ReadCodeQLConfiguration(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read CodeQL configuration (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read CodeQL configuration: %w", err)
 	}
 	_, changes, err := settings.CompareCodeQLConfiguration(o, d)
 	if err != nil {
@@ -35,7 +35,7 @@ func applyCodeQLConfiguration(result *ApplyResult, repo repository.Repository, d
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply CodeQL configuration (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("apply CodeQL configuration: %w", err)
 	}
 	if changed {
 		result.Operations[index].Status = OperationCompleted

@@ -14,12 +14,12 @@ func applyAIScanPullRequests(result *ApplyResult, repo repository.Repository, d 
 	observed, err := write.ReadAIScanPullRequests(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read AI Scan for pull requests for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read AI Scan for pull requests for apply: %w", err)
 	}
 	_, changes, err := settings.CompareAIScanPullRequests(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("compare AI Scan for pull requests (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("compare AI Scan for pull requests: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -36,7 +36,7 @@ func applyAIScanPullRequests(result *ApplyResult, repo repository.Repository, d 
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply AI Scan for pull requests (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply AI Scan for pull requests: %w", err)
 	}
 	if changed {
 		result.Operations[index].Status = OperationCompleted

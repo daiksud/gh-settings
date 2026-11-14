@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -20,8 +19,7 @@ func applyWebhookDeletes(result *ApplyResult, repo repository.Repository, expect
 		attempted, err := write.DeleteWebhook(repo, expected, id)
 		if err != nil {
 			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if !attempted && errors.As(err, &pre) {
+			if !attempted {
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
@@ -29,10 +27,10 @@ func applyWebhookDeletes(result *ApplyResult, repo repository.Repository, expect
 			if status == OperationFailedUnknown {
 				uncertain = " (unconfirmed effects may remain)"
 			}
-			return wrote, fmt.Errorf("delete webhooks%s%s: %w", environmentProgress(*result), uncertain, err)
+			return wrote, fmt.Errorf("delete webhooks%s: %w", uncertain, err)
 		}
 		if !attempted {
-			result.failOperation(index, OperationFailedUnknown)
+			result.failOperation(index, OperationFailedRead)
 			return wrote, fmt.Errorf("webhook deletion did not confirm an attempted operation")
 		}
 		result.Operations[index].Status = OperationCompleted

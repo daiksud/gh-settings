@@ -19,7 +19,7 @@ func applyOIDCSubject(result *ApplyResult, repo repository.Repository, desired s
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply OIDC subject template%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("apply OIDC subject template: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
 	if wrote {

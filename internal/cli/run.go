@@ -189,6 +189,9 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		if op.Status != app.OperationFailedRead && op.Status != app.OperationFailedUnknown && op.Status != app.OperationFailedLocal {
 			continue
 		}
+		if op.Status == app.OperationFailedUnknown {
+			err = fmt.Errorf("%w (write effects are unconfirmed)", err)
+		}
 		path := ""
 		switch op.Kind {
 		case app.WebhooksRead, app.WebhookUpdate, app.WebhookCreate, app.WebhookDelete:

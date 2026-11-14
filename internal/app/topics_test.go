@@ -263,7 +263,7 @@ func TestTopicsWriteThenLabelsReadFailureIsPartial(t *testing.T) {
 			return settings.LabelObservation{}, cause
 		},
 	})
-	if !errors.Is(err, cause) || !strings.Contains(err.Error(), "earlier resource writes remain applied") || result.Outcome != ApplyPartialFailure || !reflect.DeepEqual(result.Operations, []ApplyOperation{{Kind: TopicsUpdate, Status: OperationCompleted}, {Kind: LabelsRead, Status: OperationFailedRead}}) {
+	if !errors.Is(err, cause) || !strings.Contains(err.Error(), "earlier successful writes remain applied") || result.Outcome != ApplyPartialFailure || !reflect.DeepEqual(result.Operations, []ApplyOperation{{Kind: TopicsUpdate, Status: OperationCompleted}, {Kind: LabelsRead, Status: OperationFailedRead}}) {
 		t.Fatal(result, err)
 	}
 }

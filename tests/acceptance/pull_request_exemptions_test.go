@@ -152,6 +152,17 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 	expect("GET", "USER alice", "DELETE", "GET", "PUT", "GET")
 	run([]string{"apply"}, false)
 	expect("GET")
+	mu.Lock()
+	denied = true
+	mu.Unlock()
+	deniedApply := run([]string{"apply"}, true)
+	expect("GET")
+	if strings.Contains(deniedApply.stderr.String(), "earlier successful writes remain applied") || !strings.Contains(deniedApply.stderr.String(), "repository.settings.interaction_limits.pull_request_limits.exemption_list") {
+		t.Fatal("first read failure claimed prior progress or lost its setting path", deniedApply.stderr.String())
+	}
+	mu.Lock()
+	denied = false
+	mu.Unlock()
 	run([]string{"export"}, false)
 	expect("GET")
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))

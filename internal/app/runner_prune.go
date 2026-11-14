@@ -27,7 +27,7 @@ func applyRunnerPrune(result *ApplyResult, repo repository.Repository, desired [
 	}
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare runner prune%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("prepare runner prune: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	wrote := false
@@ -43,7 +43,7 @@ func applyRunnerPrune(result *ApplyResult, repo repository.Repository, desired [
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			return wrote, fmt.Errorf("apply runner labels%s: %w", environmentProgress(*result), err)
+			return wrote, fmt.Errorf("apply runner labels: %w", err)
 		}
 		if !changed {
 			result.Operations[index].Status = OperationUnchanged
@@ -59,7 +59,7 @@ func applyRunnerPrune(result *ApplyResult, repo repository.Repository, desired [
 			index = len(result.Operations)
 			result.Operations = append(result.Operations, ApplyOperation{Kind: RunnersRead})
 			result.failOperation(index, OperationFailedRead)
-			return wrote, fmt.Errorf("runner labels were updated but full inventory verification failed%s: %w", environmentProgress(*result), err)
+			return wrote, fmt.Errorf("runner labels were updated but full inventory verification failed: %w", err)
 		}
 		expected = after
 	}
@@ -73,7 +73,7 @@ func applyRunnerPrune(result *ApplyResult, repo repository.Repository, desired [
 				status = OperationFailedUnknown
 			}
 			result.failOperation(index, status)
-			return wrote, fmt.Errorf("runner removal%s: %w", environmentProgress(*result), err)
+			return wrote, fmt.Errorf("runner removal: %w", err)
 		}
 		if !attempted {
 			result.failOperation(index, OperationFailedRead)

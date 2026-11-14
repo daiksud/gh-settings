@@ -27,7 +27,11 @@ func TestAgentVariablePlanAndFailureIdentity(t *testing.T) {
 	}
 	for _, status := range []app.ApplyOperationStatus{app.OperationFailedRead, app.OperationFailedUnknown} {
 		err := applyDiagnostic(errors.New("uncertain"), app.ApplyResult{Operations: []app.ApplyOperation{{Kind: app.AgentVariableUpsert, VariableName: "SHARED", Status: status}}})
-		if err.Error() != "repository.settings.agents.variables: uncertain" {
+		want := "repository.settings.agents.variables: uncertain"
+		if status == app.OperationFailedUnknown {
+			want += " (write effects are unconfirmed)"
+		}
+		if err.Error() != want {
 			t.Fatal(err)
 		}
 	}

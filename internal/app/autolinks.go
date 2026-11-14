@@ -22,7 +22,7 @@ func applyAutolinks(result *ApplyResult, repo repository.Repository, desired []s
 	}
 	if err != nil {
 		result.failOperation(readIndex, OperationFailedRead)
-		return false, fmt.Errorf("prepare autolinks%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("prepare autolinks: %w", err)
 	}
 	result.Operations[readIndex].Status = OperationCompleted
 	expected := observed.Clone()
@@ -43,7 +43,7 @@ func applyAutolinks(result *ApplyResult, repo repository.Repository, desired []s
 			uncertain = " (unconfirmed effects may remain)"
 		}
 		result.failOperation(index, status)
-		return wrote, fmt.Errorf("autolinks%s%s: %w", environmentProgress(*result), uncertain, err)
+		return wrote, fmt.Errorf("autolinks%s: %w", uncertain, err)
 	}
 	// Compare orders all declared creates before the globally fixed deletions.
 	for i, change := range changes {

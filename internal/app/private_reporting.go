@@ -14,12 +14,12 @@ func applyPrivateReporting(result *ApplyResult, repo repository.Repository, d se
 	observed, err := write.ReadPrivateReporting(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read private vulnerability reporting for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read private vulnerability reporting for apply: %w", err)
 	}
 	_, changes, err := settings.ComparePrivateReporting(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("compare private vulnerability reporting (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("compare private vulnerability reporting: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -35,7 +35,7 @@ func applyPrivateReporting(result *ApplyResult, repo repository.Repository, d se
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply private vulnerability reporting (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply private vulnerability reporting: %w", err)
 	}
 	if changed {
 		result.Operations[index].Status = OperationCompleted

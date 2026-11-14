@@ -17,7 +17,7 @@ func applyRunners(result *ApplyResult, repo repository.Repository, desired []set
 	}
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("prepare runner labels%s: %w", environmentProgress(*result), err)
+		return false, fmt.Errorf("prepare runner labels: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	wroteAny := false
@@ -32,7 +32,7 @@ func applyRunners(result *ApplyResult, repo repository.Repository, desired []set
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			return wroteAny, fmt.Errorf("apply runner labels%s: %w", environmentProgress(*result), err)
+			return wroteAny, fmt.Errorf("apply runner labels: %w", err)
 		}
 		result.Operations[index].Status = OperationUnchanged
 		if wrote {

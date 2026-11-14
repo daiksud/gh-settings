@@ -32,7 +32,7 @@ func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 		if err == nil || result.Outcome != want || result.Operations[len(result.Operations)-1].Status != OperationFailedRead {
 			t.Fatal(earlier, result, err)
 		}
-		if strings.Contains(err.Error(), "earlier resource writes remain applied") != earlier {
+		if strings.Contains(err.Error(), "earlier successful writes remain applied") != earlier {
 			t.Fatal("incorrect earlier-progress diagnostic", err)
 		}
 		if earlier && result.Operations[0].Status != OperationCompleted {

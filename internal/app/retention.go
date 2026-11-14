@@ -14,12 +14,12 @@ func applyRetention(result *ApplyResult, repo repository.Repository, d settings.
 	observed, err := write.ReadRetention(repo)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("read retention for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read retention for apply: %w", err)
 	}
 	_, changes, err := settings.CompareRetention(observed, d)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
-		return false, fmt.Errorf("preflight retention (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("preflight retention: %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
 	if len(changes) == 0 {
@@ -35,7 +35,7 @@ func applyRetention(result *ApplyResult, repo repository.Repository, d settings.
 			status = OperationFailedRead
 		}
 		result.failOperation(index, status)
-		return false, fmt.Errorf("apply retention (earlier successful writes remain applied): %w", err)
+		return false, fmt.Errorf("apply retention: %w", err)
 	}
 	if wrote {
 		result.Operations[index].Status = OperationCompleted
