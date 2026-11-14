@@ -50,3 +50,27 @@ func TestUIWebhookCreationRejectsIncompleteAndInvalidControls(t *testing.T) {
 		}
 	}
 }
+
+func TestUIWebhookSSLVerificationRoundtrip(t *testing.T) {
+	for _, value := range []string{"true", "false"} {
+		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {webhooks: [{id: 7, ssl_verification: " + value + "}]}}\n"
+		ui, err := DecodeConfig([]byte(input))
+		if err != nil {
+			t.Fatal(err)
+		}
+		d, err := github.DeclarationFromUI(ui)
+		if err != nil || d.Webhooks == nil || (*d.Webhooks)[0].SSLVerification == nil || *(*d.Webhooks)[0].SSLVerification != (value == "true") {
+			t.Fatal(d, err)
+		}
+		output, err := EncodeConfig(ui)
+		if err != nil || !strings.Contains(string(output), "ssl_verification: "+value) {
+			t.Fatal(string(output), err)
+		}
+	}
+	for _, value := range []string{"null", "'false'", "0"} {
+		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {webhooks: [{id: 7, ssl_verification: " + value + "}]}}\n"
+		if _, err := DecodeConfig([]byte(input)); err == nil {
+			t.Fatal("accepted", value)
+		}
+	}
+}

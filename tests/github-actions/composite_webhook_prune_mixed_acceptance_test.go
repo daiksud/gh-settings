@@ -24,7 +24,7 @@ func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
 	f.write(f.base["MOCK_ASSET"], string(product))
 	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
 	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
-	input := "version: daiksud/gh-settings@v0\nrepository: {settings: {webhooks: [{id: 7, content_type: application/x-www-form-urlencoded, active: false, events: [push]}, {payload_url: https://created.example/hook, content_type: application/json, active: false, events: [push]}]}}\n"
+	input := "version: daiksud/gh-settings@v0\nrepository: {settings: {webhooks: [{id: 7, content_type: application/x-www-form-urlencoded, ssl_verification: false, active: false, events: [push]}, {payload_url: https://created.example/hook, content_type: application/json, ssl_verification: false, active: false, events: [push]}]}}\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
 	f.write(path, input)
 	dir, err := os.MkdirTemp("/tmp", "ghs-hook-mixed-")
@@ -69,22 +69,24 @@ func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
 		case "PATCH /repos/owner/config/hooks/7/config":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
-			if !reflect.DeepEqual(body, map[string]any{"content_type": "form"}) {
+			if !reflect.DeepEqual(body, map[string]any{"content_type": "form", "insecure_ssl": "1"}) {
 				t.Error("unexpected config", body)
 			}
 			writes = append(writes, "update:7")
 			rows[7]["config"].(map[string]any)["content_type"] = "form"
+			rows[7]["config"].(map[string]any)["insecure_ssl"] = "1"
 			rows[7]["updated_at"] = "2026-11-14T02:00:00Z"
 			json.NewEncoder(w).Encode(rows[7]["config"])
 		case "POST /repos/owner/config/hooks":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
-			want := map[string]any{"name": "web", "active": false, "events": []any{"push"}, "config": map[string]any{"url": "https://created.example/hook", "content_type": "json", "insecure_ssl": "0"}}
+			want := map[string]any{"name": "web", "active": false, "events": []any{"push"}, "config": map[string]any{"url": "https://created.example/hook", "content_type": "json", "insecure_ssl": "1"}}
 			if !reflect.DeepEqual(body, want) {
 				t.Error("unexpected create payload", body)
 			}
 			writes = append(writes, "create:9")
 			rows[9] = row(9, "https://created.example/hook")
+			rows[9]["config"].(map[string]any)["insecure_ssl"] = "1"
 			w.WriteHeader(201)
 			json.NewEncoder(w).Encode(rows[9])
 		case "DELETE /repos/owner/config/hooks/8":
@@ -118,11 +120,11 @@ func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 	opts := map[string]string{"github.action_ref": version, "inputs.prune": "webhooks"}
 	plan := f.run(t, "plan", "mixed-fixture", opts)
-	if plan.status != 0 || !strings.Contains(plan.summary, "removed.example") || !strings.Contains(plan.summary, "automatic ping") || !strings.Contains(plan.summary, "opaque Secret") {
+	if plan.status != 0 || !strings.Contains(plan.summary, "removed.example") || !strings.Contains(plan.summary, "automatic ping") || !strings.Contains(plan.summary, "opaque Secret") || !strings.Contains(plan.summary, "man-in-the-middle") {
 		t.Fatal(plan)
 	}
 	private := f.run(t, "plan", "mixed-fixture", map[string]string{"github.action_ref": version, "inputs.prune": "all", "inputs.plan-reporting": "status-only"})
-	if private.status != 0 || private.outputs["plan-outcome"] != "changed" || len(private.remainingReports) != 0 || strings.Contains(private.log+private.summary, "removed.example") || strings.Contains(private.log+private.summary, "created.example") || strings.Contains(private.log+private.summary, "PRIVATE_MIXED") {
+	if private.status != 0 || private.outputs["plan-outcome"] != "changed" || len(private.remainingReports) != 0 || strings.Contains(private.log+private.summary, "removed.example") || strings.Contains(private.log+private.summary, "created.example") || strings.Contains(private.log+private.summary, "PRIVATE_MIXED") || strings.Contains(private.log+private.summary, "ssl_verification") {
 		t.Fatal(private)
 	}
 	apply := f.run(t, "apply", "mixed-fixture", opts)

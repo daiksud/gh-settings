@@ -3,10 +3,11 @@
 The [configuration contract](../settings.md#webhook-configuration-and-creation)
 owns declarations and evidence limits. Explicit [whole-object pruning](webhook-prune.feature.md) is a separate ownership selection.
 
-- Bound positive IDs select optional URL/Content type and optional Active/events
+- Bound positive IDs select optional URL/Content type/SSL verification and optional Active/events
   matching guards. All guards pass before this family's first write. A mismatch
   or missing selected ID fails without parent PATCH or recreation.
-- IDless creation requires all four explicit public controls. Nulls, invalid URL
+- IDless creation requires URL, Content type, Active and events. SSL verification
+  is optional and defaults to enabled for creation. Nulls, invalid URL
   bytes, duplicate/nonstring/whitespace event members and guessed defaults are
   rejected locally. Event sets include explicit empty and opaque `*` values.
 - Omission and an empty family make no plan/apply requests. Bound-only work reads
@@ -14,17 +15,18 @@ owns declarations and evidence limits. Explicit [whole-object pruning](webhook-p
   collision checks, including inactive/unlisted hooks and hooks moving away.
   URLs never adopt identity. No deletion/prune ownership is implied.
 - Export acquires complete coherent parent/config evidence for all hooks and writes
-  IDs plus four public controls. Unknown/inaccessible state omits or retains the
+  IDs plus five public controls, including SSL verification. Unknown/inaccessible state omits or retains the
   whole family, including valid prior IDless intent. Empty inventory exports `[]`.
 - Apply prepares all selections before writes. Fresh matching config skips PATCH.
   Needed writes require the bound unarchived personal-public target; own unarchive
   precedes configuration and archive remains last. Mixed writes guard complete
   inventory and advance expected state only for their own verified effects.
 - Dedicated config PATCH sends changed selected members only. Secret is discarded
-  and never replayed/compared. Omitted nonsecret controls, SSL and parent state
+  and never replayed/compared. Omitted nonsecret controls, including SSL, and parent state
   remain preserved. Independent parent/config/target GETs follow complete HTTP 200.
 - Creation POST sends explicit URL, native Content type, Active/events, `name: web`
-  and enabled SSL verification, without Secret. The detailed plan states GitHub's
+  and selected SSL verification, without Secret. Omitted SSL is enabled; explicit
+  false disables verification and carries a man-in-the-middle risk. The detailed plan states GitHub's
   automatic creation ping and no supplied Secret; no extra lifecycle or destination
   request occurs. HTTP 201 must identify an unseen positive ID and complete state.
 - Independent fixed-ID parent/config and full-inventory GETs verify new state,

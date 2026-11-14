@@ -41,7 +41,7 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 					}
 					id = *v.ID
 				}
-				values = append(values, settings.Webhook{ID: id, PayloadURL: v.PayloadURL, ContentType: v.ContentType, Active: v.Active, Events: v.Events}.Clone())
+				values = append(values, settings.Webhook{ID: id, PayloadURL: v.PayloadURL, ContentType: v.ContentType, SSLVerification: v.SSLVerification, Active: v.Active, Events: v.Events}.Clone())
 			}
 			if err := settings.ValidateWebhooks(values); err != nil {
 				return settings.Declaration{}, fmt.Errorf("%s: %w", settings.WebhooksPath, err)

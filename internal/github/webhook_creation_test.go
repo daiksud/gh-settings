@@ -18,10 +18,14 @@ func webhookCreationSelection() (settings.WebhookObservation, settings.Webhook) 
 	return settings.WebhookObservation{Complete: true, Target: settings.WebhookTarget{ID: 1, OwnerID: 2, FullName: "owner/current"}, Values: []settings.WebhookState{{ID: 7, CreatedAt: "2026-11-14T00:00:00Z", Config: settings.WebhookConfig{PayloadURL: "https://old.example/private-omitted", ContentType: "application/json", InsecureSSL: true}, Events: []string{"future_event", "push"}}}}, settings.Webhook{PayloadURL: &url, ContentType: &mime, Active: &active, Events: &events}
 }
 func TestWebhookCreationExactPayloadRecoveryAndReadback(t *testing.T) {
-	modes := []string{"success", "empty-events", "opaque-events", "active", "form", "secret-changing", "location-ignored", "event-order", "pre-denied", "pre-target", "pre-addition", "pre-collision", "archived", "transport", "http", "wrong-status", "malformed", "duplicate-id", "duplicate-config", "null-id", "fraction-id", "old-id", "missing-config", "unknown-config", "ssl-ack", "active-ack", "events-ack", "unexpected-link", "detail-denied", "config-denied", "created-drift", "target-drift", "retained-drift", "outside-addition", "missing-new"}
+	modes := []string{"success", "ssl-enabled", "ssl-disabled", "empty-events", "opaque-events", "active", "form", "secret-changing", "location-ignored", "event-order", "pre-denied", "pre-target", "pre-addition", "pre-collision", "archived", "transport", "http", "wrong-status", "malformed", "duplicate-id", "duplicate-config", "null-id", "fraction-id", "old-id", "missing-config", "unknown-config", "ssl-ack", "active-ack", "events-ack", "unexpected-link", "detail-denied", "config-denied", "created-drift", "target-drift", "retained-drift", "outside-addition", "missing-new"}
 	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
 			expected, desired := webhookCreationSelection()
+			if mode == "ssl-enabled" || mode == "ssl-disabled" {
+				v := mode == "ssl-enabled"
+				desired.SSLVerification = &v
+			}
 			if mode == "empty-events" {
 				v := []string{}
 				desired.Events = &v
@@ -71,7 +75,11 @@ func TestWebhookCreationExactPayloadRecoveryAndReadback(t *testing.T) {
 					if mode == "form" {
 						native = "form"
 					}
-					want := map[string]any{"name": "web", "active": *desired.Active, "events": events, "config": map[string]any{"url": *desired.PayloadURL, "content_type": native, "insecure_ssl": "0"}}
+					ssl := "0"
+					if desired.SSLVerification != nil && !*desired.SSLVerification {
+						ssl = "1"
+					}
+					want := map[string]any{"name": "web", "active": *desired.Active, "events": events, "config": map[string]any{"url": *desired.PayloadURL, "content_type": native, "insecure_ssl": ssl}}
 					if !reflect.DeepEqual(payload, want) {
 						t.Fatalf("creation payload %s", data)
 					}
@@ -81,7 +89,7 @@ func TestWebhookCreationExactPayloadRecoveryAndReadback(t *testing.T) {
 					if mode == "http" {
 						return reply(422, map[string]any{"id": 99, "message": "PRIVATE_HTTP"})
 					}
-					cfg := map[string]any{"url": *desired.PayloadURL, "content_type": native, "insecure_ssl": "0", "secret": "PRIVATE_ACK_SECRET"}
+					cfg := map[string]any{"url": *desired.PayloadURL, "content_type": native, "insecure_ssl": ssl, "secret": "PRIVATE_ACK_SECRET"}
 					added = webhookRow(8, cfg)
 					added["active"] = *desired.Active
 					added["events"] = *desired.Events
@@ -193,7 +201,7 @@ func TestWebhookCreationExactPayloadRecoveryAndReadback(t *testing.T) {
 				return nil, fmt.Errorf("unexpected fixture")
 			})
 			result, err := c.CreateWebhook(webhookRepo, expected, desired)
-			good := mode == "success" || mode == "empty-events" || mode == "opaque-events" || mode == "active" || mode == "form" || mode == "secret-changing" || mode == "location-ignored" || mode == "event-order"
+			good := mode == "ssl-enabled" || mode == "ssl-disabled" || mode == "success" || mode == "empty-events" || mode == "opaque-events" || mode == "active" || mode == "form" || mode == "secret-changing" || mode == "location-ignored" || mode == "event-order"
 			pre := strings.HasPrefix(mode, "pre-") || mode == "archived"
 			if (err == nil) != good || posts > 1 || result.Attempted == pre {
 				t.Fatal(err, result, posts)

@@ -39,7 +39,7 @@ func webhookReportObject(data []byte, allowed map[string]bool) (map[string]json.
 	return result, nil
 }
 func (v *Webhook) UnmarshalJSON(data []byte) error {
-	raw, err := webhookReportObject(data, map[string]bool{"id": true, "payload_url": true, "content_type": true, "active": true, "events": true})
+	raw, err := webhookReportObject(data, map[string]bool{"id": true, "payload_url": true, "content_type": true, "ssl_verification": true, "active": true, "events": true})
 	if err != nil {
 		return err
 	}

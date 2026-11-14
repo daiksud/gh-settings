@@ -38,7 +38,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 				value := d.ID
 				id = &value
 			}
-			values = append(values, uimodel.Webhook{ID: id, PayloadURL: d.PayloadURL, ContentType: d.ContentType, Active: d.Active, Events: d.Events})
+			values = append(values, uimodel.Webhook{ID: id, PayloadURL: d.PayloadURL, ContentType: d.ContentType, SSLVerification: d.SSLVerification, Active: d.Active, Events: d.Events})
 		}
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}

@@ -124,7 +124,7 @@ func TestBuiltCompositeWebhooks(t *testing.T) {
 					t.Fatal(r)
 				}
 				data, _ := os.ReadFile(path)
-				if !strings.Contains(string(data), "payload_url: https://omitted.example/old") || !strings.Contains(string(data), "content_type: application/json") || strings.Contains(string(data), "secret:") || snapshot() != 0 {
+				if !strings.Contains(string(data), "payload_url: https://omitted.example/old") || !strings.Contains(string(data), "content_type: application/json") || !strings.Contains(string(data), "ssl_verification: false") || strings.Contains(string(data), "secret:") || snapshot() != 0 {
 					t.Fatal("export projection", string(data))
 				}
 				return

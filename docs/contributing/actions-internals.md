@@ -249,18 +249,18 @@ never enter this report or become apply input.
 ## Webhook report boundary
 
 `webhooks` contains closed optional `before`/`after` projections. A creation has no
-Before and an IDless After containing URL, Content type, Active and events. An
+Before and an IDless After containing URL, Content type, optional SSL verification, Active and events. An
 update has the same positive ID and selected shape on both sides, with a changed
-URL/Content type and matching selected parent guards. Deletion is rejected.
+URL/Content type/SSL verification and matching selected parent guards.
 Unknown/case-mismatched/duplicate/null members, mismatched identities, unsupported
 parent mutations, incomplete/no-change projections and duplicate/colliding entries
 fail validation. Exact integer IDs avoid floating-point loss; event sets compare
 without ordering or guessed expansion. URL bytes are escaped for CLI/HTML display.
-Omitted controls, SSL, creation timestamps, delivery and secret evidence stay
+Omitted controls, raw SSL evidence, creation timestamps, delivery and secret evidence stay
 private. Detailed creation plans state automatic ping and no supplied Secret.
-A deletion has a complete positive-ID Before (URL, Content type, Active and events)
+A deletion has a complete positive-ID Before (URL, Content type, SSL verification, Active and events)
 and no After. Unknown/private fields, duplicate IDs and overlap with an updated ID
 fail reconstruction. Detailed deletion plans show irreversible whole-object Secret
-loss; timestamps, SSL and private evidence never enter reports. The family counts
+loss; timestamps, raw SSL and private evidence never enter reports. The family counts
 once across creation, updates and deletion. Status-only hides identities and values;
 failure reports retain only bounded resource/progress information.

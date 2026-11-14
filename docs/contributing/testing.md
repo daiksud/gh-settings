@@ -655,3 +655,11 @@ recovery-only IDs and no duplicate POST on IDless repeats. Existing complete exp
 checks now require Active/events and retain unavailable prior IDless intent.
 `GH_DEBUG=api` and private secret/body/delivery canaries exercise the logging boundary.
 These are local fixtures, not live delivery or secret-preservation certification.
+
+## Webhook SSL verification evidence
+
+Webhook fixtures cover native `insecure_ssl` zero/one mapping, omission and
+explicit boolean selection through export, creation, selected update and prune.
+Detailed CLI and supplied-product Action reports show disabled-verification risk;
+status-only hides values. Mixed operations retain fixed candidates and verified
+ID recovery. Fixtures do not prove live TLS validation, delivery or Secret equality.

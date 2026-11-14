@@ -1045,8 +1045,8 @@ General's `pull_requests.merge_commit.default_commit_message` accepts `default_m
 ## Webhook configuration and creation
 
 Use `repository.settings.webhooks` for repository webhooks in a personally owned
-public repository. An existing positive `id` selects optional **Payload URL** and
-**Content type** updates. Its optional **Active** and **events** fields are
+public repository. An existing positive `id` selects optional **Payload URL**,
+**Content type** and **SSL verification** updates. Its optional **Active** and **events** fields are
 **equality guards**, not parent-update requests:
 
 ```yaml
@@ -1054,6 +1054,7 @@ webhooks:
   - id: 12345678
     payload_url: https://example.com/github
     content_type: application/json
+    ssl_verification: true
     active: true
     events: [pull_request, push]
   - id: 87654321
@@ -1067,26 +1068,31 @@ before this family's first write. A missing selected ID fails, without recreatio
 The CLI does not use the parent PATCH endpoint because its documented omitted-
 Secret behavior does not provide the preservation contract used by config PATCH.
 
-Omit `id` to create a hook, and explicitly supply all four controls. There are no
-creation defaults; false and an empty event set are meaningful values:
+Omit `id` to create a hook, and explicitly supply URL, Content type, Active and
+events. SSL verification is optional; false and an empty event set are meaningful values:
 
 ```yaml
 webhooks:
   - payload_url: https://example.com/new-hook
     content_type: application/json
+    ssl_verification: true
     active: false
     events: []
 ```
 
 Creation sends `name: web`, the exact URL, native Content type, Active and events,
-with SSL verification enabled (`insecure_ssl: "0"`) and **no Secret**. GitHub
+with the selected SSL verification and **no Secret**. Omitted `ssl_verification`
+keeps verification enabled (`insecure_ssl: "0"`); `true` enables verification
+and `false` disables it (`insecure_ssl: "1"`). Disabling certificate verification
+can allow man-in-the-middle attacks. Detailed plans identify that consequence. GitHub
 [documents an automatic ping when a webhook is created][webhook-ui]; the CLI does
 not promise that inactive creation suppresses it. Detailed plans show these
 consequences. Receiver authentication, secret provisioning and delivery success
 are not established by successful creation. No additional ping, test, redelivery
 or destination request is made.
 
-Content type accepts exactly the two MIME strings above, mapped to GitHub's
+`ssl_verification` accepts only a non-null boolean. For existing hooks omission
+preserves the fresh observed value. Content type accepts exactly the two MIME strings above, mapped to GitHub's
 `json` and `form`. Payload URL must be absolute HTTP(S) with a host and without
 userinfo, fragments, whitespace, control characters or malformed escapes. These
 are product guards, not extra GitHub schema claims. Valid ports, paths and queries
@@ -1101,7 +1107,7 @@ and unsupported keys such as `url`, `secret`, `config` or `insecure_ssl` fail lo
 URLs are nonsecret configuration visible in YAML and detailed plans. GitHub
 [advises against embedding credentials in webhook URLs][webhook-practices].
 Path/query tokens cannot be reliably detected or redacted while preserving an
-exact, reviewable destination. Status-only plans hide IDs, URLs and events; they
+exact, reviewable destination. Status-only plans hide IDs, URLs, SSL verification and events; they
 are not credential storage. Recovery diagnostics identify the declared URL and ID.
 
 Omitting the family or using `webhooks: []` without pruning makes no family plan/apply requests. Explicit [webhook pruning](#explicit-webhook-pruning) owns whole-object deletion for a present list; `--prune all` includes this scope and may remove unlisted hooks and their opaque Secrets.
@@ -1114,7 +1120,7 @@ URLs. URL is a collision guard and local writeback selector, never remote identi
 or permission to adopt an existing hook. Recover and declare an existing ID instead.
 
 Export completes pagination and obtains every parent/config record, then writes
-positive IDs and all four public fields with sorted event sets. Complete empty
+positive IDs and all five public fields, including observed SSL verification, with sorted event sets. Complete empty
 inventory exports `webhooks: []`. Inaccessible, incomplete, conflicting or
 unsupported evidence omits this entire family on first export or retains its valid
 prior declaration, including an IDless creation request, on re-export. Independent
@@ -1133,11 +1139,10 @@ repository hook identity and creation timestamp. Parent and dedicated config
 records must agree on URL, Content type and SSL state. Active and all events must
 be known. Unknown config members, missing/null controls, malformed values and
 identity drift fail rather than imply defaults. SSL accepts native string/numeric
-zero and one; existing SSL state is private preservation evidence, not a YAML
-control. Future valid nonempty event names remain an exact set.
+zero and one and maps them to the positive `ssl_verification` boolean. Future valid nonempty event names remain an exact set.
 
-A needed config PATCH sends only changed selected URL/Content type members to
-`/repos/{owner}/{repo}/hooks/{id}/config`, without Secret, SSL, parent controls,
+A needed config PATCH sends only changed selected URL/Content type/SSL members to
+`/repos/{owner}/{repo}/hooks/{id}/config`, without Secret, parent controls,
 omitted members or an empty payload. Complete HTTP 200 acknowledgment is followed
 by independent parent/config/target GETs verifying selected values, omitted
 nonsecret configuration, creation identity, Active and events. A value already
@@ -1174,8 +1179,7 @@ The [creation/editing guides][webhook-ui], [repository webhook REST][webhook-res
 and [partial configuration announcement][webhook-partial] establish these paths.
 Reads require Webhooks read; creation/updates require Webhooks write. Local fixtures
 do not prove live delivery, authentication, reachability, cryptographic secret
-equality or absence of races between requests. Parent Active/events mutation,
-personal-public SSL UI confirmation and receiver configuration remain separate work. Secret values are outside policy.
+equality or absence of races between requests. Parent Active/events mutation and receiver configuration remain separate work. Secret values are outside policy.
 
 [webhook-practices]: https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks
 [webhook-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
@@ -1195,7 +1199,7 @@ Explicit pruning owns the **whole unlisted webhook**, including its associated
 opaque Secret. Deletion is irreversible: it removes that hook and its Secret,
 but does not revoke credentials embedded in a destination URL, undo prior
 requests or prove cancellation of an already dispatched delivery. Detailed plans
-show the candidate ID, Payload URL, Content type, Active and exact event set and
+show the candidate ID, Payload URL, Content type, SSL verification, Active and exact event set and
 identify this whole-object effect. Status-only hides identities and values.
 
 Before any remote write, including unarchive or unrelated settings, apply obtains

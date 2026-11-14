@@ -23,8 +23,8 @@ without authorizing live mutations or claiming secret-aware concurrency.
 - Exact empty 204 and independent complete absence/retained-state verification
   are both required. No isolated 404 success, response-URL following, retry or
   rollback. Partial prior progress and uncertain attempts remain distinguishable.
-- Detailed deletion plans expose ID, URL, MIME, Active/events and the whole-object
-  Secret consequence. Status-only hides them. Private snapshots, SSL/timestamps,
+- Detailed deletion plans expose ID, URL, MIME, SSL verification, Active/events and the whole-object
+  Secret consequence. Status-only hides them. Private snapshots, raw SSL evidence and timestamps,
   raw bodies and delivery evidence never enter reports or API debug logs.
 - Deletion does not revoke external credentials or undo/cancel dispatched
   requests. There is no atomic read/delete lock. Fixtures establish the local

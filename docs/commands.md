@@ -451,13 +451,14 @@ no ID recovery or writeback.
 ## Webhook configuration and creation in current source
 
 [Webhook declarations](settings.md#webhook-configuration-and-creation) select
-existing IDs for URL/Content type reconciliation and optional Active/events
-matching guards. An IDless entry must declare all four controls to create a hook
-without a Secret and with SSL verification enabled; GitHub documents an automatic
+existing IDs for URL/Content type/SSL verification reconciliation and optional Active/events
+matching guards. An IDless entry must declare URL, Content type, Active and events to create a hook
+without a Secret; omitted `ssl_verification` enables verification, while explicit
+`false` disables it and risks man-in-the-middle attacks. GitHub documents an automatic
 creation ping. A needed parent Active/events change fails before the family's
 first write. Omission and ordinary `webhooks: []` make no family requests. `--prune webhooks` and standalone `all` select fixed unlisted IDs for whole-object deletion, including their opaque Secrets; an empty present list selects all. Bound-only work reads selected IDs, while creation requires complete
 inventory and exact URL collision checks before any family write. Export writes
-IDs and all four controls from complete observations.
+IDs and all five controls, including SSL verification, from complete observations.
 
 Ordinary CLI apply records a new ID only after independent verification and guarded
 source checks. `--no-writeback` and `GITHUB_ACTIONS=true` leave input unchanged;
