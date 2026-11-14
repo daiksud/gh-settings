@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -74,5 +75,89 @@ func TestArchivedMixedExportFailsClosedWithoutCompleteEvidence(t *testing.T) {
 	_, err = Apply(func() (settings.Declaration, error) { return limited, nil }, resolve, writer)
 	if err == nil || writes != 0 {
 		t.Fatalf("unverified null/default accepted or mutated: error=%v writes=%d", err, writes)
+	}
+}
+
+// An unavailable export family retains prior intent; it is not evidence that
+// the target still matches. Both cases round-trip the actual export projection.
+func TestArchivedCopilotExportPlanApplyEvidence(t *testing.T) {
+	for _, unavailable := range []bool{false, true} {
+		name := "acquired"
+		if unavailable {
+			name = "retained unavailable"
+		}
+		t.Run(name, func(t *testing.T) {
+			repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+			resolve := func() (repository.Repository, error) { return repo, nil }
+			yes, no := true, false
+			prior := settings.Declaration{CopilotMCP: &yes}
+			archive := func(repository.Repository) (settings.ArchiveState, error) {
+				return settings.ArchiveState{ID: 1, FullName: "owner/current", Archived: true}, nil
+			}
+			reader := Reader{
+				Archive: archive,
+				CopilotInstructions: func(repository.Repository) (settings.CopilotInstructionsObservation, error) {
+					return settings.NewCopilotInstructionsObservation(true), nil
+				},
+				CopilotMCP: func(repository.Repository) (settings.CopilotMCPObservation, error) {
+					if unavailable {
+						return settings.CopilotMCPObservation{}, fmt.Errorf("unavailable")
+					}
+					return settings.NewCopilotMCPObservation(false), nil
+				},
+			}
+			var exported settings.Declaration
+			info := false
+			err := Export(ExportCheckout{Existing: prior, Repository: resolve, Info: func(path string, _ error) error {
+				if path == settings.CopilotMCPPath {
+					info = true
+				}
+				return nil
+			}, PrepareSave: func() (func(settings.Declaration) error, error) {
+				return func(d settings.Declaration) error { exported = d; return nil }, nil
+			}}, reader)
+			if err != nil || info != unavailable || exported.CopilotInstructions == nil || !*exported.CopilotInstructions || exported.CopilotMCP == nil || *exported.CopilotMCP != unavailable {
+				t.Fatalf("export error=%v info=%v declaration=%+v", err, info, exported)
+			}
+			ui, err := github.UIFromExportDeclaration(exported)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := workspace.EncodeConfig(ui)
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded, err := workspace.DecodeConfig(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			d, err := github.DeclarationFromUI(decoded)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d.Repository.Archived == nil || !*d.Repository.Archived || d.CopilotInstructions == nil || !*d.CopilotInstructions || d.CopilotMCP == nil || *d.CopilotMCP != unavailable {
+				t.Fatalf("export round-trip lost or changed selected values: %+v", d)
+			}
+			load := func() (settings.Declaration, error) { return d, nil }
+			plan, planErr := Plan(load, resolve, reader)
+			if (planErr != nil) != unavailable || !unavailable && (plan.Comparison.HasChanges() || plan.Comparison.Managed != 3) {
+				t.Fatalf("plan=%+v err=%v", plan, planErr)
+			}
+			writes, reads := 0, 0
+			writer := Writer{ReadArchive: archive, ReadArchivedCopilot: func(_ repository.Repository, instructions, mcp bool) (settings.ArchivedCopilotToggles, error) {
+				reads++
+				if !instructions || !mcp {
+					t.Fatal("missing selected toggle read")
+				}
+				if unavailable {
+					return settings.ArchivedCopilotToggles{}, fmt.Errorf("unavailable")
+				}
+				return settings.ArchivedCopilotToggles{Instructions: &yes, MCP: &no}, nil
+			}, Archive: func(repository.Repository, settings.ArchiveState, bool) error { writes++; return nil }, CopilotInstructions: func(repository.Repository, bool) (bool, error) { writes++; return false, nil }, CopilotMCP: func(repository.Repository, bool) (bool, error) { writes++; return false, nil }}
+			_, err = Apply(load, resolve, writer)
+			if (err != nil) != unavailable || writes != 0 || !unavailable && reads != 2 || unavailable && reads != 1 {
+				t.Fatalf("apply err=%v reads=%d writes=%d", err, reads, writes)
+			}
+		})
 	}
 }

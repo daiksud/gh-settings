@@ -29,7 +29,7 @@ func TestArchivedMixedGroupsRequireCompleteMatchingEvidence(t *testing.T) {
 				d.CopilotReviewEffort = &v
 			}
 			if scenario == "unsupported" {
-				d.CopilotMCP = &yes
+				d.Actions.CacheRetentionDays = &days
 			}
 			reads, writes := 0, 0
 			w := Writer{

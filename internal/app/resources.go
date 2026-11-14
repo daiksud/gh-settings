@@ -182,6 +182,7 @@ type Writer struct {
 	ReadPullRequestExemptions func(repository.Repository) (settings.PullRequestExemptionsObservation, error)
 	ReadPullRequestLimits     func(repository.Repository) (settings.PullRequestLimitsObservation, error)
 	ReadCopilotReviewEffort   func(repository.Repository) (settings.CopilotReviewEffortObservation, error)
+	ReadArchivedCopilot       func(repository.Repository, bool, bool) (settings.ArchivedCopilotToggles, error)
 	ObserveRepository         func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error)
 	ReadTopics                func(repository.Repository) ([]string, error)
 }
