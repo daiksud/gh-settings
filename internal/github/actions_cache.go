@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -36,24 +39,53 @@ func NewCacheStorageClient(host string) (*CacheStorageClient, error) {
 func actionsCachePath(repo repository.Repository, limit string) string {
 	return "repos/" + repo.Owner + "/" + repo.Name + "/actions/cache/" + limit + "-limit"
 }
-func readActionsInteger(c *api.RESTClient, path, key string) (int, error) {
+
+func readActionsCacheObject(c *api.RESTClient, path string) (map[string]json.RawMessage, error) {
+	response, err := c.Request(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Actions cache observation unavailable")
+	}
+	defer response.Body.Close()
+	const limit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	var fields map[string]json.RawMessage
-	if err := c.Get(path, &fields); err != nil {
+	if err != nil || len(body) > limit || !utf8.Valid(body) || response.StatusCode != http.StatusOK || webhookJSON(body, &fields) != nil || fields == nil {
+		return nil, fmt.Errorf("Actions cache observation incomplete or unavailable")
+	}
+	return fields, nil
+}
+
+// Only canonical field names may supply selected evidence. Go's map lookup is
+// case-sensitive, so an alias alongside the selected key must not be ignored.
+func hasActionsFieldAlias(fields map[string]json.RawMessage, names ...string) bool {
+	for name := range fields {
+		for _, canonical := range names {
+			if name != canonical && strings.EqualFold(name, canonical) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func readActionsInteger(c *api.RESTClient, path, key string) (int, error) {
+	fields, err := readActionsCacheObject(c, path)
+	if err != nil {
 		return 0, fmt.Errorf("read Actions %s: %w", key, err)
 	}
 	var value *int
-	if json.Unmarshal(fields[key], &value) != nil || value == nil {
+	if hasActionsFieldAlias(fields, key) || json.Unmarshal(fields[key], &value) != nil || value == nil {
 		return 0, fmt.Errorf("GitHub returned missing/null or invalid Actions %s", key)
 	}
 	return *value, nil
 }
 func readActionsVisibility(c *api.RESTClient, repo repository.Repository) (string, map[string]json.RawMessage, error) {
-	var fields map[string]json.RawMessage
-	if err := c.Get("repos/"+repo.Owner+"/"+repo.Name, &fields); err != nil {
+	fields, err := readActionsCacheObject(c, "repos/"+repo.Owner+"/"+repo.Name)
+	if err != nil {
 		return "", nil, fmt.Errorf("read Actions repository applicability: %w", err)
 	}
 	var fullName *string
-	if json.Unmarshal(fields["full_name"], &fullName) != nil || fullName == nil || !strings.EqualFold(*fullName, repo.Owner+"/"+repo.Name) {
+	if hasActionsFieldAlias(fields, "full_name", "visibility") || json.Unmarshal(fields["full_name"], &fullName) != nil || fullName == nil || !strings.EqualFold(*fullName, repo.Owner+"/"+repo.Name) {
 		return "", nil, fmt.Errorf("missing/null or mismatched repository identity for Actions")
 	}
 	var visibility *string

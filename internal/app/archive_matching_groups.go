@@ -61,6 +61,16 @@ func verifyArchivedGroups(repo repository.Repository, desired settings.Declarati
 			return err
 		}
 	}
+	if desired.Actions.CacheRetentionDays != nil {
+		if err := archivedGroup(repo, desired.Actions, read.ReadCacheRetention, settings.CompareCacheRetention, "Actions cache retention"); err != nil {
+			return err
+		}
+	}
+	if desired.Actions.CacheSizeGB != nil {
+		if err := archivedGroup(repo, desired.Actions, read.ReadCacheStorage, settings.CompareCacheStorage, "Actions cache storage"); err != nil {
+			return err
+		}
+	}
 	if !desired.Actions.WorkflowPermissionsEmpty() {
 		if read.ReadWorkflowPermissions == nil {
 			return fmt.Errorf("verify archived workflow permissions: reader unavailable")

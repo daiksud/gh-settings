@@ -29,7 +29,7 @@ func (c *ActionsAccessClient) Read(repo repository.Repository) (settings.Actions
 	}
 	var owner map[string]json.RawMessage
 	var ownerType *string
-	if json.Unmarshal(fields["owner"], &owner) != nil || json.Unmarshal(owner["type"], &ownerType) != nil || ownerType == nil || (*ownerType != "User" && *ownerType != "Organization") {
+	if hasActionsFieldAlias(fields, "owner") || json.Unmarshal(fields["owner"], &owner) != nil || hasActionsFieldAlias(owner, "type") || json.Unmarshal(owner["type"], &ownerType) != nil || ownerType == nil || (*ownerType != "User" && *ownerType != "Organization") {
 		return settings.ActionsAccessObservation{}, fmt.Errorf("missing/null or invalid repository owner type for Actions access")
 	}
 	var access map[string]json.RawMessage

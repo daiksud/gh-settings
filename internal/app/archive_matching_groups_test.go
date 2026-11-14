@@ -29,7 +29,10 @@ func TestArchivedMixedGroupsRequireCompleteMatchingEvidence(t *testing.T) {
 				d.CopilotReviewEffort = &v
 			}
 			if scenario == "unsupported" {
-				d.Actions.CacheRetentionDays = &days
+				d.Actions.Enabled = &yes
+				if archivedMatchingScope(d, settings.PruneScopes{}) {
+					t.Fatal("unsupported execution policy passed the archived scope guard")
+				}
 			}
 			reads, writes := 0, 0
 			w := Writer{

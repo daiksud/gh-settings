@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -185,5 +186,87 @@ func TestCacheRetentionPostWriteVisibilityChange(t *testing.T) {
 	var pre interface{ ReadFailedBeforeWrite() }
 	if wrote || err == nil || writes != 1 || errors.As(err, &pre) {
 		t.Fatal(wrote, writes, err)
+	}
+}
+
+func TestActionsCacheRejectsAmbiguousOrOversizedObjects(t *testing.T) {
+	for _, tc := range []struct{ kind, metadata, body string }{
+		{"retention", generalTestMetadata, `{"max_cache_retention_days":5,"max_cache_retention_days":7}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":5,"max_cache_size_gb":7}`},
+		{"retention", generalTestMetadata, `{"max_cache_retention_days":7,"MAX_CACHE_RETENTION_DAYS":5}`},
+		{"retention", generalTestMetadata, `{"MAX_CACHE_RETENTION_DAYS":5,"max_cache_retention_days":7}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":7,"MAX_CACHE_SIZE_GB":5}`},
+		{"storage", generalTestMetadata, `{"MAX_CACHE_SIZE_GB":5,"max_cache_size_gb":7}`},
+		{"retention", `{"full_name":"owner/current","FULL_NAME":"other/repo","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"FULL_NAME":"other/repo","full_name":"owner/current","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"full_name":"owner/current","visibility":"public","VISIBILITY":"private"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"full_name":"owner/current","VISIBILITY":"private","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":7,"extra":"` + string([]byte{0xff}) + `"}`},
+		{"retention", `{"full_name":"wrong/repo","full_name":"owner/current","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"full_name":"owner/current","visibility":"private","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":7} {}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":7,"padding":"` + strings.Repeat("x", 1<<20) + `"}`},
+	} {
+		t.Run(tc.kind+"/"+fmt.Sprint(len(tc.body))+"/"+tc.metadata, func(t *testing.T) {
+			rest := actionsClient(t, func(r *http.Request) (*http.Response, error) {
+				if r.Method != http.MethodGet {
+					t.Fatal("unexpected write")
+				}
+				if r.URL.Path == "/repos/owner/current" {
+					return actionsResponse(r, 200, tc.metadata), nil
+				}
+				return actionsResponse(r, 200, tc.body), nil
+			}).rest
+			var err error
+			if tc.kind == "retention" {
+				_, err = (&CacheRetentionClient{rest: rest}).Read(generalTestRepo)
+			} else {
+				_, err = (&CacheStorageClient{rest: rest}).Read(generalTestRepo)
+			}
+			if err == nil {
+				t.Fatal("ambiguous or oversized response accepted")
+			}
+		})
+	}
+}
+
+func TestActionsAccessRejectsDuplicateSharedMetadata(t *testing.T) {
+	rest := actionsClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodGet || r.URL.Path != "/repos/owner/current" {
+			t.Fatal("unexpected access request", r.Method, r.URL.Path)
+		}
+		return actionsResponse(r, 200, `{"full_name":"owner/current","visibility":"public","visibility":"private","owner":{"type":"User"}}`), nil
+	}).rest
+	if _, err := (&ActionsAccessClient{rest: rest}).Read(generalTestRepo); err == nil {
+		t.Fatal("ambiguous shared metadata accepted")
+	}
+}
+
+func TestActionsAccessRejectsAmbiguousOwnerEvidence(t *testing.T) {
+	for _, metadata := range []string{
+		`{"full_name":"owner/current","visibility":"private","owner":{"type":"Organization"},"OWNER":{"type":"User"}}`,
+		`{"full_name":"owner/current","visibility":"private","OWNER":{"type":"User"},"owner":{"type":"Organization"}}`,
+		`{"full_name":"owner/current","visibility":"private","owner":{"type":"Organization","TYPE":"User"}}`,
+		`{"full_name":"owner/current","visibility":"private","owner":{"TYPE":"User","type":"Organization"}}`,
+	} {
+		t.Run(metadata, func(t *testing.T) {
+			reads, writes := 0, 0
+			rest := actionsClient(t, func(r *http.Request) (*http.Response, error) {
+				if r.Method != http.MethodGet {
+					writes++
+					t.Fatal("unexpected write")
+				}
+				reads++
+				if r.URL.Path != "/repos/owner/current" {
+					t.Fatal("access read before identity validation")
+				}
+				return actionsResponse(r, 200, metadata), nil
+			}).rest
+			wrote, err := (&ActionsAccessClient{rest: rest}).Update(generalTestRepo, "organization")
+			var pre interface{ ReadFailedBeforeWrite() }
+			if err == nil || wrote || !errors.As(err, &pre) || writes != 0 || reads != 1 {
+				t.Fatal(wrote, err, reads, writes)
+			}
+		})
 	}
 }
