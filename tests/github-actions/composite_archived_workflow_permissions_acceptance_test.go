@@ -15,7 +15,7 @@ import (
 
 func TestBuiltCompositeArchivedWorkflowPermissions(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "approval only unknown default", "default differs", "approval differs", "selected normalized", "missing approval", "duplicate default", "denied", "identity drift"} {
+	for _, scenario := range []string{"matching", "approval only unknown default", "default differs", "approval differs", "selected normalized", "missing approval", "duplicate default", "alias default", "alias approval", "denied", "identity drift"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
@@ -71,6 +71,14 @@ func TestBuiltCompositeArchivedWorkflowPermissions(t *testing.T) {
 					}
 					if scenario == "duplicate default" {
 						fmt.Fprint(w, `{"default_workflow_permissions":"write","default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`)
+						return
+					}
+					if scenario == "alias default" {
+						fmt.Fprint(w, `{"DEFAULT_WORKFLOW_PERMISSIONS":"write","default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`)
+						return
+					}
+					if scenario == "alias approval" {
+						fmt.Fprint(w, `{"default_workflow_permissions":"read","CAN_APPROVE_PULL_REQUEST_REVIEWS":true,"can_approve_pull_request_reviews":false}`)
 						return
 					}
 					if scenario == "missing approval" {
