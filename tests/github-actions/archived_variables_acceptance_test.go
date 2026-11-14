@@ -18,7 +18,7 @@ func TestBuiltCompositeArchivedVariables(t *testing.T) {
 	const desired = "FIXTURE_ARCHIVED_DESIRED_CANARY"
 	const remote = "FIXTURE_ARCHIVED_REMOTE_CANARY"
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "different", "absent", "denied", "wrong name"} {
+	for _, scenario := range []string{"matching", "different", "absent", "denied", "wrong name", "duplicate value", "value alias", "duplicate name", "name alias"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
@@ -75,6 +75,22 @@ func TestBuiltCompositeArchivedVariables(t *testing.T) {
 					}
 					if scenario == "wrong name" {
 						name = "OTHER"
+					}
+					if scenario == "duplicate value" {
+						fmt.Fprintf(w, `{"name":%q,"value":%q,"value":%q}`, name, remote, desired)
+						return
+					}
+					if scenario == "value alias" {
+						fmt.Fprintf(w, `{"name":%q,"Value":%q,"value":%q}`, name, remote, desired)
+						return
+					}
+					if scenario == "duplicate name" {
+						fmt.Fprintf(w, `{"name":"OTHER","name":%q,"value":%q}`, name, desired)
+						return
+					}
+					if scenario == "name alias" {
+						fmt.Fprintf(w, `{"Name":"OTHER","name":%q,"value":%q}`, name, desired)
+						return
 					}
 					value := desired
 					if scenario == "different" {

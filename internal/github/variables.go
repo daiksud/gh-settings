@@ -10,7 +10,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // NewVariablesClient pins the Variables contract, rejects redirects and avoids
@@ -58,23 +61,75 @@ func (c *Client) readVariable(path, name string) (settings.VariableObservation, 
 	if response.StatusCode != http.StatusOK {
 		return settings.VariableObservation{}, fmt.Errorf("unexpected repository variable read status %d", response.StatusCode)
 	}
-	var raw struct {
-		Name  *string `json:"name"`
-		Value *string `json:"value"`
-	}
-	decoder := json.NewDecoder(response.Body)
-	if decoder.Decode(&raw) != nil || raw.Name == nil || raw.Value == nil {
+	const limit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	var fields map[string]json.RawMessage
+	if err != nil || len(body) > limit || !validVariableJSONUnicode(body) || webhookJSON(body, &fields) != nil || fields == nil {
 		return settings.VariableObservation{}, fmt.Errorf("incomplete or invalid repository variable response")
 	}
-	var extra any
-	if decoder.Decode(&extra) != io.EOF {
-		return settings.VariableObservation{}, fmt.Errorf("invalid trailing repository variable response")
+	// Only exact spellings may supply identity or value. In particular, Go's
+	// struct decoder would accept case aliases as the same field.
+	for key := range fields {
+		if key != "name" && strings.EqualFold(key, "name") || key != "value" && strings.EqualFold(key, "value") {
+			return settings.VariableObservation{}, fmt.Errorf("incomplete or invalid repository variable response")
+		}
 	}
-	actual, err := settings.VariableName(*raw.Name)
+	var observedName, observedValue *string
+	if json.Unmarshal(fields["name"], &observedName) != nil || observedName == nil || json.Unmarshal(fields["value"], &observedValue) != nil || observedValue == nil {
+		return settings.VariableObservation{}, fmt.Errorf("incomplete or invalid repository variable response")
+	}
+	actual, err := settings.VariableName(*observedName)
 	if err != nil || actual != canonical {
 		return settings.VariableObservation{}, fmt.Errorf("repository variable response identity mismatch")
 	}
-	return settings.NewVariableObservation(settings.RepositoryVariable{Name: canonical, Value: *raw.Value})
+	return settings.NewVariableObservation(settings.RepositoryVariable{Name: canonical, Value: *observedValue})
+}
+
+// encoding/json replaces malformed UTF-8 and unpaired UTF-16 escape values
+// with U+FFFD. Such normalization cannot establish exact selected equality.
+func validVariableJSONUnicode(data []byte) bool {
+	if !utf8.Valid(data) {
+		return false
+	}
+	inString := false
+	for i := 0; i < len(data); i++ {
+		if data[i] == '"' {
+			inString = !inString
+			continue
+		}
+		if !inString || data[i] != '\\' {
+			continue
+		}
+		if i+1 >= len(data) {
+			return false
+		}
+		i++
+		if data[i] != 'u' {
+			continue
+		}
+		if i+4 >= len(data) {
+			return false
+		}
+		value, err := strconv.ParseUint(string(data[i+1:i+5]), 16, 16)
+		if err != nil {
+			return false
+		}
+		i += 4
+		if value >= 0xdc00 && value <= 0xdfff {
+			return false
+		}
+		if value >= 0xd800 && value <= 0xdbff {
+			if i+6 >= len(data) || data[i+1] != '\\' || data[i+2] != 'u' {
+				return false
+			}
+			low, err := strconv.ParseUint(string(data[i+3:i+7]), 16, 16)
+			if err != nil || low < 0xdc00 || low > 0xdfff {
+				return false
+			}
+			i += 6
+		}
+	}
+	return true
 }
 
 // variablePreWriteFailure establishes that no variable mutation was attempted.
