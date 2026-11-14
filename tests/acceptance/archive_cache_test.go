@@ -12,7 +12,7 @@ import (
 )
 
 func TestArchivedCacheCLIReadOnly(t *testing.T) {
-	for _, scenario := range []string{"matching", "retention differs", "storage differs", "duplicate retention", "duplicate metadata", "denied", "identity drift"} {
+	for _, scenario := range []string{"matching", "retention differs", "storage differs", "duplicate retention", "duplicate metadata", "alias retention", "alias storage", "alias metadata", "denied", "identity drift"} {
 		t.Run(scenario, func(t *testing.T) {
 			var mu sync.Mutex
 			writes, repoReads, cacheReads := 0, 0, 0
@@ -34,6 +34,8 @@ func TestArchivedCacheCLIReadOnly(t *testing.T) {
 					}
 					if scenario == "duplicate metadata" && repoReads == 2 {
 						fmt.Fprint(w, `{"id":42,"full_name":"owner/current","visibility":"private","visibility":"public","archived":true}`)
+					} else if scenario == "alias metadata" && repoReads == 2 {
+						fmt.Fprint(w, `{"id":42,"full_name":"owner/current","visibility":"public","VISIBILITY":"private","archived":true}`)
 					} else {
 						fmt.Fprintf(w, `{"id":%d,"full_name":"owner/current","visibility":"public","archived":true}`, id)
 					}
@@ -47,6 +49,10 @@ func TestArchivedCacheCLIReadOnly(t *testing.T) {
 						fmt.Fprint(w, `{"max_cache_retention_days":31,"max_cache_retention_days":30}`)
 						return
 					}
+					if scenario == "alias retention" {
+						fmt.Fprint(w, `{"MAX_CACHE_RETENTION_DAYS":31,"max_cache_retention_days":30}`)
+						return
+					}
 					value := 30
 					if scenario == "retention differs" {
 						value = 31
@@ -54,6 +60,10 @@ func TestArchivedCacheCLIReadOnly(t *testing.T) {
 					fmt.Fprintf(w, `{"max_cache_retention_days":%d}`, value)
 				case "/repos/owner/current/actions/cache/storage-limit":
 					cacheReads++
+					if scenario == "alias storage" {
+						fmt.Fprint(w, `{"MAX_CACHE_SIZE_GB":11,"max_cache_size_gb":10}`)
+						return
+					}
 					value := 10
 					if scenario == "storage differs" {
 						value = 11
@@ -85,6 +95,9 @@ func TestArchivedCacheCLIReadOnly(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 			if err != nil || string(data) != input || writes != 0 {
 				t.Fatalf("config error=%v writes=%d", err, writes)
+			}
+			if scenario == "alias metadata" && (repoReads != 2 || cacheReads != 0) || scenario == "alias retention" && cacheReads != 1 || scenario == "alias storage" && cacheReads != 2 {
+				t.Fatalf("alias endpoint not reached: repository=%d cache=%d", repoReads, cacheReads)
 			}
 			if scenario == "matching" && (repoReads != 3 || cacheReads != 2) {
 				t.Fatalf("reads=%d %d", repoReads, cacheReads)

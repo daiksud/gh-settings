@@ -193,6 +193,15 @@ func TestActionsCacheRejectsAmbiguousOrOversizedObjects(t *testing.T) {
 	for _, tc := range []struct{ kind, metadata, body string }{
 		{"retention", generalTestMetadata, `{"max_cache_retention_days":5,"max_cache_retention_days":7}`},
 		{"storage", generalTestMetadata, `{"max_cache_size_gb":5,"max_cache_size_gb":7}`},
+		{"retention", generalTestMetadata, `{"max_cache_retention_days":7,"MAX_CACHE_RETENTION_DAYS":5}`},
+		{"retention", generalTestMetadata, `{"MAX_CACHE_RETENTION_DAYS":5,"max_cache_retention_days":7}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":7,"MAX_CACHE_SIZE_GB":5}`},
+		{"storage", generalTestMetadata, `{"MAX_CACHE_SIZE_GB":5,"max_cache_size_gb":7}`},
+		{"retention", `{"full_name":"owner/current","FULL_NAME":"other/repo","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"FULL_NAME":"other/repo","full_name":"owner/current","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"full_name":"owner/current","visibility":"public","VISIBILITY":"private"}`, `{"max_cache_retention_days":7}`},
+		{"retention", `{"full_name":"owner/current","VISIBILITY":"private","visibility":"public"}`, `{"max_cache_retention_days":7}`},
+		{"storage", generalTestMetadata, `{"max_cache_size_gb":7,"extra":"` + string([]byte{0xff}) + `"}`},
 		{"retention", `{"full_name":"wrong/repo","full_name":"owner/current","visibility":"public"}`, `{"max_cache_retention_days":7}`},
 		{"retention", `{"full_name":"owner/current","visibility":"private","visibility":"public"}`, `{"max_cache_retention_days":7}`},
 		{"storage", generalTestMetadata, `{"max_cache_size_gb":7} {}`},
@@ -230,5 +239,34 @@ func TestActionsAccessRejectsDuplicateSharedMetadata(t *testing.T) {
 	}).rest
 	if _, err := (&ActionsAccessClient{rest: rest}).Read(generalTestRepo); err == nil {
 		t.Fatal("ambiguous shared metadata accepted")
+	}
+}
+
+func TestActionsAccessRejectsAmbiguousOwnerEvidence(t *testing.T) {
+	for _, metadata := range []string{
+		`{"full_name":"owner/current","visibility":"private","owner":{"type":"Organization"},"OWNER":{"type":"User"}}`,
+		`{"full_name":"owner/current","visibility":"private","OWNER":{"type":"User"},"owner":{"type":"Organization"}}`,
+		`{"full_name":"owner/current","visibility":"private","owner":{"type":"Organization","TYPE":"User"}}`,
+		`{"full_name":"owner/current","visibility":"private","owner":{"TYPE":"User","type":"Organization"}}`,
+	} {
+		t.Run(metadata, func(t *testing.T) {
+			reads, writes := 0, 0
+			rest := actionsClient(t, func(r *http.Request) (*http.Response, error) {
+				if r.Method != http.MethodGet {
+					writes++
+					t.Fatal("unexpected write")
+				}
+				reads++
+				if r.URL.Path != "/repos/owner/current" {
+					t.Fatal("access read before identity validation")
+				}
+				return actionsResponse(r, 200, metadata), nil
+			}).rest
+			wrote, err := (&ActionsAccessClient{rest: rest}).Update(generalTestRepo, "organization")
+			var pre interface{ ReadFailedBeforeWrite() }
+			if err == nil || wrote || !errors.As(err, &pre) || writes != 0 || reads != 1 {
+				t.Fatal(wrote, err, reads, writes)
+			}
+		})
 	}
 }

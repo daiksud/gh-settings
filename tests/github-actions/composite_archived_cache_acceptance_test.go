@@ -15,7 +15,7 @@ import (
 
 func TestBuiltCompositeArchivedCache(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "retention differs", "storage differs", "duplicate retention", "denied"} {
+	for _, scenario := range []string{"matching", "retention differs", "storage differs", "duplicate retention", "alias retention", "alias storage", "alias metadata", "denied"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
@@ -54,7 +54,11 @@ func TestBuiltCompositeArchivedCache(t *testing.T) {
 				switch r.URL.Path {
 				case "/repos/owner/config":
 					repoReads++
-					fmt.Fprint(w, `{"id":42,"full_name":"owner/config","visibility":"public","archived":true}`)
+					if scenario == "alias metadata" && repoReads == 2 {
+						fmt.Fprint(w, `{"id":42,"full_name":"owner/config","visibility":"public","VISIBILITY":"private","archived":true}`)
+					} else {
+						fmt.Fprint(w, `{"id":42,"full_name":"owner/config","visibility":"public","archived":true}`)
+					}
 				case "/repos/owner/config/actions/cache/retention-limit":
 					cacheReads++
 					if scenario == "denied" {
@@ -65,6 +69,10 @@ func TestBuiltCompositeArchivedCache(t *testing.T) {
 						fmt.Fprint(w, `{"max_cache_retention_days":31,"max_cache_retention_days":30}`)
 						return
 					}
+					if scenario == "alias retention" {
+						fmt.Fprint(w, `{"MAX_CACHE_RETENTION_DAYS":31,"max_cache_retention_days":30}`)
+						return
+					}
 					v := 30
 					if scenario == "retention differs" {
 						v = 31
@@ -72,6 +80,10 @@ func TestBuiltCompositeArchivedCache(t *testing.T) {
 					fmt.Fprintf(w, `{"max_cache_retention_days":%d}`, v)
 				case "/repos/owner/config/actions/cache/storage-limit":
 					cacheReads++
+					if scenario == "alias storage" {
+						fmt.Fprint(w, `{"MAX_CACHE_SIZE_GB":11,"max_cache_size_gb":10}`)
+						return
+					}
 					v := 10
 					if scenario == "storage differs" {
 						v = 11
@@ -99,6 +111,9 @@ func TestBuiltCompositeArchivedCache(t *testing.T) {
 			data, err := os.ReadFile(path)
 			if err != nil || string(data) != input || writes != 0 {
 				t.Fatalf("config error=%v writes=%d", err, writes)
+			}
+			if scenario == "alias metadata" && (repoReads != 2 || cacheReads != 0) || scenario == "alias retention" && cacheReads != 1 || scenario == "alias storage" && cacheReads != 2 {
+				t.Fatalf("alias endpoint not reached: repository=%d cache=%d", repoReads, cacheReads)
 			}
 			if scenario == "matching" && (repoReads != 3 || cacheReads != 2) {
 				t.Fatalf("reads=%d %d", repoReads, cacheReads)
