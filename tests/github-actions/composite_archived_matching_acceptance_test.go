@@ -17,7 +17,7 @@ import (
 
 func TestBuiltCompositeArchivedMatching(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "mixed empty collections", "mixed empty topics differ", "mixed empty exemptions differ", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown"} {
+	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "mixed empty collections", "mixed empty topics differ", "mixed empty exemptions differ", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown", "ruleset matching", "ruleset differs", "ruleset unknown", "ruleset denied"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
@@ -26,6 +26,25 @@ func TestBuiltCompositeArchivedMatching(t *testing.T) {
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
 			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			input := "version: daiksud/gh-settings@v0\nrepository: {about: {description: same, topics: [alpha, beta]}, labels: [{id: 7, name: bug, color: '#112233'}], settings: {general: {danger_zone: {archive_this_repository: true}}}}\n"
+			if strings.HasPrefix(scenario, "ruleset ") {
+				input = `version: daiksud/gh-settings@v0
+repository:
+  about: {description: same, topics: [alpha, beta]}
+  labels: [{id: 7, name: bug, color: '#112233'}]
+  settings:
+    general: {danger_zone: {archive_this_repository: true}}
+    webhooks: []
+    deploy_keys: []
+    branch_protection_rules: []
+    rulesets:
+      - id: 7
+        ruleset_name: coverage
+        enforcement_status: active
+        target_branches: {include_default_branch: true}
+        rules:
+          restrict_code_coverage: {minimum_line_coverage_percentage: 90.25}
+`
+			}
 			if strings.HasPrefix(scenario, "mixed ") {
 				effort := "balanced"
 				if scenario == "mixed unverified default" {
@@ -86,6 +105,7 @@ repository:
 			}
 			var mu sync.Mutex
 			reads, writes := 0, 0
+			rulesetListReads, rulesetDetailReads := 0, 0
 			var graphReads []string
 			server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
@@ -183,6 +203,31 @@ repository:
 					fmt.Fprint(w, `{"approval_policy":"first_time_contributors"}`)
 				case "/repos/owner/config/private-vulnerability-reporting":
 					fmt.Fprintf(w, `{"enabled":%t}`, scenario == "mixed security differs")
+				case "/repos/owner/config/rulesets":
+					rulesetListReads++
+					if r.URL.Query().Get("includes_parents") != "false" {
+						t.Error("inherited Rulesets requested")
+					}
+					if scenario == "ruleset denied" {
+						w.WriteHeader(403)
+						fmt.Fprint(w, `{"message":"denied"}`)
+						return
+					}
+					fmt.Fprint(w, `[{"id":7,"source_type":"Repository","source":"owner/config"}]`)
+				case "/repos/owner/config/rulesets/7":
+					rulesetDetailReads++
+					if r.URL.Query().Get("includes_parents") != "false" {
+						t.Error("inherited Rulesets requested")
+					}
+					threshold := 90.25
+					if scenario == "ruleset differs" {
+						threshold = 80.0
+					}
+					enforcement := "active"
+					if scenario == "ruleset unknown" {
+						enforcement = "FUTURE"
+					}
+					fmt.Fprintf(w, `{"id":7,"name":"coverage","source_type":"Repository","source":"owner/config","target":"branch","enforcement":%q,"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"bypass_actors":[],"rules":[{"type":"code_coverage","parameters":{"minimum_coverage":%v,"max_coverage_drop":0}}]}`, enforcement, threshold)
 				case "/repos/owner/config/pages":
 					w.WriteHeader(404)
 					fmt.Fprint(w, `{"message":"Not Found"}`)
@@ -223,7 +268,7 @@ repository:
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			result := f.run(t, "apply", "archive-fixture", map[string]string{"github.action_ref": version})
-			if (result.status == 0) != (scenario == "matching" || scenario == "mixed matching" || scenario == "mixed empty collections" || scenario == "graphql matching") || (result.status != 0 && len(result.outputs) != 0) {
+			if (result.status == 0) != (scenario == "matching" || scenario == "mixed matching" || scenario == "mixed empty collections" || scenario == "graphql matching" || scenario == "ruleset matching") || (result.status != 0 && len(result.outputs) != 0) {
 				t.Fatalf("unexpected result: %+v", result)
 			}
 
@@ -231,6 +276,15 @@ repository:
 			defer mu.Unlock()
 			if strings.HasPrefix(scenario, "graphql ") && strings.Join(graphReads, ",") != "merge,pr,issue" {
 				t.Fatalf("expected all three read-only GraphQL queries, got %v; action result=%+v", graphReads, result)
+			}
+			if strings.HasPrefix(scenario, "ruleset ") {
+				wantDetails := 1
+				if scenario == "ruleset denied" {
+					wantDetails = 0
+				}
+				if rulesetListReads != 1 || rulesetDetailReads != wantDetails {
+					t.Fatalf("Rulesets reads list=%d detail=%d; action result=%+v", rulesetListReads, rulesetDetailReads, result)
+				}
 			}
 			if writes != 0 {
 				t.Fatalf("unexpected remote writes: %d", writes)

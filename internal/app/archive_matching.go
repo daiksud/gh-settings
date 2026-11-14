@@ -104,6 +104,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Repository = settings.RepositoryDeclaration{}
 	remaining.Topics.Names = nil
 	remaining.Labels = nil
+	remaining.Rulesets = nil
 	remaining.PullRequestLimits = settings.PullRequestLimitsDeclaration{}
 	remaining.PullRequestExemptions = nil
 	remaining.CopilotReviewEffort = nil
@@ -190,6 +191,9 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 		if comparison.HasChanges() {
 			return fmt.Errorf("archived repository labels differ")
 		}
+	}
+	if err := verifyArchivedRulesets(repo, desired.Rulesets, read); err != nil {
+		return err
 	}
 	if err := verifyArchivedGroups(repo, desired, read); err != nil {
 		return err
