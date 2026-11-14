@@ -50,7 +50,9 @@ func (c *OIDCSubjectClient) get(path string, out any) error {
 	}
 	defer r.Body.Close()
 	b, err := readOIDCBody(r.Body)
-	if err != nil || r.StatusCode != http.StatusOK || json.Unmarshal(b, out) != nil {
+	// The shared strict decoder rejects duplicate members recursively before
+	// decoding repository identity or subject state into typed values.
+	if err != nil || r.StatusCode != http.StatusOK || webhookJSON(b, out) != nil {
 		return fmt.Errorf("OIDC observation incomplete or unavailable")
 	}
 	return nil
@@ -108,6 +110,22 @@ func decodeOIDCSubject(raw map[string]json.RawMessage) (settings.OIDCSubjectTemp
 	return v, immutable, nil
 }
 func (c *OIDCSubjectClient) read(repo repository.Repository) (oidcSubjectState, error) {
+	// encoding/json accepts case-insensitive struct field names. Require the
+	// canonical spellings of identity fields so an alias cannot override a
+	// different value while looking like a distinct JSON object member.
+	var identity map[string]json.RawMessage
+	if err := c.get(securityRepositoryPath(repo), &identity); err != nil {
+		return oidcSubjectState{}, err
+	}
+	if err := rejectOIDCIdentityAliases(identity, "id", "full_name", "visibility", "archived", "owner"); err != nil {
+		return oidcSubjectState{}, err
+	}
+	if owner, present := identity["owner"]; present {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(owner, &fields) != nil || rejectOIDCIdentityAliases(fields, "id", "type") != nil {
+			return oidcSubjectState{}, fmt.Errorf("OIDC repository owner identity incomplete")
+		}
+	}
 	var t struct {
 		ID         *int64  `json:"id"`
 		FullName   *string `json:"full_name"`
@@ -118,8 +136,9 @@ func (c *OIDCSubjectClient) read(repo repository.Repository) (oidcSubjectState, 
 			Type *string `json:"type"`
 		} `json:"owner"`
 	}
-	if err := c.get(securityRepositoryPath(repo), &t); err != nil {
-		return oidcSubjectState{}, err
+	b, err := json.Marshal(identity)
+	if err != nil || json.Unmarshal(b, &t) != nil {
+		return oidcSubjectState{}, fmt.Errorf("OIDC repository identity incomplete")
 	}
 	if t.ID == nil || *t.ID <= 0 || t.FullName == nil || !strings.EqualFold(*t.FullName, repo.Owner+"/"+repo.Name) || t.Visibility == nil || *t.Visibility != "public" || t.Archived == nil || t.Owner == nil || t.Owner.ID == nil || *t.Owner.ID <= 0 || t.Owner.Type == nil || *t.Owner.Type != "User" {
 		return oidcSubjectState{}, fmt.Errorf("OIDC requires complete personal-public repository identity")
@@ -133,6 +152,17 @@ func (c *OIDCSubjectClient) read(repo repository.Repository) (oidcSubjectState, 
 		return oidcSubjectState{}, err
 	}
 	return oidcSubjectState{*t.ID, *t.Owner.ID, *t.Archived, value, immutable}, nil
+}
+
+func rejectOIDCIdentityAliases(fields map[string]json.RawMessage, canonical ...string) error {
+	for name := range fields {
+		for _, field := range canonical {
+			if name != field && strings.EqualFold(name, field) {
+				return fmt.Errorf("OIDC repository identity contains an ambiguous field")
+			}
+		}
+	}
+	return nil
 }
 func (c *OIDCSubjectClient) Read(repo repository.Repository) (settings.OIDCSubjectObservation, error) {
 	state, err := c.read(repo)

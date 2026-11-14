@@ -100,6 +100,7 @@ type Writer struct {
 	CreateAutolink             func(repository.Repository, settings.AutolinkObservation, settings.Autolink) (settings.AutolinkWriteResult, error)
 	DeleteAutolink             func(repository.Repository, settings.AutolinkObservation, int64) (bool, error)
 	OIDCSubject                func(repository.Repository, settings.OIDCSubjectTemplate) (bool, error)
+	ReadArchivedOIDCSubject    func(repository.Repository, settings.ArchiveState) ([2]settings.OIDCSubjectObservation, error)
 	ReadAIScanRepositories     func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	AIScanRepositories         func(repository.Repository, settings.SecurityChange) (bool, error)
 	ReadCollaboratorPrune      func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)

@@ -109,6 +109,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Environments = nil
 	remaining.Variables = nil
 	remaining.AgentsVariables = nil
+	remaining.OIDCSubject = nil
 	remaining.PullRequestLimits = settings.PullRequestLimitsDeclaration{}
 	remaining.PullRequestExemptions = nil
 	remaining.CopilotReviewEffort = nil
@@ -203,6 +204,9 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 		return err
 	}
 	if err := verifyArchivedEnvironments(repo, desired.Environments, read.ReadEnvironments); err != nil {
+		return err
+	}
+	if err := verifyArchivedOIDC(repo, desired.OIDCSubject, initial, read.ReadArchivedOIDCSubject); err != nil {
 		return err
 	}
 	if err := verifyArchivedGroups(repo, desired, read); err != nil {
