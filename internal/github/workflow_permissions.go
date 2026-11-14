@@ -3,7 +3,10 @@ package github
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -17,9 +20,25 @@ func (failure *workflowPermissionsReadFailure) Unwrap() error  { return failure.
 func (*workflowPermissionsReadFailure) ReadFailedBeforeWrite() {}
 
 func (c *ActionsPolicyClient) ReadWorkflowPermissions(repo repository.Repository) (settings.WorkflowPermissionsState, error) {
+	response, err := c.rest.Request(http.MethodGet, actionsPolicyPath(repo)+"/workflow", nil)
+	if err != nil {
+		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: unavailable")
+	}
+	defer response.Body.Close()
+	const limit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	var fields map[string]json.RawMessage
-	if err := c.rest.Get(actionsPolicyPath(repo)+"/workflow", &fields); err != nil {
-		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: %w", err)
+	if err != nil || len(body) > limit || !utf8.Valid(body) || response.StatusCode != http.StatusOK || webhookJSON(body, &fields) != nil || fields == nil {
+		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: incomplete or unavailable")
+	}
+	// Case aliases must not coexist with or replace either canonical member;
+	// an ambiguous response cannot establish exact selected equality.
+	for key := range fields {
+		for _, canonical := range []string{"default_workflow_permissions", "can_approve_pull_request_reviews"} {
+			if key != canonical && strings.EqualFold(key, canonical) {
+				return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: ambiguous response")
+			}
+		}
 	}
 	var state settings.WorkflowPermissionsState
 	var permission *string

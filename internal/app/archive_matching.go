@@ -118,6 +118,8 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Actions.RetentionDays = nil
 	remaining.Actions.CacheRetentionDays = nil
 	remaining.Actions.CacheSizeGB = nil
+	remaining.Actions.DefaultWorkflowPermissions = nil
+	remaining.Actions.CanApprovePullRequestReviews = nil
 	remaining.Actions.ForkApprovalPolicy = nil
 	remaining.Security = settings.SecurityDeclaration{}
 	remaining.Pages = settings.PagesDeclaration{}

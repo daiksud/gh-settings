@@ -81,7 +81,7 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 			}
 		})
 	}
-	for _, failure := range []string{"reset companion", "reset matching declaration", "missing readback", "mismatching value"} {
+	for _, failure := range []string{"reset companion", "reset matching declaration", "missing readback", "ambiguous readback", "mismatching value"} {
 		t.Run(failure, func(t *testing.T) {
 			written := false
 			client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
@@ -96,6 +96,8 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 						body = `{"default_workflow_permissions":"write","can_approve_pull_request_reviews":true}`
 					case "missing readback":
 						body = `{}`
+					case "ambiguous readback":
+						body = `{"default_workflow_permissions":"write","DEFAULT_WORKFLOW_PERMISSIONS":"read","can_approve_pull_request_reviews":false}`
 					}
 				}
 				return actionsResponse(req, 200, body), nil
@@ -155,5 +157,45 @@ func TestWorkflowPermissionsErrorsAndOmission(t *testing.T) {
 	}
 	if _, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("read")}); err != nil {
 		t.Fatal("workflow-only declaration reached execution API", err)
+	}
+}
+
+func TestWorkflowPermissionsAliasPreflightDoesNotWrite(t *testing.T) {
+	writes := 0
+	client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
+		if req.Method != http.MethodGet {
+			writes++
+			return actionsResponse(req, 204, ""), nil
+		}
+		return actionsResponse(req, 200, `{"default_workflow_permissions":"read","CAN_APPROVE_PULL_REQUEST_REVIEWS":true,"can_approve_pull_request_reviews":false}`), nil
+	})
+	_, err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: actionsPointer(true)})
+	var pre interface{ ReadFailedBeforeWrite() }
+	if err == nil || !errors.As(err, &pre) || writes != 0 {
+		t.Fatalf("err=%v writes=%d", err, writes)
+	}
+}
+
+func TestWorkflowPermissionsRejectsAmbiguousOrOversizedReads(t *testing.T) {
+	for _, body := range []string{
+		`{"DEFAULT_WORKFLOW_PERMISSIONS":"write","default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","DEFAULT_WORKFLOW_PERMISSIONS":"write","can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","CAN_APPROVE_PULL_REQUEST_REVIEWS":true,"can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false,"CAN_APPROVE_PULL_REQUEST_REVIEWS":true}`,
+		`{"default_workflow_permissions":"write","default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":true,"can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false} {}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false,"other":"` + string([]byte{0xff}) + `"}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false,"padding":"` + strings.Repeat("x", 1<<20) + `"}`,
+	} {
+		client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
+			if req.Method != "GET" {
+				t.Fatal("unexpected write")
+			}
+			return actionsResponse(req, 200, body), nil
+		})
+		if _, err := client.ReadWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}); err == nil {
+			t.Fatal("accepted ambiguous or oversized response")
+		}
 	}
 }
