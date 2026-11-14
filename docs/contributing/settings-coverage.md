@@ -305,6 +305,15 @@ of unsupported protections; this inventory does not relax it.
 | Shared non-secret MCP server configuration | Eligible | Observed JSON configuration editor, 2026-11-13; not a repository-file editor | Partial: Cloud GET exposes `mcp_configuration`; complete shared update contract unconfirmed | Not implemented; secret values remain excluded |
 | Copilot Dreaming | Eligible if configurable, including Preview | Observed unavailable toggle requiring a different Copilot entitlement, 2026-11-13 | Unconfirmed settings read/update contract | Not implemented; current account unavailability is not a personal-public policy exclusion |
 
+The [agent suggestions guide][suggestions-ui] describes how the four automation
+levels route supported issue changes for review or automatic application. Its
+issue-writing REST and GraphQL guidance does not establish a settings read/update
+contract for that level. GitHub describes [suggestion approvals][suggestions-approvals]
+as a workflow convenience, not server-side permission enforcement. The guide
+currently describes Copilot cloud automations as available for private and internal
+repositories; execution eligibility is distinct from the personal-public settings
+form observed above and does not by itself exclude that configurable control.
+
 ## Security and analysis
 
 The [security mapping](ui-security-mapping.md) and
@@ -467,6 +476,7 @@ being confused with the missing implementations above.
 [copilot-api-announcement]: https://github.blog/changelog/2026-11-06-copilot-code-review-api-management-and-review-overview-updates/
 [copilot-config]: https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review
 [suggestions-ui]: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/manage-rationale-confidence-approvals
+[suggestions-approvals]: https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/about-automation-rationale-and-approvals
 [runners-api]: https://docs.github.com/en/rest/actions/self-hosted-runners
 [code-scanning-api]: https://docs.github.com/en/rest/code-scanning/code-scanning
 [codeql-ui]: https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup
