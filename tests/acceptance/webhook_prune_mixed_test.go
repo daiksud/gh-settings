@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -15,7 +16,7 @@ import (
 )
 
 func TestWebhookPruneMixedExecutable(t *testing.T) {
-	for _, mode := range []string{"hosted", "record", "record-failure"} {
+	for _, mode := range []string{"hosted", "record", "record-failure", "delete-failure"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			var path string
@@ -78,6 +79,11 @@ func TestWebhookPruneMixedExecutable(t *testing.T) {
 					json.NewEncoder(w).Encode(rows[9])
 				case "DELETE /repos/owner/current/hooks/8":
 					writes = append(writes, "delete:8")
+					if mode == "delete-failure" {
+						w.WriteHeader(422)
+						fmt.Fprint(w, `{"message":"PRIVATE_MIXED_DELETE_FAILURE"}`)
+						return
+					}
 					delete(rows, 8)
 					w.WriteHeader(204)
 				default:
@@ -111,29 +117,46 @@ func TestWebhookPruneMixedExecutable(t *testing.T) {
 				t.Fatal(err)
 			}
 			plan, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"plan", "--prune", "webhooks"}, false)
-			if e != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), "removed.example") || !strings.Contains(plan.stdout.String(), "automatic ping") || !strings.Contains(plan.stdout.String(), "opaque Secret") || !strings.Contains(plan.stdout.String(), "man-in-the-middle") {
+			if e != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), "removed.example") || !strings.Contains(plan.stdout.String(), "automatic ping") || !strings.Contains(plan.stdout.String(), "opaque Secret") || !strings.Contains(plan.stdout.String(), "man-in-the-middle") || strings.Contains(plan.stdout.String()+plan.stderr.String(), "PRIVATE_MIXED") {
 				t.Fatal(e, plan.runErr, plan.stdout.String(), plan.stderr.String())
 			}
+			mu.Lock()
+			planWrites := len(writes)
+			mu.Unlock()
+			if planWrites != 0 {
+				t.Fatal("plan mutated webhook state")
+			}
 			result, e := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"apply", "--prune", "webhooks"}, false)
-			if e != nil || (result.runErr != nil) != (mode == "record-failure") || strings.Contains(result.stdout.String()+result.stderr.String(), "PRIVATE_MIXED") {
+			failed := mode == "record-failure" || mode == "delete-failure"
+			if e != nil || (result.runErr != nil) != failed || strings.Contains(result.stdout.String()+result.stderr.String(), "PRIVATE_MIXED") {
 				t.Fatal(e, result.runErr, result.stdout.String(), result.stderr.String())
+			}
+			if mode == "delete-failure" {
+				exit, ok := result.runErr.(*exec.ExitError)
+				if !ok || exit.ExitCode() != 1 || !strings.Contains(result.stderr.String(), "id 9") || !strings.Contains(result.stderr.String(), "retain this ID") || !strings.Contains(result.stderr.String(), "effects unconfirmed") {
+					t.Fatal("failed prune lost recovery or uncertain-effect diagnostics", result.runErr, result.stderr.String())
+				}
 			}
 			mu.Lock()
 			got := append([]string{}, writes...)
-			_, retained := rows[9]
+			created, retained := rows[9]
+			_, undeleted := rows[8]
+			updated := rows[7]["config"].(map[string]any)
+			updatedCorrectly := updated["content_type"] == "form" && updated["insecure_ssl"] == "1"
+			createdCorrectly := retained && created["config"].(map[string]any)["url"] == "https://created.example/hook"
 			mu.Unlock()
 			want := []string{"update:7", "create:9", "delete:8"}
 			if mode == "record-failure" {
 				want = want[:2]
 			}
-			if !reflect.DeepEqual(got, want) || !retained {
-				t.Fatal("unexpected sequencing", got, retained)
+			if !reflect.DeepEqual(got, want) || !createdCorrectly || !updatedCorrectly || undeleted != (mode == "delete-failure" || mode == "record-failure") {
+				t.Fatal("unexpected sequencing or retained webhook state", got, createdCorrectly, updatedCorrectly, undeleted)
 			}
 			data, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if mode == "hosted" && string(data) != input || mode == "record" && !strings.Contains(string(data), "id: 9") || mode == "record-failure" && string(data) != "# concurrent edit\n" {
+			if mode == "hosted" && string(data) != input || (mode == "record" || mode == "delete-failure") && !strings.Contains(string(data), "id: 9") || mode == "record-failure" && string(data) != "# concurrent edit\n" {
 				t.Fatal("source result", string(data))
 			}
 		})

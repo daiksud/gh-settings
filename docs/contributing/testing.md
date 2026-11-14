@@ -663,3 +663,12 @@ explicit boolean selection through export, creation, selected update and prune.
 Detailed CLI and supplied-product Action reports show disabled-verification risk;
 status-only hides values. Mixed operations retain fixed candidates and verified
 ID recovery. Fixtures do not prove live TLS validation, delivery or Secret equality.
+
+The built CLI and supplied-product Action mixed-prune fixtures also reject a
+failed DELETE after an update and confirmed creation. Both retain the earlier
+changes and created-ID recovery diagnostics, report uncertain deletion effects,
+and leave the undeleted candidate in the local fixture. The CLI records the
+created ID locally when enabled; the Action leaves the settings file and checkout
+HEAD unchanged and publishes no successful outputs on failure. Secret and delivery
+canaries remain private in logs, Summary and Action outputs. This is local failure
+evidence, not a live webhook operation.

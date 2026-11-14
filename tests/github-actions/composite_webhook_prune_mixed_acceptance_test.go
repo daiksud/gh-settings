@@ -18,6 +18,14 @@ import (
 
 func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
+	for _, scenario := range []string{"success", "delete-failure"} {
+		t.Run(scenario, func(t *testing.T) {
+			testCompositeWebhookPruneMixed(t, product, version, scenario)
+		})
+	}
+}
+
+func testCompositeWebhookPruneMixed(t *testing.T, product []byte, version, scenario string) {
 	f := newCompositeFixture(t)
 	f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
 	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
@@ -91,6 +99,11 @@ func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
 			json.NewEncoder(w).Encode(rows[9])
 		case "DELETE /repos/owner/config/hooks/8":
 			writes = append(writes, "delete:8")
+			if scenario == "delete-failure" {
+				w.WriteHeader(422)
+				fmt.Fprint(w, `{"message":"PRIVATE_MIXED_DELETE_FAILURE"}`)
+				return
+			}
 			delete(rows, 8)
 			w.WriteHeader(204)
 		default:
@@ -119,25 +132,45 @@ func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 	opts := map[string]string{"github.action_ref": version, "inputs.prune": "webhooks"}
+	observedText := func(result compositeResult) string {
+		var text strings.Builder
+		text.WriteString(result.log)
+		text.WriteString(result.summary)
+		for name, value := range result.outputs {
+			text.WriteString(name)
+			text.WriteString(value)
+		}
+		return text.String()
+	}
 	plan := f.run(t, "plan", "mixed-fixture", opts)
-	if plan.status != 0 || !strings.Contains(plan.summary, "removed.example") || !strings.Contains(plan.summary, "automatic ping") || !strings.Contains(plan.summary, "opaque Secret") || !strings.Contains(plan.summary, "man-in-the-middle") {
+	if plan.status != 0 || !strings.Contains(plan.summary, "removed.example") || !strings.Contains(plan.summary, "automatic ping") || !strings.Contains(plan.summary, "opaque Secret") || !strings.Contains(plan.summary, "man-in-the-middle") || strings.Contains(observedText(plan), "PRIVATE_MIXED") {
 		t.Fatal(plan)
 	}
 	private := f.run(t, "plan", "mixed-fixture", map[string]string{"github.action_ref": version, "inputs.prune": "all", "inputs.plan-reporting": "status-only"})
-	if private.status != 0 || private.outputs["plan-outcome"] != "changed" || len(private.remainingReports) != 0 || strings.Contains(private.log+private.summary, "removed.example") || strings.Contains(private.log+private.summary, "created.example") || strings.Contains(private.log+private.summary, "PRIVATE_MIXED") || strings.Contains(private.log+private.summary, "ssl_verification") {
+	if private.status != 0 || private.outputs["plan-outcome"] != "changed" || len(private.remainingReports) != 0 || strings.Contains(observedText(private), "removed.example") || strings.Contains(observedText(private), "created.example") || strings.Contains(observedText(private), "PRIVATE_MIXED") || strings.Contains(observedText(private), "ssl_verification") {
 		t.Fatal(private)
 	}
+	mu.Lock()
+	planWrites := len(writes)
+	mu.Unlock()
+	if planWrites != 0 {
+		t.Fatal("plan mutated webhook state")
+	}
 	apply := f.run(t, "apply", "mixed-fixture", opts)
-	if apply.status != 0 || len(apply.outputs) != 4 || strings.Contains(apply.log+apply.summary, "PRIVATE_MIXED") {
+	failed := scenario == "delete-failure"
+	if (apply.status != 0) != failed || (failed && (apply.status != 1 || len(apply.outputs) != 0)) || (!failed && len(apply.outputs) != 4) || strings.Contains(observedText(apply), "PRIVATE_MIXED") {
 		t.Fatal(apply)
+	}
+	if failed && (!strings.Contains(apply.log, "id 9") || !strings.Contains(apply.log, "retain this ID") || !strings.Contains(apply.log, "effects unconfirmed")) {
+		t.Fatal("failed prune lost recovery or uncertain-effect diagnostics", apply)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil || string(data) != input || f.git("rev-parse", "HEAD") != f.sha {
-		t.Fatal("action changed checkout", err)
+		t.Fatal("action changed settings file or checkout HEAD", err)
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(writes, []string{"update:7", "create:9", "delete:8"}) || rows[9] == nil {
+	if !reflect.DeepEqual(writes, []string{"update:7", "create:9", "delete:8"}) || rows[9] == nil || (rows[8] != nil) != failed || rows[7]["config"].(map[string]any)["content_type"] != "form" || rows[7]["config"].(map[string]any)["insecure_ssl"] != "1" || rows[9]["config"].(map[string]any)["url"] != "https://created.example/hook" {
 		t.Fatal("wrong order or retained state", writes)
 	}
 }
