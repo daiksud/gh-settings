@@ -21,7 +21,7 @@ description: Upsert named non-sensitive variables and explicitly prune present c
 - Failures stop later writes; earlier changes remain applied. A failed mutation or verification can have an unknown remote effect. There is no rollback, retry or concurrency lock.
 - Complete acquired strings remain observations, including an empty string if returned. An inventory containing an unsupported empty desired value emits info and retains the prior collection rather than inventing a supported value.
 - Ordinary export independently acquires complete paginated Actions and Agents variable inventories. Failed pages or unsupported entries retain the affected prior collection with info; they never become a partial/empty list.
-- Configuration, export and plan reports can contain the plaintext values; never use these interfaces for credentials or other secrets.
+- Configuration, export and plan reports can contain the plaintext values; never use these interfaces for credentials or other secrets. Actions, Agents and Environment variable API requests suppress inherited `GH_DEBUG` transport logging.
 
 ### Scenario: Keep the same name independent across families
 

@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-// NewVariablesClient pins the Variables contract and rejects redirects, using
-// existing gh authentication without changing permissions.
+// NewVariablesClient pins the Variables contract, rejects redirects and avoids
+// logging plaintext variable bodies when GH_DEBUG enables HTTP tracing.
 func NewVariablesClient(host string) (*Client, error) {
-	rest, err := api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+	rest, err := api.NewRESTClient(api.ClientOptions{Host: host, LogIgnoreEnv: true, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
 	if err != nil {
 		return nil, fmt.Errorf("configure repository Variables API")
 	}
