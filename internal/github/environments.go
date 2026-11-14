@@ -143,6 +143,9 @@ func decodeEnvironment(raw map[string]json.RawMessage) (settings.EnvironmentStat
 				if err := requiredEnvironmentJSON(entry, "reviewer", &principal); err != nil {
 					return result, err
 				}
+				if err := rejectEnvironmentAliases(principal, "id", "type"); err != nil {
+					return result, fmt.Errorf("ambiguous environment reviewer identity: %w", err)
+				}
 				if err := requiredEnvironmentJSON(principal, "id", &reviewer.ID); err != nil {
 					return result, err
 				}
@@ -202,8 +205,8 @@ func decodeEnvironment(raw map[string]json.RawMessage) (settings.EnvironmentStat
 }
 
 func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (settings.EnvironmentState, error) {
-	var raw map[string]json.RawMessage
-	if err := c.rest.Get(environmentPath(repo, name), &raw); err != nil {
+	raw, err := c.envReadStrict(environmentPath(repo, name))
+	if err != nil {
 		return settings.EnvironmentState{}, fmt.Errorf("read environment %q (unavailable is not absent): %w", name, err)
 	}
 	state, record, err := decodeObservedEnvironment(raw)
@@ -263,9 +266,12 @@ func (c *EnvironmentsClient) inventory(repo repository.Repository) ([]environmen
 	identities := []environmentInventoryEntry{}
 	expectedTotal, observed := -1, 0
 	for page := 1; ; page++ {
-		var raw map[string]json.RawMessage
-		if err := c.rest.Get(fmt.Sprintf("%s?per_page=100&page=%d", environmentsPath(repo), page), &raw); err != nil {
+		raw, next, hasLinks, err := c.envReadPage(fmt.Sprintf("%s?per_page=100&page=%d", environmentsPath(repo), page))
+		if err != nil {
 			return nil, fmt.Errorf("list environments: %w", err)
+		}
+		if err := rejectEnvironmentAliases(raw, "total_count", "environments"); err != nil {
+			return nil, fmt.Errorf("ambiguous environment inventory: %w", err)
 		}
 		var count int
 		var entries []map[string]json.RawMessage
@@ -275,11 +281,14 @@ func (c *EnvironmentsClient) inventory(repo repository.Repository) ([]environmen
 		if err := requiredEnvironmentJSON(raw, "environments", &entries); err != nil {
 			return nil, err
 		}
-		if count < 0 || (expectedTotal >= 0 && expectedTotal != count) {
+		if count < 0 || len(entries) > 100 || (expectedTotal >= 0 && expectedTotal != count) {
 			return nil, fmt.Errorf("environment inventory count changed or is invalid")
 		}
 		expectedTotal = count
 		for _, entry := range entries {
+			if err := rejectEnvironmentAliases(entry, "id", "name"); err != nil {
+				return nil, fmt.Errorf("ambiguous environment inventory identity: %w", err)
+			}
 			var name string
 			var id int64
 			if err := requiredEnvironmentJSON(entry, "name", &name); err != nil {
@@ -300,9 +309,12 @@ func (c *EnvironmentsClient) inventory(repo repository.Repository) ([]environmen
 			return nil, fmt.Errorf("environment inventory exceeds declared count")
 		}
 		if observed == count {
+			if next {
+				return nil, fmt.Errorf("environment inventory pagination contradicts count")
+			}
 			break
 		}
-		if len(entries) != 100 {
+		if len(entries) != 100 || hasLinks && !next {
 			return nil, fmt.Errorf("incomplete environment inventory")
 		}
 	}
@@ -460,8 +472,8 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 		c.warnRefTypeNormalizations(state, intent)
 	}
 	if policyWrite {
-		var raw map[string]json.RawMessage
-		if err := c.rest.Put(environmentPath(repo, intent.Name), bytes.NewReader(body), &raw); err != nil {
+		raw, err := c.envRequestStrict(http.MethodPut, environmentPath(repo, intent.Name), bytes.NewReader(body))
+		if err != nil {
 			return false, fmt.Errorf("update environment %q (write may have applied): %w", intent.Name, err)
 		}
 		if err := verifyEnvironmentUpdateResponse(raw, expected); err != nil {
