@@ -83,6 +83,15 @@ mise exec -- go test -tags=acceptance -count=1 ./tests/acceptance -args -binary 
 
 The harness requires an explicit binary path and Unix-socket support. It uses go-gh's `http_unix_socket` configuration in an isolated temporary `GH_CONFIG_DIR`, temporary Git repositories, and a local HTTP fixture. Dummy tokens never authenticate with GitHub. Fixtures are cleaned up without adding product hooks or test-only transport options.
 
+Each CLI subprocess has a finite 60-second harness budget, including the direct
+file-descriptor failure cases. This allows headroom for full export's independent
+family reads on hosted runners; it does not change product API deadlines or retry
+failed commands. The shared executor always returns a diagnostic result with
+captured stdout, stderr and process exit error, separately from a setup or context
+error. [Harness tests](../../tests/acceptance/process_test.go) verify setup failure,
+an expired deadline, cancellation after the child signals that both streams were
+written, and ordinary success/failure without requiring the product binary.
+
 Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only. Repository REST apply reads fresh state, skips matches and independently verifies changed intent. Topics apply reads complete membership, skips matching sets, and verifies changed sets through an independent GET; nonempty label selections read fresh collection state afterward. Invalid input and empty CLI plan/apply make no API requests. Empty topics remain an authoritative managed set; empty labels select no objects. [Topics acceptance](../../tests/acceptance/topics_test.go) covers matching/reordered sets, explicit clearing, repeated apply, invalid or unavailable reads, rejected PUT, denied/mismatching readback, later-resource stopping and earlier repository progress through the built product. [Topics adapter tests](../../internal/github/topics_test.go) additionally verify complete response validation and redirects. [Topics application tests](../../internal/app/topics_test.go) distinguish actual writes, unchanged work, prewrite failures and unarchive progress, and preserve later Labels/final archive sequencing.
 
 [CodeQL threat-model acceptance](../../tests/acceptance/codeql_threat_model_test.go) covers both UI/API choices, threat-only payloads, plan/report and private Summary, repeated no-op, unavailable-detail retention, disabled export cleanup and failure stopping before later setup work. [Configuration adapter tests](../../internal/github/codeql_configuration_test.go) own strict raw decoding and independent readback, including unknown values, omitted companion drift and transport failures. The [configuration process case](../../tests/acceptance/codeql_configuration_test.go) also verifies omitted threat-model preservation while other controls change. These fixtures confirm stored-configuration behavior, not completed analysis or live entitlement.
@@ -247,7 +256,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeWebhooks)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels|CompositeWebhooks)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -523,8 +532,15 @@ Environment-prune conflicts fail before unrelated writes or unarchive.
 The supplied CLI lifecycle checks export, plan, update and repeat no-op.
 `TestBuiltCompositeClassicDeployments` runs the real public Action through enabled,
 disabled, empty and matching configurations, private plans and post-write reference
-replacement. It checks unchanged checkout and success-only outputs. These isolated
-fixtures do not establish live deployment execution or effective branch protection.
+replacement. `TestClassicDeploymentReferenceDiagnostics` covers GraphQL, HTTP,
+transport and malformed-member acquisition failures before/after a mutation,
+including response-controlled member names. The real CLI lifecycle and supplied
+Action include pre/post-write diagnostic regressions; the Action also uses a
+malformed HTTP response to exercise the actual transport failure. Original
+supplied-product and owner regressions leaked the sentinel before correction.
+These checks retain mutation counts, certainty markers, unchanged checkout and
+success-only outputs. These isolated fixtures do not establish live deployment
+execution or effective branch protection.
 
 ## Classic PR-review verification
 
@@ -548,6 +564,50 @@ matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Acti
 for activation, count-zero, deactivation, no-op, guarded failure and readback drift,
 checking private plans, unchanged checkout and success-only outputs. These isolated
 fixtures do not establish live approval behavior or effective merge enforcement.
+
+## Classic fork-sync verification
+
+The [Classic specification](../features/classic-protection.feature.md#conditional-fork-syncing)
+links the literal baseline and model/API/app cases. They distinguish unavailable
+fork metadata from false, bind every private target comparison, preserve inactive
+raw values and verify prewrite versus uncertain postwrite failures. The CLI fork
+cases export and validate both values after application; the actual supplied
+`TestBuiltCompositeClassicForkSync` verifies matching, enable/disable, private plans,
+readback failure and source immutability. The official UI documentation is evidence
+for the control; fixtures do not establish live syncing or branch authorization.
+Combined fork/force/PR-review/status-check/deployment cases verify exact create and
+update payloads, matching repeats, both raw omission directions, selected matching
+sync acknowledgment drift, fork identity drift and prewrite actor lookup failure.
+
+## Classic force-push verification
+
+The [Classic specification](../features/classic-protection.feature.md#force-push-actor-ownership)
+links literal codec, model, API, app and product tests. Fixtures distinguish native
+false with allowances from disabled, preserve hidden actors under Everyone and
+retain known Team for read-only Before/prune. The actual supplied
+`TestBuiltCompositeClassicForcePush` covers matching, App selection, explicit
+clearing, private plans, required lookup on unrelated changes and uncertain actor
+readback. Static identities and local transport do not prove live App access,
+force-push success or enforcement. Combined force-push/PR-review/status-check/deployment
+cases verify creation, updates, disabling and repeat no-ops, omitted-group drift
+and fresh PR transition guards. Published package pins remain unchanged.
+
+## Existing runner label evidence
+
+`internal/settings/runners_test.go` owns explicit-set validation, Unicode
+simple-fold identity and immutable observations. Workspace literal round-trip
+and invalid-shape tests cover the YAML boundary; the unchanged baseline rejects
+`actions.runners`. GitHub owner tests cover selected-only reads, complete
+pagination, optional-ID evidence, classifications/counts, conditional no-ops,
+exact replacement/clear, acknowledgment and independent readback failures.
+App tests verify family-local all-selection preparation, actual-write progress,
+unarchive ordering, independent export retention and diagnostic save failures.
+Action report tests enforce the closed private schema, exact large numeric IDs and family counts.
+`TestRunnerLabelsLifecycle` runs the built CLI, while `TestBuiltCompositeRunnerLabels`
+runs the supplied product through the actual installer/composite for export,
+plan, status-only privacy, change/repeat/clear and failed verification without
+output publication or input edits. These local fixtures do not certify live
+labels, server Unicode semantics, host state or job execution.
 
 ## Existing webhook configuration evidence
 

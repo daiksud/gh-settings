@@ -28,7 +28,7 @@ func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: main, require_status_checks_to_pass_before_merging: {enabled: true, require_branches_to_be_up_to_date_before_merging: false, status_checks: [{name: CHECK_NAME_CANARY, accept_updates_from: APP_SOURCE_CANARY}]}}]}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
-			target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isArchived": false, "isPrivate": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": true}
+			target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isArchived": false, "isPrivate": false, "isFork": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": true}
 			rule := map[string]any{"id": "B_7", "databaseId": 7, "pattern": "main", "repository": target, "requiresConversationResolution": false, "requiresCommitSignatures": false, "requiresLinearHistory": false, "allowsDeletions": false, "lockBranch": false, "isAdminEnforced": false, "allowsForcePushes": false, "blocksCreations": false, "dismissesStaleReviews": false, "lockAllowsFetchAndMerge": false, "requireLastPushApproval": false, "requiresApprovingReviews": false, "requiresCodeOwnerReviews": false, "requiresDeployments": false, "requiresStatusChecks": true, "requiresStrictStatusChecks": mode != "matching", "restrictsPushes": false, "restrictsReviewDismissals": false, "requiredApprovingReviewCount": nil, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": []string{"CHECK_NAME_CANARY"}, "requiredStatusChecks": []any{map[string]any{"context": "CHECK_NAME_CANARY", "app": map[string]any{"id": "APP_SOURCE_CANARY"}}}}
 			page := func(nodes []any) map[string]any {
 				return map[string]any{"totalCount": len(nodes), "nodes": nodes, "pageInfo": map[string]any{"hasNextPage": false, "endCursor": nil}}
@@ -105,7 +105,7 @@ func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
 					writes++
 					rule["requiresStrictStatusChecks"] = false
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"} {
 						ack[key] = rule[key]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}

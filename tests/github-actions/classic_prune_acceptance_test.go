@@ -36,7 +36,7 @@ func TestBuiltCompositeClassicPrune(t *testing.T) {
 	var mu sync.Mutex
 	deleted := false
 	writes := 0
-	target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isPrivate": false, "isArchived": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": false}
+	target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isPrivate": false, "isFork": false, "isArchived": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": false}
 	rule := map[string]any{"id": "B_7", "databaseId": 7, "pattern": "PRIVATE_PATTERN_CANARY", "repository": target,
 		"requiresConversationResolution": false, "requiresCommitSignatures": false, "requiresLinearHistory": false, "allowsDeletions": false,
 		"isAdminEnforced": true, "allowsForcePushes": false, "blocksCreations": false, "dismissesStaleReviews": true, "lockBranch": false, "lockAllowsFetchAndMerge": false, "requireLastPushApproval": true, "requiresApprovingReviews": true, "requiresCodeOwnerReviews": true, "requiresDeployments": false, "requiresStatusChecks": true, "requiresStrictStatusChecks": true, "restrictsPushes": false, "restrictsReviewDismissals": false,

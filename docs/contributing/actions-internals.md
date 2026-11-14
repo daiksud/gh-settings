@@ -173,20 +173,28 @@ Classic protection uses a same-version `branch_protection_rules` array with a
 complete supported `before` projection for updates and the original partial
 `after` request. Creates omit `before` and numeric ID. Prune deletions require
 complete supported `before` and absent `after`, including active PR-review,
-status-check and deployment groups, and show whole-rule removal
+status-check, deployment and force-push groups, and show whole-rule removal
 consequences; private raw companions are never serialized. The closed report rejects
 null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
-updates; it contains no raw companion or actor snapshots. Declaration order is
+updates; it contains no raw companion or hidden actor snapshots. The active
+force-push before-policy accepts known Team identities, while desired after-policy
+accepts only User/App. Nested nulls, unknown/case-variant or duplicate members,
+and duplicate actor identities are rejected. Declaration order is
 preserved because creation age affects priority. Update renderers show only
 requested values; deletions show absence and their whole-object effect. Status-only
 Summary suppresses identities and policy.
 
-The supported before-policy includes the six checkboxes and complete deployment
-and status-check projections. Active status-check groups contain exact check names
+The supported before-policy includes the six checkboxes and complete PR-review,
+deployment, status-check and force-push projections. Active status-check groups contain exact check names
 and App-node sources; inactive groups contain only `enabled: false`. Raw nullable context aliases, latent bindings
 and their ordering remain private. Status-only rendering suppresses the supported
 names and App IDs as well as rule identity. The group does not add another managed
 family count.
+
+Classic `allow_fork_syncing` is conditional: when present in Before or After it
+requires `lock_branch: true`. Missing Before sync can describe an inactive rule or
+a non-fork; reports cannot prove target applicability. Private acquired `isFork`
+and the complete native Boolean supply that evidence without entering the report.
 
 ## Collaborator presentation
 
@@ -221,6 +229,19 @@ deletion count the family once. See [Deploy keys](../settings.md#deploy-keys).
 ## Autolink report boundary
 
 The same-version `autolinks` report array contains exactly one `before` or `after` configuration per operation. A deletion has a complete positive-ID `before`; a creation has a complete IDless `after`. Each configuration contains `reference_prefix`, `target_url` and `reference_format`. There is no update operation. Closed decoding rejects null/unknown members; model validation rejects collisions, invalid URLs, missing controls and invalid identities. Mixed create/delete changes count one family. Private acquisition timestamps and target snapshots never enter reports. Detailed rendering quotes these non-secret controls; status-only projects only outcome/count metadata.
+
+## Runner custom-label report boundary
+
+The optional `runners` array contains one typed change per changed selected ID,
+with the fixed `repository.settings.actions.runners` field and complete
+`before`/`after` objects containing only `id` and `custom_labels`. Numeric IDs
+retain exact integer precision through decoding. Reconstruction
+rejects unknown or noncanonical keys, nulls, invalid/duplicate IDs or label
+identities, cross-ID changes, no-ops, normalization metadata and insufficient
+managed counts. The family counts once regardless of selected runner count.
+Detailed presentation shares the CLI formatter and escapes labels; status-only
+hides the ID and labels. Name/OS/readonly snapshots and raw API metadata never
+enter this report or become apply input.
 
 ## Webhook report boundary
 

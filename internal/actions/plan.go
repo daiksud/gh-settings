@@ -20,6 +20,7 @@ const (
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
 	Webhooks                []settings.WebhookChange          `json:"webhooks,omitempty"`
+	Runners                 RunnerPlanChanges                 `json:"runners,omitempty"`
 	DeployKeys              []DeployKeyPlanEntry              `json:"deploy_keys,omitempty"`
 	Autolinks               []settings.AutolinkChange         `json:"autolinks,omitempty"`
 	CollaboratorDeletions   []CollaboratorDeletionEntry       `json:"collaborator_deletions,omitempty"`
@@ -197,6 +198,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.CopilotInstructions {
 		before, after := change.Values()
 		report.CopilotInstructions = append(report.CopilotInstructions, PlanChange{Field: change.Field(), Before: before, After: after})
+	}
+	for _, change := range result.Comparison.Runners {
+		before, after := change.Values()
+		report.Runners = append(report.Runners, RunnerPlanChange{Field: change.Field(), Before: before, After: after})
 	}
 	for _, change := range result.Comparison.OIDCSubject {
 		before, after := change.Values()

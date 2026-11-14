@@ -290,8 +290,18 @@ complete raw snapshot separate from the active projection;
 needed writes with selected active references bind paginated Environment node
 identities before mutation and verify them after rule readback. Matching rules
 skip that prerequisite. Global Environment prune rejects contradictory selected
-references before any write without silently retaining deletion candidates. Classic prune
-adds private deep-copied full snapshots before any remote write, fixed candidate
+references before any write without silently retaining deletion candidates.
+Fork syncing is a conditional projection of its raw Boolean: only locked forks
+expose it publicly, and selecting it requires explicit lock ownership. Required
+typed fork status travels through private observations/selections and all target
+checks, including actor pages and prune absence confirmation. Inactive raw sync
+remains omission-preservation evidence; public reports contain no fork metadata.
+Force-push ownership retains a separate raw boolean and typed actor snapshot.
+Complete acquired Before admits known Team while desired input admits User/App;
+active Team export is unavailable. Needed writes resolve selected actor IDs/types,
+including otherwise matching actors, and verify full paginated membership after
+scalar acknowledgment. Everyone preserves latent actors; disabled clears them.
+Classic prune adds private deep-copied full snapshots before any remote write, fixed candidate
 rechecks, create/update/writeback-before-delete ordering, exact GraphQL deletion
 acknowledgment and independent complete identity-absence readback. Shared scope
 names drive standalone `all`, CLI help and Action capability output. Export uses the
@@ -322,6 +332,19 @@ fingerprint, grant and selected ID. See the [public contract](../settings.md#dep
 ## Autolink reconciliation
 
 Autolinks have a concrete immutable collection owner in `internal/settings`, a read/create/delete REST adapter in `internal/github`, and shared export/plan/apply sequencing in `internal/app`. UI projection and workspace ID recording keep omission separate from an empty collection. Prune's private expected inventory begins at global preflight and changes only for verified own creations/deletions and unarchive. The adapter checks complete identity/configuration before writes and independently observes their results. Public comparison objects contain only create/delete configuration, with one managed-family count; no timestamp or target snapshot is serialized. The [public contract](../settings.md#autolink-references) owns input constraints and explicit replacement.
+
+## Existing runner custom labels
+
+Settings owns selected-ID declarations, Unicode simple-fold set comparison and
+complete acquired custom/readonly partitions. Workspace owns strict YAML. The
+dedicated GitHub adapter owns private repository/runner identity and raw label-ID
+evidence, bounded and debug-suppressed reads, inventory pagination, declared-set
+PUT, complete acknowledgment and independent verification. Export uses all-runner
+acquisition; plan and apply use selected IDs only. App prepares the complete
+selection before its first write, then records per-runner actual-write results,
+excluding acquisition and no-ops from earlier completed-write evidence. Presentation
+uses only selected IDs/custom labels. There is no prune registration, lifecycle
+writer, token generation, recovery ID or hidden journal.
 
 ## Existing webhook reconciliation
 

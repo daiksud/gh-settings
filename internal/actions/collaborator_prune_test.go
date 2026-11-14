@@ -34,7 +34,7 @@ func TestCollaboratorPruneReportAndPrivacy(t *testing.T) {
 	// Both families survive integration and retain separate managed counts.
 	combined := report
 	id, yes, no := int64(77), true, false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, AllowForcePushes: &settings.ClassicForcePush{Enabled: &no}}
 	combined.Managed = 2
 	combined.BranchProtectionRules = []settings.ClassicChange{{Before: &before, After: &settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireSignedCommits: &yes}}}
 	removed := settings.CloneClassicRule(before)

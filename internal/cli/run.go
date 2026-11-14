@@ -197,6 +197,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = settings.CopilotReviewEffortPath
 		case app.CopilotInstructionsUpdate:
 			path = settings.CopilotInstructionsPath
+		case app.RunnersRead, app.RunnerLabelsUpdate:
+			path = settings.RunnersPath
 		case app.OIDCSubjectUpdate:
 			path = settings.OIDCSubjectPath
 		case app.CopilotMCPUpdate:

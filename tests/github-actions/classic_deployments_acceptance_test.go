@@ -18,7 +18,7 @@ import (
 
 func TestBuiltCompositeClassicDeployments(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "enable", "disable", "empty", "replaced-reference"} {
+	for _, scenario := range []string{"matching", "enable", "disable", "empty", "replaced-reference", "reference-before-graphql", "reference-after-graphql", "reference-before-http", "reference-after-http", "reference-before-transport", "reference-after-transport", "reference-before-member", "reference-after-member"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
@@ -45,7 +45,7 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isArchived": false, "isPrivate": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": false}
+			target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isArchived": false, "isPrivate": false, "isFork": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": false}
 			lock := !desired
 			if scenario == "matching" {
 				lock = desired
@@ -105,12 +105,38 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 						w.WriteHeader(403)
 						return
 					}
+					diagnosticFailure := strings.HasPrefix(scenario, "reference-") && ((strings.Contains(scenario, "-after-") && writes > 0) || (strings.Contains(scenario, "-before-") && writes == 0))
+					const upstreamCanary = "A_PRIVATE_DEPLOYMENT_UPSTREAM_FAILURE"
+					if diagnosticFailure {
+						switch {
+						case strings.HasSuffix(scenario, "-graphql"):
+							json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": upstreamCanary}}})
+							return
+						case strings.HasSuffix(scenario, "-http"):
+							w.WriteHeader(403)
+							json.NewEncoder(w).Encode(map[string]any{"message": upstreamCanary})
+							return
+						case strings.HasSuffix(scenario, "-transport"):
+							conn, buffer, err := w.(http.Hijacker).Hijack()
+							if err != nil {
+								t.Error(err)
+								return
+							}
+							fmt.Fprint(buffer, upstreamCanary+"\r\n\r\n")
+							buffer.Flush()
+							conn.Close()
+							return
+						}
+					}
 					environmentID := "E_1"
 					if scenario == "replaced-reference" && writes > 0 {
 						environmentID = "E_replaced"
 					}
 					current := clone(target)
 					current["environments"] = page([]any{map[string]any{"id": environmentID, "databaseId": nil, "name": "PRIVATE_ENV"}})
+					if diagnosticFailure && strings.HasSuffix(scenario, "-member") {
+						current["environments"].(map[string]any)["nodes"].([]any)[0].(map[string]any)[upstreamCanary] = true
+					}
 					body["repository"] = current
 				case strings.Contains(request.Query, "ClassicProtectionInventory"):
 					node := clone(target)
@@ -151,7 +177,7 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
+					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"} {
 						ack[k] = rule[k]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}
@@ -192,12 +218,16 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 			if plannedWrites != 0 {
 				t.Fatal("plan mutated", plannedWrites)
 			}
-			result := f.run(t, "apply", "deployments-fixture-token", map[string]string{"github.action_ref": version})
-			success := scenario != "replaced-reference"
+			result := f.run(t, "apply", "deployments-fixture-token", map[string]string{"github.action_ref": version, "GH_DEBUG": "api"})
+			success := scenario != "replaced-reference" && !strings.HasPrefix(scenario, "reference-")
+			beforeFailure := strings.Contains(scenario, "-before-")
 			if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 				t.Fatal(result)
 			}
-			if !success && !strings.Contains(result.log, "unconfirmed effects may remain") {
+			if strings.Contains(result.log+result.summary+fmt.Sprint(result.outputs), "A_PRIVATE_DEPLOYMENT_UPSTREAM_FAILURE") {
+				t.Fatal("upstream response leaked", result)
+			}
+			if !success && strings.Contains(result.log, "unconfirmed effects may remain") == beforeFailure {
 				t.Fatal("uncertain progress lost", result)
 			}
 			if success {
@@ -209,12 +239,15 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 			gotWrites, gotReferences := writes, referenceReads
 			mu.Unlock()
 			wantWrites := 1
-			if scenario == "matching" {
+			if scenario == "matching" || beforeFailure {
 				wantWrites = 0
 			}
 			wantReferences := 0
-			if scenario == "enable" || scenario == "replaced-reference" {
+			if scenario == "enable" || scenario == "replaced-reference" || strings.HasPrefix(scenario, "reference-") {
 				wantReferences = 2
+			}
+			if beforeFailure {
+				wantReferences = 1
 			}
 			if gotReferences != wantReferences {
 				t.Fatal("reference reads", gotReferences, wantReferences)

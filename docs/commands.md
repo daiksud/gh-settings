@@ -434,6 +434,17 @@ keys after complete preflight and verifies absence; ordinary `[]` deletes nothin
 
 Automatic export independently attempts the complete [Autolinks family](settings.md#autolink-references). `validate` rejects invalid controls locally. `plan` shows immutable creates/deletions with prefix, URL and format; a matching bound ID is unchanged. `apply` verifies creation with independent object and inventory reads before guarded ID recording. `--prune autolinks` and standalone `all` select fixed unlisted deletion candidates only for a present collection. Replace a reference by explicitly pruning it, then creating its replacement in a later apply. `--no-writeback` leaves creation IDs for the documented follow-up process. Failures retain confirmed earlier progress and unconfirmed effects honestly.
 
+## Existing runner label commands
+
+Automatic export independently acquires the complete [runner labels family](settings.md#existing-runner-custom-labels).
+`validate` checks required IDs and explicit sets locally. `plan` reads selected
+IDs only; detailed output contains their custom labels. `apply` prepares the
+whole selection, then performs fresh conditional replacements with independent
+readback, preserving readonly labels and distinguishing no-ops, verified writes
+and uncertain effects. Explicit empty custom sets clear labels; empty runner
+selections do nothing. No ID recovery, writeback, runner deletion or pruning is
+part of these commands.
+
 ## Existing webhook configuration in current source
 
 [Webhook declarations](settings.md#existing-webhook-configuration) select existing

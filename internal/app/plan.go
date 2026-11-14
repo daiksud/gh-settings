@@ -209,6 +209,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.CopilotInstructions = changes
 	}
+	if desired.Runners != nil && len(*desired.Runners) > 0 {
+		observed, err := read.Runners(repo, *desired.Runners)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.RunnersPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareRunnerLabels(observed, *desired.Runners)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.RunnersPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Runners = changes
+	}
 	if desired.OIDCSubject != nil {
 		observed, err := read.OIDCSubject(repo)
 		if err != nil {

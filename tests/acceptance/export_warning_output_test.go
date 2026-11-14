@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // A failing stderr must exercise warning delivery, not the already-fatal Info
@@ -41,7 +40,7 @@ func TestExportWarningOutputFailure(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), acceptanceProcessTimeout)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, acceptanceBinary(t), "export")
 			cmd.Dir, cmd.Env = fixture.work, env
@@ -107,6 +106,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 	t.Helper()
 	responses := map[string]string{
 		"/hooks":                          `[]`,
+		"/actions/runners":                `{"total_count":0,"runners":[]}`,
 		"/keys":                           `[]`,
 		"":                                strings.TrimSuffix(planResponse, "}") + `,"id":123,"full_name":"owner/current","archived":false,"visibility":"public","private":false,"owner":{"id":2,"login":"owner","type":"User"},"security_and_analysis":{"secret_scanning":{"status":"disabled"},"secret_scanning_push_protection":{"status":"disabled"}}}`,
 		"/collaborators":                  `[]`,
@@ -139,7 +139,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Host == "api.github.com" {
 			if isClassicProtectionFixtureRead(r) {
-				fmt.Fprint(w, `{"data":{"repository":{"id":"R_current","nameWithOwner":"owner/current","isArchived":false,"isPrivate":false,"owner":{"__typename":"User"},"squashMergeAllowed":true,"rebaseMergeAllowed":false,"branchProtectionRules":{"totalCount":0,"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}`)
+				fmt.Fprint(w, `{"data":{"repository":{"id":"R_current","nameWithOwner":"owner/current","isArchived":false,"isPrivate":false,"isFork":false,"owner":{"__typename":"User"},"squashMergeAllowed":true,"rebaseMergeAllowed":false,"branchProtectionRules":{"totalCount":0,"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}`)
 				return
 			}
 			if isIssueCreationPolicyFixtureRead(r) {

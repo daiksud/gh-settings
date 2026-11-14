@@ -8,6 +8,7 @@ import (
 // Declaration holds only explicitly managed values for each supported resource.
 type Declaration struct {
 	Webhooks              *[]Webhook
+	Runners               *[]RunnerLabels
 	DeployKeys            *DeployKeyDeclarations
 	Autolinks             *[]Autolink
 	BranchProtectionRules *[]ClassicRule
@@ -36,7 +37,7 @@ type Declaration struct {
 type TopicsDeclaration struct{ Names *[]string }
 
 func (d Declaration) Empty() bool {
-	return (d.Webhooks == nil || len(*d.Webhooks) == 0) && (d.DeployKeys == nil || d.DeployKeys.Len() == 0) && (d.Autolinks == nil || len(*d.Autolinks) == 0) && d.OIDCSubject == nil && (d.Collaborators == nil || d.Collaborators.Len() == 0) && (d.BranchProtectionRules == nil || len(*d.BranchProtectionRules) == 0) && d.PullRequestExemptions == nil && EnvironmentVariablesEmpty(d.EnvironmentVariables) && d.CopilotReviewEffort == nil && d.PullRequestLimits.Empty() && d.CopilotMCP == nil && d.CopilotInstructions == nil && (d.Variables == nil || d.Variables.Len() == 0) && (d.AgentsVariables == nil || d.AgentsVariables.Len() == 0) && d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && (d.ActionsPolicies == nil || d.ActionsPolicies.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
+	return (d.Runners == nil || len(*d.Runners) == 0) && (d.Webhooks == nil || len(*d.Webhooks) == 0) && (d.DeployKeys == nil || d.DeployKeys.Len() == 0) && (d.Autolinks == nil || len(*d.Autolinks) == 0) && d.OIDCSubject == nil && (d.Collaborators == nil || d.Collaborators.Len() == 0) && (d.BranchProtectionRules == nil || len(*d.BranchProtectionRules) == 0) && d.PullRequestExemptions == nil && EnvironmentVariablesEmpty(d.EnvironmentVariables) && d.CopilotReviewEffort == nil && d.PullRequestLimits.Empty() && d.CopilotMCP == nil && d.CopilotInstructions == nil && (d.Variables == nil || d.Variables.Len() == 0) && (d.AgentsVariables == nil || d.AgentsVariables.Len() == 0) && d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && (d.ActionsPolicies == nil || d.ActionsPolicies.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.

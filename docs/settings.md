@@ -426,6 +426,72 @@ A cache size eviction limit above 10 GB can incur additional charges. It is an e
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
 
+## Existing runner custom labels
+
+Use `repository.settings.actions.runners` to manage custom labels on existing
+repository self-hosted runners in a personally owned public repository:
+
+```yaml
+runners:
+  - id: 23
+    custom_labels: [gpu, accelerated]
+  - id: 24
+    custom_labels: []
+```
+
+Each entry requires a unique positive numeric runner `id` and an explicit
+`custom_labels` list of at most 100 strings. The ID selects an existing runner;
+there is no name-based adoption, creation, rename or ID writeback. Omitting the
+family leaves it unmanaged. `runners: []` selects no runners and makes no family
+requests during plan/apply. An entry with `custom_labels: []` clears that runner's
+custom labels. Unlisted runners remain untouched; there is no runner prune scope,
+and `--prune all` never deletes runners.
+
+Labels form a case-insensitive set. The client uses Unicode simple folding,
+without trimming or Unicode normalization; order and case-only changes are no-ops.
+Submitted spelling remains in YAML and the request. Duplicate case identities,
+blank or control-containing names, nulls, unknown YAML fields and malformed IDs
+fail locally. The nonblank/control rule is a product guard, not an additional
+GitHub schema claim. A desired custom label that collides with an acquired
+read-only label is rejected before this family's first write.
+
+Export acquires the complete paginated inventory plus each runner's detail and
+labels before replacing this family. Known empty inventory exports `runners: []`.
+Any incomplete, denied or inconsistent runner/label observation omits the family
+on first export or retains its valid prior declaration with bounded info; other
+families continue. Missing/null/unknown label type never implies custom or
+read-only, and default labels are never inferred from OS. Label IDs are optional
+observation evidence, not YAML bindings. Present IDs must be positive; conflicting
+known IDs fail. Both reads contribute the strongest available ID evidence.
+
+Plan reads only selected runner IDs and compares their complete custom sets.
+Apply prepares every selected runner before the first label update, then freshly
+reads each runner and repository before writing. A match makes no PUT. A needed
+write on an archived repository fails; an explicitly requested unarchive still
+precedes configuration. Replacement sends only the complete declared custom list.
+HTTP 200 must contain a complete matching label acknowledgment, followed by
+independent repository, same-ID runner and label GETs. Verification preserves
+fresh runner name/OS and exact read-only label names/types, including every
+previously known read-only ID. Custom-label IDs are not owned. Missing prior IDs
+remain unknown, and later missing known read-only IDs fail verification.
+
+Operational status, busy, version and other liveness metadata are not drift
+conditions. Failed pre-write reads are distinguished from uncertain effects after
+a PUT attempt. Earlier verified writes remain applied; later work stops, without
+retry or rollback. Detailed plans and Action Summaries show selected IDs and
+custom labels; status-only hides them. Private name/OS/read-only evidence and raw
+API errors never enter reports. Input files are not modified.
+
+The [official labels guide](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/apply-labels)
+confirms the user-repository UI and case-insensitivity. The
+[repository runner REST API](https://docs.github.com/en/rest/actions/self-hosted-runners)
+provides observation and custom-label replacement. Reads require repository
+Administration read and writes require Administration write. Local fixtures do
+not prove a populated UI, exact server Unicode comparison, live writes, runner
+availability, routing, physical OS or job completion. This support does not
+register/remove runners, generate tokens, install software, manage groups or
+modify workflows and hosts.
+
 ## Actions OIDC subject template
 
 Use `repository.settings.actions.oidc.subject_claim` for the **Subject claim**
@@ -1608,8 +1674,8 @@ See the [behavior specification](features/autolinks.feature.md).
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and six independent checkboxes plus complete PR-review, required status-check
-and deployment groups. It is separate
+and six independent checkboxes, conditional fork syncing, and complete PR-review,
+required status-check, deployment and force-push groups. It is separate
 from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1671,8 +1737,8 @@ requires fresh squash or rebase availability, after any earlier repository updat
 it does not implicitly enable a merge method. Creation sends the exact pattern
 and declared controls; other defaults are controlled by GitHub.
 
-Lock branch makes matching branches read-only. It does not enable fork syncing;
-the acquired fork-sync setting stays unowned and must survive updates unchanged.
+Lock branch makes matching branches read-only. Selecting lock alone sends no
+fork-sync value; an omitted sync setting must survive updates unchanged.
 GitHub documents that locked branches cannot be deleted, even when deletion is
 otherwise allowed. This checkbox does not rewrite the separate deletion setting
 or promise that it will take effect while locked. Readback verifies stored
@@ -1743,6 +1809,11 @@ Environments do not cause drift. Disabling, omission and an empty active set do
 not acquire Environment identities. No-op equality does not establish Environment
 existence or deployment success.
 
+Deployment-reference acquisition failures use bounded request, identity and page
+categories. Upstream GraphQL/HTTP/transport text and response-controlled member
+names are excluded from CLI and Action diagnostics. This leaves pre-write failure
+and post-write uncertainty, earlier progress and stop behavior intact.
+
 Referenced Environments must already exist at the Classic write stage, which
 precedes Environment creation and updates. Create a missing Environment in a
 separate apply. The client does not create, rename or deploy to a reference.
@@ -1769,19 +1840,101 @@ Collateral changes or failed readback stop later work with uncertain effects;
 earlier verified writes remain applied. No retry, rollback or atomic lock is
 promised. Stored-value readback does not establish effective branch enforcement.
 
+`allow_fork_syncing` is an optional Boolean for a personally owned public fork.
+Selecting either `true` or `false` requires explicit `lock_branch: true` in the
+same rule. Omission preserves the native value; null and non-booleans fail. This
+does not implicitly lock a branch, fetch or merge upstream changes, create a fork,
+or change permissions:
+
+```yaml
+branch_protection_rules:
+  - id: 123456
+    branch_name_pattern: main
+    lock_branch: true
+    allow_fork_syncing: false
+```
+
+The official [creation guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule#creating-a-branch-protection-rule)
+documents Allow fork syncing under Lock branch. The GraphQL
+`lockAllowsFetchAndMerge` Boolean has direct true/false polarity. This is documented
+UI evidence; no authenticated fork form or live syncing was tested.
+
+Plan and apply reject a selected value on a confirmed non-fork. Complete typed
+`isFork` evidence is required throughout inventory, actor pages, fresh selection,
+acknowledgment and independent readback. Missing evidence is unavailable, never
+assumed false. A changed fork status fails target verification, including private
+whole-rule prune rechecks and final absence confirmation.
+
+Export includes the observed value only for locked fork rules, together with
+`lock_branch: true`. Unlocked rules and non-forks omit this inactive projection;
+their exact native Boolean remains private preservation/prune evidence. Missing
+active projection fails acquisition instead of producing incomplete YAML. Existing
+updates send only changed declared values; creation sends both selected lock and
+sync values. A matching rule makes no mutation. Selecting lock alone never sends
+fork syncing, and unlocking with sync omitted still verifies that its raw value
+survived. Unexpected changes remain uncertain effects after mutation, not success.
+
+`allow_force_pushes` owns a complete active group. Omission or `{}` leaves it
+unmanaged. `enabled: false` forbids children. `enabled: true` requires
+`who_can_force_push: everyone` or `specified_actors`. Everyone forbids `actors`;
+specified actors require a nonempty authoritative set:
+
+```yaml
+allow_force_pushes:
+  enabled: true
+  who_can_force_push: specified_actors
+  actors:
+    - type: user
+      id: "<opaque User node ID>"
+    - type: app
+      id: "<opaque App node ID>"
+```
+
+Each actor requires exactly `type: user|app` and an opaque nonblank string ID.
+Nulls, unknown members/types, case variants, controls and duplicate IDs fail.
+Logins, numeric IDs and installation IDs are not substitutes. Actor ordering is
+insignificant; export sorts identities. No App installation or access grant is
+performed. User and ChatGPT Codex Connector App selection were observed on the
+unsaved personal-public form on 2026-11-14. No rule was saved or force push tested.
+The [pinned provider mapping](https://github.com/integrations/terraform-provider-github/blob/1b9c5c13eb840a72c99d088f3bf3b5e00b950c04/github/util_v4_branch_protection.go)
+corroborates the native mapping alongside the official GraphQL schema.
+
+Everyone maps to `allowsForcePushes: true`. Specified actors map to false plus the
+complete `bypassForcePushActorIds` set. False with no actors means disabled;
+false alone does not disable existing allowances. Explicit disabling sends false
+and an empty actor list together. Selecting a specified list replaces the complete
+membership, including previously acquired Team allowances. Everyone changes only
+the boolean and preserves all latent actor identities; omission preserves both
+native controls. Unexpected latent changes fail verification, rather than implying
+that GitHub always retains inactive storage.
+
+Before any needed rule mutation with specified actors selected, the client checks
+every desired node ID and User/App type, even if the actor set matches and another
+flag caused the write. Only a wholly matching rule skips these extra lookups.
+The scalar mutation acknowledgment does not prove actor membership; independent
+complete paginated readback verifies actors and omitted raw state. Other protections
+and repository access permissions still determine effective force-push access.
+
+Team is a known acquired identity, but its personal-target selection remains
+unconfirmed and it is not accepted in desired YAML. Other Classic updates and
+whole-rule prune can preserve or inspect that known state. Detailed plans may show
+an active Team in the acquired before-policy, never as a desired input. An active
+specified set containing Team makes automatic Classic export unavailable, retaining
+compatible prior intent instead of dropping it. Everyone can export normally while
+latent Team identities remain private. Unknown actor kinds or incomplete reads fail.
+
 Only independently confirmed creations receive guarded numeric-ID writeback,
 using the original unique pattern. The existing file/symlink/concurrent-edit
 checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation or
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern, six checkboxes and
-active PR-review, status-check and deployment groups. It does not export or adopt the other controls.
+Automatic export projects every readable rule's ID, pattern, six checkboxes, applicable fork syncing and
+active PR-review, status-check, deployment and force-push groups. It does not export or adopt the other controls.
 Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
-GraphQL cannot reveal future unselected schema fields. Actor restrictions,
-fork-sync and force-push selection remain separate work;
+GraphQL cannot reveal future unselected schema fields. Additional actor controls remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
@@ -1856,7 +2009,7 @@ list retains declared numeric IDs and newly created rules. All retained rules mu
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
 Ordinary create/update retains partial-control ownership and complete active
-PR-review, status-check and deployment ownership.
+PR-review, status-check, deployment and force-push ownership.
 
 Deletion removes the entire rule, including unowned protections. An overlapping
 rule may then take effect; recreation cannot restore creation-age priority. The plan shows
@@ -1865,8 +2018,8 @@ companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-six flags, active PR-review/status-check/deployment projections and all known raw companions,
-including inactive PR-review, status-check and deployment values. Missing, denied, partial,
+six flags, fork applicability and conditional syncing, active PR-review/status-check/deployment/force-push projections and all known raw companions,
+including inactive PR-review, status-check, deployment and force-push values. Missing, denied, partial,
 unsupported or inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.

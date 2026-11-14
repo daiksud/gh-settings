@@ -14,9 +14,12 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		for i, value := range settings.ClassicFlags(*c.Before) {
 			parts = append(parts, fmt.Sprintf("%s: %t", names[i], *value))
 		}
+		if c.Before.AllowForkSyncing != nil {
+			parts = append(parts, fmt.Sprintf("allow_fork_syncing: %t", *c.Before.AllowForkSyncing))
+		}
 		parts = append(parts, classicStatusChecksLine(c.Before.RequireStatusChecksToPassBeforeMerging))
 		parts = append(parts, classicReviewsLine(c.Before.RequireAPullRequestBeforeMerging))
-		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging))
+		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging), classicForcePushLine(c.Before.AllowForcePushes))
 		return fmt.Sprintf("%s: delete (id %d) before {%s} → absent (removes the whole rule, including other configured protections; an overlapping rule may take effect)", settings.ClassicProtectionPath, *c.Before.ID, strings.Join(parts, ", "))
 	}
 	operation := "create"
@@ -43,6 +46,17 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 			parts = append(parts, fmt.Sprintf("%s: %t → %t", names[i], *before[i], *v))
 		}
 	}
+	if c.After.AllowForkSyncing != nil {
+		value := fmt.Sprintf("allow_fork_syncing: %t", *c.After.AllowForkSyncing)
+		if c.Before != nil {
+			previous := "inactive"
+			if c.Before.AllowForkSyncing != nil {
+				previous = fmt.Sprintf("%t", *c.Before.AllowForkSyncing)
+			}
+			value = fmt.Sprintf("allow_fork_syncing: %s → %t", previous, *c.After.AllowForkSyncing)
+		}
+		parts = append(parts, value)
+	}
 	if settings.ClassicReviewsManaged(c.After.RequireAPullRequestBeforeMerging) {
 		value := classicReviewsLine(c.After.RequireAPullRequestBeforeMerging)
 		if c.Before != nil {
@@ -54,6 +68,13 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		value := classicDeploymentLine(c.After.RequireDeploymentsToSucceedBeforeMerging)
 		if c.Before != nil {
 			value = classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging) + " → " + value
+		}
+		parts = append(parts, value)
+	}
+	if settings.ClassicForcePushSelected(c.After.AllowForcePushes) {
+		value := classicForcePushLine(c.After.AllowForcePushes)
+		if c.Before != nil {
+			value = classicForcePushLine(c.Before.AllowForcePushes) + " → " + value
 		}
 		parts = append(parts, value)
 	}
@@ -79,4 +100,9 @@ func classicReviewsLine(group *settings.ClassicPullRequestReviews) string {
 func classicDeploymentLine(group *settings.ClassicDeployments) string {
 	data, _ := json.Marshal(group)
 	return "require_deployments_to_succeed_before_merging: " + string(data)
+}
+
+func classicForcePushLine(group *settings.ClassicForcePush) string {
+	data, _ := json.Marshal(group)
+	return "allow_force_pushes: " + string(data)
 }

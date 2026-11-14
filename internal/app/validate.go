@@ -37,6 +37,11 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err := d.Security.Validate(); err != nil {
 		return settings.Declaration{}, err
 	}
+	if d.Runners != nil {
+		if err := settings.ValidateRunnerLabels(*d.Runners); err != nil {
+			return settings.Declaration{}, err
+		}
+	}
 	if d.OIDCSubject != nil {
 		if err := settings.ValidateOIDCSubject(*d.OIDCSubject); err != nil {
 			return settings.Declaration{}, err

@@ -40,16 +40,19 @@ type ClassicCompanions struct {
 	PushActors, ReviewDismissalActors, ForcePushActors, PullRequestActors                        []ClassicActor
 }
 type ClassicState struct {
+	IsFork               bool
 	Rule                 ClassicRule
 	NodeID, RepositoryID string
 	Companions           ClassicCompanions
 }
 type ClassicObservation struct {
+	IsFork       bool
 	RepositoryID string
 	Archived     bool
 	Rules        []ClassicState
 }
 type ClassicSelection struct {
+	IsFork       bool
 	RepositoryID string
 	Before       *ClassicState
 	Desired      ClassicRule
@@ -67,9 +70,11 @@ type ClassicWriteResult struct {
 }
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
+	r.AllowForkSyncing = cloneClassicValue(r.AllowForkSyncing)
 	r.RequireStatusChecksToPassBeforeMerging = CloneClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging)
 	r.RequireAPullRequestBeforeMerging = CloneClassicReviews(r.RequireAPullRequestBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
+	r.AllowForcePushes = CloneClassicForcePush(r.AllowForcePushes)
 	r.RequireConversationResolutionBeforeMerging = cloneClassicValue(r.RequireConversationResolutionBeforeMerging)
 	r.RequireSignedCommits = cloneClassicValue(r.RequireSignedCommits)
 	r.RequireLinearHistory = cloneClassicValue(r.RequireLinearHistory)
@@ -89,9 +94,16 @@ func cloneClassicValue[T any](v *T) *T {
 func ClassicFlags(r ClassicRule) []*bool {
 	return []*bool{r.RequireConversationResolutionBeforeMerging, r.RequireSignedCommits, r.RequireLinearHistory, r.AllowDeletions, r.LockBranch, r.DoNotAllowBypassingTheAboveSettings}
 }
-func ValidateClassicRules(rules []ClassicRule) error {
+func ValidateClassicRules(rules []ClassicRule) error { return validateClassicRules(rules, false) }
+func validateClassicRules(rules []ClassicRule, acquired bool) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
+		if r.AllowForkSyncing != nil && (r.LockBranch == nil || !*r.LockBranch) {
+			return fmt.Errorf("allow_fork_syncing requires explicit lock_branch: true")
+		}
+		if err := ValidateClassicForcePush(r.AllowForcePushes, acquired); err != nil {
+			return err
+		}
 		if err := ValidateClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging); err != nil {
 			return err
 		}
@@ -124,10 +136,10 @@ func (o ClassicObservation) Validate() error {
 	}
 	ids, nodes := map[int64]bool{}, map[string]bool{}
 	for _, s := range o.Rules {
-		if err := ValidateClassicRules([]ClassicRule{s.Rule}); err != nil {
+		if err := validateClassicRules([]ClassicRule{s.Rule}, true); err != nil {
 			return err
 		}
-		if s.Rule.ID == nil || ids[*s.Rule.ID] || s.NodeID == "" || nodes[s.NodeID] || s.RepositoryID != o.RepositoryID {
+		if s.Rule.ID == nil || ids[*s.Rule.ID] || s.NodeID == "" || nodes[s.NodeID] || s.RepositoryID != o.RepositoryID || s.IsFork != o.IsFork {
 			return fmt.Errorf("incomplete or ambiguous classic rule identity")
 		}
 		ids[*s.Rule.ID], nodes[s.NodeID] = true, true
@@ -136,7 +148,17 @@ func (o ClassicObservation) Validate() error {
 				return fmt.Errorf("incomplete classic protection controls")
 			}
 		}
+		if !reflect.DeepEqual(ClassicForkSyncProjection(s.IsFork, *s.Rule.LockBranch, s.Companions.LockAllowsFetchAndMerge), s.Rule.AllowForkSyncing) {
+			return fmt.Errorf("incomplete or inconsistent classic fork-sync projection")
+		}
 		c := s.Companions
+		force, err := ClassicForcePushProjection(c.AllowsForcePushes, c.ForcePushActors)
+		if err != nil {
+			return err
+		}
+		if !ClassicForcePushEqual(force, s.Rule.AllowForcePushes) {
+			return fmt.Errorf("incomplete or inconsistent classic force-push projection")
+		}
 		status, err := ProjectClassicStatusChecks(c)
 		if err != nil {
 			return err
@@ -188,6 +210,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	}
 	result := make([]ClassicSelection, 0, len(desired))
 	for _, d := range desired {
+		if d.AllowForkSyncing != nil && !o.IsFork {
+			return nil, fmt.Errorf("allow_fork_syncing requires a fork repository")
+		}
 		var selected *ClassicState
 		for _, s := range o.Rules {
 			if d.ID != nil && *d.ID == *s.Rule.ID {
@@ -216,7 +241,7 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 				return nil, err
 			}
 		}
-		result = append(result, ClassicSelection{RepositoryID: o.RepositoryID, Before: selected, Desired: CloneClassicRule(d)})
+		result = append(result, ClassicSelection{RepositoryID: o.RepositoryID, IsFork: o.IsFork, Before: selected, Desired: CloneClassicRule(d)})
 	}
 	// Requested outcomes may not introduce a collision through two edits/creates.
 	for i, a := range result {
@@ -229,6 +254,12 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	return result, nil
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
+	if desired.AllowForkSyncing != nil && (observed.AllowForkSyncing == nil || *desired.AllowForkSyncing != *observed.AllowForkSyncing) {
+		return false
+	}
+	if ClassicForcePushSelected(desired.AllowForcePushes) && !ClassicForcePushEqual(observed.AllowForcePushes, desired.AllowForcePushes) {
+		return false
+	}
 	if !ClassicStatusChecksMatch(observed.RequireStatusChecksToPassBeforeMerging, desired.RequireStatusChecksToPassBeforeMerging) {
 		return false
 	}
@@ -275,7 +306,12 @@ func ExportClassicRules(o ClassicObservation) ([]ClassicRule, error) {
 	}
 	r := make([]ClassicRule, 0, len(o.Rules))
 	for _, s := range o.Rules {
-		r = append(r, CloneClassicRule(s.Rule))
+		if err := ValidateClassicForcePush(s.Rule.AllowForcePushes, false); err != nil {
+			return nil, fmt.Errorf("classic force-push actor policy cannot be exported: %w", err)
+		}
+		exported := CloneClassicRule(s.Rule)
+		exported.AllowForcePushes, _ = ClassicForcePushProjection(s.Companions.AllowsForcePushes, s.Companions.ForcePushActors)
+		r = append(r, exported)
 	}
 	slices.SortFunc(r, func(a, b ClassicRule) int {
 		if *a.ID < *b.ID {
@@ -304,13 +340,16 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 			}
 			continue
 		}
-		if err := ValidateClassicRules([]ClassicRule{*c.Before}); err != nil {
+		if err := validateClassicRules([]ClassicRule{*c.Before}, true); err != nil {
 			return err
 		}
 		if c.Before.ID == nil || seen[*c.Before.ID] {
 			return fmt.Errorf("missing or duplicate classic change identity")
 		}
 		seen[*c.Before.ID] = true
+		if !ClassicForcePushSelected(c.Before.AllowForcePushes) {
+			return fmt.Errorf("incomplete classic before force-push policy")
+		}
 		if !ClassicStatusChecksManaged(c.Before.RequireStatusChecksToPassBeforeMerging) {
 			return fmt.Errorf("incomplete classic before status-check policy")
 		}
@@ -352,13 +391,17 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 // VerifyClassicPreservation compares all unowned known controls, including owned
 // controls omitted from this partial request. Exact nullable raw state is retained.
 func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) error {
-	if before.NodeID != after.NodeID || before.RepositoryID != after.RepositoryID || *before.Rule.ID != *after.Rule.ID {
+	if before.NodeID != after.NodeID || before.RepositoryID != after.RepositoryID || before.IsFork != after.IsFork || *before.Rule.ID != *after.Rule.ID {
 		return fmt.Errorf("classic rule identity changed")
 	}
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
 	bCompanions, aCompanions := before.Companions, after.Companions
+	if desired.AllowForkSyncing != nil {
+		bCompanions.LockAllowsFetchAndMerge = aCompanions.LockAllowsFetchAndMerge
+	}
+	maskSelectedClassicForcePush(&bCompanions, aCompanions, desired.AllowForcePushes)
 	maskSelectedClassicReviews(&bCompanions, aCompanions, desired.RequireAPullRequestBeforeMerging)
 	if ClassicStatusChecksManaged(desired.RequireStatusChecksToPassBeforeMerging) {
 		bCompanions.RequiresStatusChecks, aCompanions.RequiresStatusChecks = false, false
@@ -383,33 +426,40 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 }
 
 func (c *ClassicChange) UnmarshalJSON(data []byte) error {
-	var value any
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
+	if !json.Valid(data) {
+		return fmt.Errorf("invalid classic report JSON")
 	}
-	var valid func(any) bool
-	valid = func(v any) bool {
-		if v == nil {
+	structure := json.NewDecoder(bytes.NewReader(data))
+	var valid func() bool
+	valid = func() bool {
+		value, err := structure.Token()
+		if err != nil || value == nil {
 			return false
 		}
-		if m, ok := v.(map[string]any); ok {
-			for k, x := range m {
-				if k != strings.ToLower(k) || !valid(x) {
+		switch value {
+		case json.Delim('['):
+			for structure.More() {
+				if !valid() {
 					return false
 				}
 			}
-		}
-		if list, ok := v.([]any); ok {
-			for _, x := range list {
-				if !valid(x) {
+			_, err = structure.Token()
+		case json.Delim('{'):
+			seen := map[string]bool{}
+			for structure.More() {
+				key, keyErr := structure.Token()
+				name, ok := key.(string)
+				if keyErr != nil || !ok || seen[name] || name != strings.ToLower(name) || !valid() {
 					return false
 				}
+				seen[name] = true
 			}
+			_, err = structure.Token()
 		}
-		return true
+		return err == nil
 	}
-	if !valid(value) {
-		return fmt.Errorf("null or noncanonical classic report")
+	if !valid() {
+		return fmt.Errorf("null, duplicate or noncanonical classic report")
 	}
 	type plain ClassicChange
 	var result plain

@@ -65,6 +65,18 @@ func TestWebhookReportSelectedProjectionAndPrivacy(t *testing.T) {
 	if _, e := actions.RenderSummary(report, summaryMetadata()); e != nil {
 		t.Fatal(e)
 	}
+	// Runner and webhook changes retain independent collection evidence after composition.
+	if err := json.Unmarshal([]byte(`[{"field":"repository.settings.actions.runners","before":{"id":23,"custom_labels":["old"]},"after":{"id":23,"custom_labels":["GPU"]}}]`), &report.Runners); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := actions.RenderSummary(report, summaryMetadata()); err == nil {
+		t.Fatal("undercounted runner/webhook/autolink families")
+	}
+	report.Managed = 3
+	combined, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || !strings.Contains(combined, "GPU") || !strings.Contains(html.UnescapeString(combined), after) {
+		t.Fatal("combined family presentation lost", err, combined)
+	}
 	t.Setenv("SETTINGS_TARGET", "owner/current")
 	summary := filepath.Join(t.TempDir(), "summary.md")
 	if status := actions.Run([]string{"summary", path, summary, "status-only"}, &out, &errout, "dev", nil); status != 0 {

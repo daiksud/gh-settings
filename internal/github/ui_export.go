@@ -162,6 +162,19 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Actions.Variables = &values
 	}
+	if source.Runners != nil {
+		if err := settings.ValidateRunnerLabels(*source.Runners); err != nil {
+			return uimodel.Repository{}, err
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Actions == nil {
+			result.Settings.Actions = &uimodel.ActionsSettings{}
+		}
+		values := settings.CloneRunnerLabels(*source.Runners)
+		result.Settings.Actions.Runners = &values
+	}
 	if source.OIDCSubject != nil {
 		if err := settings.ValidateOIDCSubject(*source.OIDCSubject); err != nil {
 			return uimodel.Repository{}, err
