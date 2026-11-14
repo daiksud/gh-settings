@@ -22,6 +22,8 @@ Test mapping: [TestRetentionAcquisitionBoundsAndReadOnlyMaximum](../../internal/
 
 Plan reads only this resource for a retention-only declaration and displays known native integers. Apply follows workflow permissions, performs complete read/current-cap preflight, then a fresh adapter read before its sole days-only PUT if needed. Matching state performs no mutation. Later resources stop on failure; no saved plan, transaction, lock, retry or rollback is introduced.
 
+Acquisition rejects oversized, invalid UTF-8, malformed or trailing JSON, duplicate object members and case aliases of the two retained fields. Ambiguous values do not establish a match, including on an archived repository; a readback failure after a write leaves its effects uncertain.
+
 Post-write verification requires desired days and complete applicable upper metadata. A maximum changing independently is allowed if desired days remain within it; a newly restrictive/unknown maximum or wrong retained days fails verification with uncertain write effects. Pre-write read/preflight failures carry confirmed no-write certainty. Successful reads and matching/no-write callbacks do not create false prior-write progress; earlier actual resource writes remain confirmed on a later failure.
 
 Test mapping: [TestRetentionFreshCapNarrowPUTAndReadback](../../internal/github/retention_test.go), [TestRetentionIndependentReadAndMatchingApply](../../internal/app/retention_test.go), [TestRetentionFailureDoesNotInventEarlierWrites](../../internal/app/retention_test.go).
