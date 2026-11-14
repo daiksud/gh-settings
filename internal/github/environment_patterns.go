@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -35,8 +36,11 @@ func (c *EnvironmentsClient) readPatterns(repo repository.Repository, name strin
 	states := []settings.EnvironmentPatternState{}
 	expected := -1
 	for page := 1; ; page++ {
-		var raw map[string]json.RawMessage
-		if err := c.rest.Get(fmt.Sprintf("%s?per_page=100&page=%d", patternPath(repo, name), page), &raw); err != nil {
+		raw, next, hasLinks, err := c.envReadPage(fmt.Sprintf("%s?per_page=100&page=%d", patternPath(repo, name), page))
+		if err != nil {
+			return nil, fmt.Errorf("list environment deployment patterns: %w", err)
+		}
+		if err := rejectEnvironmentAliases(raw, "total_count", "branch_policies"); err != nil {
 			return nil, fmt.Errorf("list environment deployment patterns: %w", err)
 		}
 		var total int
@@ -47,7 +51,7 @@ func (c *EnvironmentsClient) readPatterns(repo repository.Repository, name strin
 		if err := requiredEnvironmentJSON(raw, "branch_policies", &entries); err != nil {
 			return nil, err
 		}
-		if total < 0 || (expected >= 0 && expected != total) {
+		if total < 0 || len(entries) > 100 || (expected >= 0 && expected != total) {
 			return nil, fmt.Errorf("deployment pattern inventory count changed or invalid")
 		}
 		expected = total
@@ -65,9 +69,12 @@ func (c *EnvironmentsClient) readPatterns(repo repository.Repository, name strin
 			return nil, fmt.Errorf("deployment pattern inventory exceeds count")
 		}
 		if len(states) == total {
+			if next {
+				return nil, fmt.Errorf("deployment pattern pagination contradicts count")
+			}
 			return states, nil
 		}
-		if len(entries) != 100 {
+		if len(entries) != 100 || hasLinks && !next {
 			return nil, fmt.Errorf("incomplete deployment pattern inventory")
 		}
 	}
@@ -91,9 +98,9 @@ func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name stri
 			if err != nil {
 				return attempted, err
 			}
-			var raw map[string]json.RawMessage
 			attempted = true
-			if err := c.rest.Post(patternPath(repo, name), bytes.NewReader(body), &raw); err != nil {
+			raw, err := c.envRequestStrict(http.MethodPost, patternPath(repo, name), bytes.NewReader(body))
+			if err != nil {
 				return attempted, fmt.Errorf("create %s pattern %q (write may have applied): %w", change.Pattern.Type, change.Pattern.Name, err)
 			}
 			actual, err := decodeEnvironmentPattern(raw)
@@ -105,8 +112,8 @@ func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name stri
 			}
 		case "delete":
 			path := patternPath(repo, name) + "/" + strconv.FormatInt(change.ID, 10)
-			var raw map[string]json.RawMessage
-			if err := c.rest.Get(path, &raw); err != nil {
+			raw, err := c.envReadStrict(path)
+			if err != nil {
 				return attempted, fmt.Errorf("read pattern before removal: %w", err)
 			}
 			actual, err := decodeObservedEnvironmentPattern(raw)
