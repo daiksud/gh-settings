@@ -216,6 +216,31 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal("matching archived apply wrote settings", writes)
 	}
 	mu.Unlock()
+	input = repositoryInput(`about: {description: Closed for maintenance}
+labels: []
+settings:
+  general: {danger_zone: {archive_this_repository: true}}
+  webhooks: []
+  deploy_keys: []
+  rulesets: []
+  branch_protection_rules: []
+  environments: [{name: production, variables: []}]
+  actions: {variables: []}
+  agents: {variables: []}
+`)
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
+	run("apply")
+	actual, err := os.ReadFile(path)
+	if err != nil || string(actual) != input {
+		t.Fatal("empty collection apply changed the declaration", err)
+	}
+	mu.Lock()
+	if len(writes) != 2 {
+		t.Fatal("empty collection apply wrote settings", writes)
+	}
+	mu.Unlock()
 	input = repositoryInput("about: {description: Different}\nsettings: {general: {danger_zone: {archive_this_repository: true}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)

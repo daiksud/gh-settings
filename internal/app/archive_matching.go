@@ -93,8 +93,9 @@ func declarationShapeWithIdentity(root reflect.Type, identity func(reflect.Type)
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
-// archivedMatchingScope rejects every selected declaration outside the small
-// admitted set; it never treats the representation of nil fields as evidence.
+// archivedMatchingScope rejects every managed declaration outside the admitted
+// set. With no pruning, ordinary apply's archive guard treats some explicit
+// empty collections as unmanaged; use the same typed predicate for the residue.
 func archivedMatchingScope(desired settings.Declaration, prune settings.PruneScopes) bool {
 	if !archivedSchemaCompatible() || prune != (settings.PruneScopes{}) {
 		return false
@@ -110,7 +111,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Actions.ForkApprovalPolicy = nil
 	remaining.Security = settings.SecurityDeclaration{}
 	remaining.Pages = settings.PagesDeclaration{}
-	return reflect.DeepEqual(remaining, settings.Declaration{})
+	return !archiveConflictsWithOtherManaged(remaining)
 }
 
 func archivedSchemaCompatible() bool {
