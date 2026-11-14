@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Select a release version from a frozen Git commit and published GitHub releases.
 
-This file is identical in gh-settings and gh-qw. Repository-specific release
-matrices, artifacts, publication, and verification remain in their own workflows.
+Repository-specific release matrices, artifacts, publication, and verification
+remain in their own workflows.
 """
 
 import json
@@ -138,12 +138,14 @@ def classify(message):
     return kind, scope, breaking, minor
 
 
-def next_version(version, tier):
+def next_version(version, tier, graduate_to_v1=False):
     if not VERSION.fullmatch(version):
         raise ReleaseError("invalid published stable version")
     numbers = [int(number) for number in version[1:].split(".")]
     if any(number > MAX_COMPONENT for number in numbers):
         raise ReleaseError("version component exceeds supported range")
+    if graduate_to_v1 and numbers[0] == 0:
+        return "v1.0.0"
     if tier == 2 and numbers[0] == 0:
         tier = 1  # v1.0.0 requires a deliberate project decision.
     index = 2 - tier
@@ -154,7 +156,7 @@ def next_version(version, tier):
     return "v" + ".".join(map(str, numbers))
 
 
-def calculate(source, releases, allow_retry=False):
+def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
     if not SHA.fullmatch(source):
         raise ReleaseError("source must be an immutable full commit SHA")
     if git("rev-parse", "--is-shallow-repository").strip() != "false":
@@ -201,19 +203,22 @@ def calculate(source, releases, allow_retry=False):
         tier = max(tier, 2 if breaking else 1 if minor else 0)
     if tier < 0:
         raise ReleaseError("no substantive changes since previous release")
-    return next_version(previous_tag, tier), previous_tag, previous_sha
+    return next_version(previous_tag, tier, graduate_to_v1), previous_tag, previous_sha
 
 
 def main():
     try:
-        allow_retry = sys.argv[1:] == ["--allow-retry"]
-        if sys.argv[1:] and not allow_retry:
-            raise ReleaseError("usage: release-version.py [--allow-retry]")
+        options = sys.argv[1:]
+        allowed = {"--allow-retry", "--graduate-to-v1"}
+        if len(options) != len(set(options)) or any(option not in allowed for option in options):
+            raise ReleaseError("usage: release-version.py [--allow-retry] [--graduate-to-v1]")
+        allow_retry = "--allow-retry" in options
+        graduate_to_v1 = "--graduate-to-v1" in options
         repository = os.environ.get("GITHUB_REPOSITORY", "")
         source = os.environ.get("SOURCE_SHA", "")
         if not REPOSITORY.fullmatch(repository):
             raise ReleaseError("invalid repository identity")
-        version, previous_tag, previous_sha = calculate(source, read_releases(repository), allow_retry)
+        version, previous_tag, previous_sha = calculate(source, read_releases(repository), allow_retry, graduate_to_v1)
         print(f"version={version}\nprevious-tag={previous_tag}\nprevious-sha={previous_sha}")
     except (ReleaseError, UnicodeError, ValueError, OverflowError) as error:
         print(f"release-version: {error}", file=sys.stderr)

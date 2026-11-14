@@ -1,6 +1,8 @@
-"""Offline contract tests for the identical gh-settings/gh-qw release calculator."""
+"""Offline contract tests for the gh-settings release calculator."""
 
 import importlib.util
+import contextlib
+import io
 import json
 import os
 import pathlib
@@ -50,12 +52,12 @@ class HistoryFixture(unittest.TestCase):
                      "published_at": "2026-10-01T00:00:00Z"}
         return [published, *(other or [])]
 
-    def calculate(self, other=None, allow_retry=False):
+    def calculate(self, other=None, allow_retry=False, graduate_to_v1=False):
         source = self.git("rev-parse", "HEAD")
         old = pathlib.Path.cwd()
         os.chdir(self.root)
         try:
-            return versioning.calculate(source, self.catalog(other), allow_retry)
+            return versioning.calculate(source, self.catalog(other), allow_retry, graduate_to_v1)
         finally:
             os.chdir(old)
 
@@ -128,6 +130,91 @@ class HistoryFixture(unittest.TestCase):
         with self.assertRaisesRegex(versioning.ReleaseError, "complete Git history"):
             self.calculate()
 
+    def test_graduation_uses_validated_substantive_interval(self):
+        for message in ("fix: patch", "feat: feature", "perf: speed", "feat!: breaking"):
+            with self.subTest(message=message):
+                self.git("reset", "--hard", self.base)
+                self.commit(message)
+                version, previous, sha = self.calculate(graduate_to_v1=True)
+                self.assertEqual((version, previous, sha), ("v1.0.0", "v0.3.0", self.base))
+        self.git("reset", "--hard", self.base)
+        self.commit("chore: empty", empty=True)
+        with self.assertRaisesRegex(versioning.ReleaseError, "no substantive changes"):
+            self.calculate(graduate_to_v1=True)
+
+    def test_graduation_keeps_immutable_retry(self):
+        sha = self.commit("feat: feature")
+        self.git("tag", "v0.4.0")
+        marker = {"version": "v0.4.0", "commit": sha, "macos_sha256": "a" * 64,
+                  "linux_sha256": "b" * 64, "checksums_sha256": "c" * 64}
+        release = {"id": 2, "tag_name": "v0.4.0", "draft": True, "prerelease": False,
+                   "body": "<!-- gh-settings-release: " + json.dumps(marker) + " -->"}
+        self.assertEqual(self.calculate([release], True, True), ("v0.4.0", "", ""))
+        self.git("tag", "v1.0.0")
+        marker["version"] = "v1.0.0"
+        release["tag_name"] = "v1.0.0"
+        release["body"] = "<!-- gh-settings-release: " + json.dumps(marker) + " -->"
+        self.assertEqual(self.calculate([release], True, True), ("v1.0.0", "", ""))
+        duplicate = dict(release, id=3)
+        with self.assertRaisesRegex(versioning.ReleaseError, "multiple existing releases"):
+            self.calculate([release, duplicate], True, True)
+        self.git("tag", "-f", "v1.0.0", self.base)
+        with self.assertRaisesRegex(versioning.ReleaseError, "does not match"):
+            self.calculate([release], True, True)
+
+    def test_graduation_does_not_bypass_baseline_checks(self):
+        self.commit("fix: change")
+        source = self.git("rev-parse", "HEAD")
+        old = pathlib.Path.cwd()
+        os.chdir(self.root)
+        try:
+            with self.assertRaisesRegex(versioning.ReleaseError, "initial release"):
+                versioning.calculate(source, [], graduate_to_v1=True)
+            with self.assertRaisesRegex(versioning.ReleaseError, "source"):
+                versioning.calculate("bad", self.catalog(), graduate_to_v1=True)
+            (self.root / ".git/shallow").write_text(self.base + "\n")
+            with self.assertRaisesRegex(versioning.ReleaseError, "complete Git history"):
+                versioning.calculate(source, self.catalog(), graduate_to_v1=True)
+            (self.root / ".git/shallow").unlink()
+            tree = self.git("rev-parse", f"{self.base}^{{tree}}")
+            unrelated = self.git("commit-tree", tree, "-m", "chore: unrelated")
+            self.git("tag", "-f", self.tag, unrelated)
+            with self.assertRaisesRegex(versioning.ReleaseError, "not an ancestor"):
+                versioning.calculate(source, self.catalog(), graduate_to_v1=True)
+            self.git("tag", "-d", self.tag)
+            with self.assertRaises(versioning.ReleaseError):
+                versioning.calculate(source, self.catalog(), graduate_to_v1=True)
+        finally:
+            os.chdir(old)
+
+    def test_real_cli_option_parsing(self):
+        source = self.commit("fix: change")
+        old = pathlib.Path.cwd()
+        os.chdir(self.root)
+        try:
+            with mock.patch.dict(os.environ, {"SOURCE_SHA": source, "GITHUB_REPOSITORY": "owner/repo"}), \
+                 mock.patch.object(versioning, "read_releases", return_value=self.catalog()):
+                for args in (["--graduate-to-v1"], ["--allow-retry", "--graduate-to-v1"],
+                             ["--graduate-to-v1", "--allow-retry"]):
+                    output = io.StringIO()
+                    with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stdout(output):
+                        versioning.main()
+                    self.assertEqual(output.getvalue(), f"version=v1.0.0\nprevious-tag=v0.3.0\nprevious-sha={self.base}\n")
+                for args in (["--graduate-to-v1", "--graduate-to-v1"], ["--unknown"], ["--allow-retry=yes"]):
+                    with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                        versioning.main()
+        finally:
+            os.chdir(old)
+
+    def test_stable_history_retains_normal_tiers(self):
+        self.git("tag", "v1.2.3", self.base)
+        self.tag = "v1.2.3"
+        for message, expected in (("fix: patch", "v1.2.4"), ("feat: feature", "v1.3.0"), ("feat!: break", "v2.0.0")):
+            with self.subTest(message=message):
+                self.git("reset", "--hard", self.base)
+                self.commit(message)
+                self.assertEqual(self.calculate(graduate_to_v1=True)[0], expected)
+
 
 class ParsingTests(unittest.TestCase):
     def test_fences_and_trailer_positions(self):
@@ -147,6 +234,15 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(versioning.next_version("v0.2.3", 2), "v0.3.0")
         with self.assertRaises(versioning.ReleaseError):
             versioning.next_version("v1.2.18446744073709551615", 0)
+
+    def test_graduation_component_bounds_and_stable_tiers(self):
+        maximum = str(versioning.MAX_COMPONENT)
+        self.assertEqual(versioning.next_version(f"v0.{maximum}.{maximum}", 0, True), "v1.0.0")
+        with self.assertRaises(versioning.ReleaseError):
+            versioning.next_version(f"v0.{versioning.MAX_COMPONENT + 1}.0", 2, True)
+        for tier, expected in ((0, "v1.2.4"), (1, "v1.3.0"), (2, "v2.0.0")):
+            self.assertEqual(versioning.next_version("v1.2.3", tier, True), expected)
+            self.assertEqual(versioning.next_version("v1.2.3", tier), expected)
 
     def test_catalog_rejects_incomplete_data(self):
         for release in [{"id": 1, "tag_name": "v0.1.0"},
