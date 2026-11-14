@@ -17,7 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
-| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`; see [pruning](#explicit-collection-pruning). |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys`, `webhooks` and `runners`; see [pruning](#explicit-collection-pruning). |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action does not mint a token or certify its actual grants; collaborator prune additionally requires positive management-path evidence using that same credential; there is no ambient-token or personal-credential fallback.
 
@@ -192,7 +192,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
 | Agents repository variables (current source) | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
 | Actions event policies (current source) | Administration **write**, including list/GET, export and plan ([official API](https://docs.github.com/en/rest/actions/policies)) | Administration write, complete preflight, fresh detail guard and independent acknowledgment/readback |
-| Existing runner custom labels (current source) | Administration read, complete personally owned public target, runner detail and label evidence | Administration write plus independent acknowledgment/readback; no registration/removal or tokens |
+| Existing runner labels and pruning (current source) | Administration read, complete personally owned public target, runner detail and label evidence | Administration write plus independent acknowledgment/readback; explicit pruning removes unlisted registrations by ID, with no registration or tokens |
 | Actions OIDC subject configuration (current source) | Actions read and complete personal-public target identity | Actions write, complete active-template/immutable evidence, fresh omitted-unit replay and independent readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
@@ -379,14 +379,14 @@ Current source accepts optional comma-separated `prune` for `command: plan` or
 adds deletions to other declared work and defaults to no pruning. `export` and `validate`
 reject a nonempty prune input. Omitted collections stay unmanaged; explicit []
 can delete all objects in the selected scope. Label deletion loses Issue/PR
-assignments, including undeclared Dependabot labels. Webhook pruning deletes whole unlisted hooks and associated opaque Secrets. Standalone `all` includes this scope for existing present lists; an empty list selects all. Detailed plan Summary shows
+assignments, including undeclared Dependabot labels. Webhook pruning deletes whole unlisted hooks and associated opaque Secrets; runner pruning removes unlisted remote registrations and may affect jobs. Standalone `all` includes both scopes for present lists, including `[]`; review existing declarations before apply. Detailed plan Summary shows
 these consequences; status-only retains its existing value-hiding boundary.
 
 The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
 use `actions-policies`; parent deletion uses `environments`; personal access deletion
-uses `collaborators`; Autolink deletion uses `autolinks`; classic rule deletion uses `branch-protection-rules`; deploy key deletion uses `deploy-keys`; whole-webhook deletion uses `webhooks`. Standalone `all` selects every currently supported
+uses `collaborators`; Autolink deletion uses `autolinks`; classic rule deletion uses `branch-protection-rules`; deploy key deletion uses `deploy-keys`; whole-webhook deletion uses `webhooks`; runner removal uses `runners`. Standalone `all` selects every currently supported
 scope and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
@@ -454,12 +454,16 @@ Autolinks are immutable ID-bound objects: changes require explicit pruning and l
 ### Existing runner custom labels
 
 Current source supports [custom labels on existing runner IDs](settings.md#existing-runner-custom-labels)
-through the shared export/plan/apply path. Detailed Summaries show selected IDs
-and custom labels; status-only output hides them. Private runner/readonly
-observations are excluded from reports and debug logs. Successful verification
-precedes output publication. A failed acknowledgment or readback fails the Action
-without success outputs, even when labels may have changed. The Action never
-modifies input YAML, registers/removes a runner or issues registration credentials.
+through the shared export/plan/apply path. Explicit `prune: runners` or `all`
+removes unlisted remote registrations from a present list; `[]` selects all.
+Detailed Summaries show selected IDs and custom labels and deletion candidates'
+ID, name, OS and custom labels; status-only hides them. Operational state and
+private runner/readonly evidence stay out of reports and debug logs. A failed
+acknowledgment or readback fails the Action without success outputs, even when
+remote changes may have occurred. Removal may affect jobs; busy checks are not
+atomic. See the [runner pruning contract](settings.md#runner-registration-pruning).
+The Action does not modify input YAML, register runners, issue credentials or
+clean up hosts.
 
 ## Webhook configuration and creation in current source
 

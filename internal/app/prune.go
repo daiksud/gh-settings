@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	runners              *settings.RunnerPruneObservation
 	webhooks             *settings.WebhookPruneObservation
 	deployKeys           *settings.DeployKeyObservation
 	autolinks            settings.AutolinkObservation
@@ -37,6 +38,29 @@ type prunePreparation struct {
 // Subsequent family reads must not widen or change these deletion candidates.
 func preparePrune(repo repository.Repository, desired settings.Declaration, prune settings.PruneScopes, write Writer) (prunePreparation, error) {
 	var result prunePreparation
+	if prune.Has("runners") && desired.Runners != nil {
+		if write.ReadRunnerPrune == nil || write.DeleteRunnerPrune == nil || write.RunnerLabels == nil {
+			return result, fmt.Errorf("runner prune reader or writer unavailable")
+		}
+		observed, err := write.ReadRunnerPrune(repo)
+		if err != nil {
+			return result, err
+		}
+		if _, err = observed.Candidates(*desired.Runners); err != nil {
+			return result, err
+		}
+		labelObservation, err := observed.LabelsObservation()
+		if err != nil {
+			return result, err
+		}
+		if err = settings.PrepareRunnerLabels(labelObservation, *desired.Runners); err != nil {
+			return result, err
+		}
+		if observed.Target.Archived && (desired.Repository.Archived == nil || *desired.Repository.Archived) {
+			return result, fmt.Errorf("runner prune requires explicit unarchive")
+		}
+		result.runners = &observed
+	}
 	if prune.Has("webhooks") && desired.Webhooks != nil {
 		if write.ReadWebhookPrune == nil || write.DeleteWebhook == nil {
 			return result, fmt.Errorf("webhook prune reader or writer unavailable")

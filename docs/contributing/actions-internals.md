@@ -230,7 +230,7 @@ deletion count the family once. See [Deploy keys](../settings.md#deploy-keys).
 
 The same-version `autolinks` report array contains exactly one `before` or `after` configuration per operation. A deletion has a complete positive-ID `before`; a creation has a complete IDless `after`. Each configuration contains `reference_prefix`, `target_url` and `reference_format`. There is no update operation. Closed decoding rejects null/unknown members; model validation rejects collisions, invalid URLs, missing controls and invalid identities. Mixed create/delete changes count one family. Private acquisition timestamps and target snapshots never enter reports. Detailed rendering quotes these non-secret controls; status-only projects only outcome/count metadata.
 
-## Runner custom-label report boundary
+## Runner report boundary
 
 The optional `runners` array contains one typed change per changed selected ID,
 with the fixed `repository.settings.actions.runners` field and complete
@@ -238,10 +238,13 @@ with the fixed `repository.settings.actions.runners` field and complete
 retain exact integer precision through decoding. Reconstruction
 rejects unknown or noncanonical keys, nulls, invalid/duplicate IDs or label
 identities, cross-ID changes, no-ops, normalization metadata and insufficient
-managed counts. The family counts once regardless of selected runner count.
-Detailed presentation shares the CLI formatter and escapes labels; status-only
-hides the ID and labels. Name/OS/readonly snapshots and raw API metadata never
-enter this report or become apply input.
+managed counts. The optional `runner_deletions` array contains a fixed field,
+complete `before` object (`id`, `name`, `os`, `custom_labels`) and explicit null
+`after`. It rejects unknown, missing or null members, duplicate IDs, and overlap
+with an updated ID. Updates and deletions together count as one family. Detailed
+presentation shares the CLI formatter and escapes values; status-only hides them.
+Operational and readonly snapshots, optional raw label IDs and raw API metadata
+never enter this report or become apply input.
 
 ## Webhook report boundary
 

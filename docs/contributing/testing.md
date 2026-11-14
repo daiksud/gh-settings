@@ -256,7 +256,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels|CompositeWebhooks|CompositeWebhookCreation|CompositeWebhookPrune|CompositeWebhookPruneMixed)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels|CompositeWebhooks|CompositeWebhookCreation|CompositeWebhookPrune|CompositeWebhookPruneMixed|CompositeRunnerPrune)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -608,6 +608,14 @@ runs the supplied product through the actual installer/composite for export,
 plan, status-only privacy, change/repeat/clear and failed verification without
 output publication or input edits. These local fixtures do not certify live
 labels, server Unicode semantics, host state or job execution.
+
+Runner pruning additionally uses `TestRunnerPruneCompleteAndFailClosed`,
+`TestRunnerPrunePaginationAndCompleteInventory`, and
+`TestRunnerPruneDeleteRequiresFreshEvidenceAndIndependentAbsence` for private
+acquisition and fixed-ID removal. App tests cover global preflight, own label
+and unarchive overlays, and partial progress. `TestRunnerPruneBuiltCLI` and
+`TestBuiltCompositeRunnerPrune` exercise named and all selectors with the built
+product and local fixtures; they do not establish live runner or job behavior.
 
 ## Existing webhook configuration evidence
 

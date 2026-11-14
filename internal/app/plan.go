@@ -238,16 +238,37 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.CopilotInstructions = changes
 	}
-	if desired.Runners != nil && len(*desired.Runners) > 0 {
-		observed, err := read.Runners(repo, *desired.Runners)
+	if desired.Runners != nil && (len(*desired.Runners) > 0 || prune.Has("runners")) {
+		var observed settings.RunnerObservation
+		var err error
+		if prune.Has("runners") {
+			if read.RunnerPrune == nil {
+				err = fmt.Errorf("runner prune reader unavailable")
+			} else {
+				var inventory settings.RunnerPruneObservation
+				inventory, err = read.RunnerPrune(repo)
+				if err == nil {
+					var candidates []settings.RunnerPruneState
+					candidates, err = inventory.Candidates(*desired.Runners)
+					if err == nil {
+						for _, v := range candidates {
+							comparison.RunnerDeletions = append(comparison.RunnerDeletions, settings.RunnerDeletion{ID: v.ID, Name: v.Name, OS: v.OS, CustomLabels: settings.RunnerPruneCustomLabels(v)})
+						}
+						observed, err = inventory.LabelsObservation()
+					}
+				}
+			}
+		} else {
+			observed, err = read.Runners(repo, *desired.Runners)
+		}
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.RunnersPath, Target: repo, Err: err}
 		}
-		managed, changes, err := settings.CompareRunnerLabels(observed, *desired.Runners)
+		_, changes, err := settings.CompareRunnerLabels(observed, *desired.Runners)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.RunnersPath, Target: repo, Err: err}
 		}
-		comparison.Managed += managed
+		comparison.Managed++
 		comparison.Runners = changes
 	}
 	if desired.OIDCSubject != nil {

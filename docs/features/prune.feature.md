@@ -14,7 +14,7 @@ an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`,
-`collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`. Standalone `all` selects all currently recognized
+`collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys`, `webhooks` and `runners`. Standalone `all` selects all currently recognized
 scopes; future supported prune scopes must join the shared registry and tests.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit

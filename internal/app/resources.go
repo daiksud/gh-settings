@@ -31,6 +31,7 @@ type EnvironmentWriteEffectsFailure interface {
 type Reader struct {
 	WebhookPrune          func(repository.Repository) (settings.WebhookPruneObservation, error)
 	Webhooks              func(repository.Repository, []int64) (settings.WebhookObservation, error)
+	RunnerPrune           func(repository.Repository) (settings.RunnerPruneObservation, error)
 	Runners               func(repository.Repository, []settings.RunnerLabels) (settings.RunnerObservation, error)
 	AllRunners            func(repository.Repository) (settings.RunnerObservation, error)
 	Autolinks             func(repository.Repository) (settings.AutolinkObservation, error)
@@ -88,6 +89,8 @@ type Writer struct {
 	ReadWebhooks               func(repository.Repository, []int64) (settings.WebhookObservation, error)
 	CreateWebhook              func(repository.Repository, settings.WebhookObservation, settings.Webhook) (settings.WebhookCreateResult, error)
 	Webhook                    func(repository.Repository, settings.WebhookSelection) (bool, error)
+	ReadRunnerPrune            func(repository.Repository) (settings.RunnerPruneObservation, error)
+	DeleteRunnerPrune          func(repository.Repository, settings.RunnerPruneObservation, []int64, int64) (bool, error)
 	ReadRunners                func(repository.Repository, []settings.RunnerLabels) (settings.RunnerObservation, error)
 	RunnerLabels               func(repository.Repository, settings.RunnerLabels) (bool, error)
 	ReadDeployKeys             func(repository.Repository) (settings.DeployKeyObservation, error)

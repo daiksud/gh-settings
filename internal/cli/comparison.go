@@ -67,6 +67,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, change := range comparison.Runners {
 		fmt.Fprintln(&output, presentation.RunnerLabelsLine(change))
 	}
+	for _, deletion := range comparison.RunnerDeletions {
+		fmt.Fprintln(&output, presentation.RunnerDeletionLine(deletion))
+	}
 	for _, change := range comparison.OIDCSubject {
 		fmt.Fprintln(&output, presentation.OIDCSubjectLine(change))
 	}

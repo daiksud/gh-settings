@@ -71,6 +71,7 @@ const (
 	CopilotInstructionsUpdate
 	RunnersRead
 	RunnerLabelsUpdate
+	RunnerDelete
 	OIDCSubjectUpdate
 	CopilotMCPUpdate
 	PullRequestLimitsUpdate

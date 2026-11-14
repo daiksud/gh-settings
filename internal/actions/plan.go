@@ -21,6 +21,7 @@ const (
 type PlanReport struct {
 	Webhooks                []settings.WebhookChange          `json:"webhooks,omitempty"`
 	Runners                 RunnerPlanChanges                 `json:"runners,omitempty"`
+	RunnerDeletions         RunnerDeletionEntries             `json:"runner_deletions,omitempty"`
 	DeployKeys              []DeployKeyPlanEntry              `json:"deploy_keys,omitempty"`
 	Autolinks               []settings.AutolinkChange         `json:"autolinks,omitempty"`
 	CollaboratorDeletions   []CollaboratorDeletionEntry       `json:"collaborator_deletions,omitempty"`
@@ -66,6 +67,12 @@ type PlanChange struct {
 
 func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	result, planErr := plan()
+	if planErr == nil {
+		if err := settings.ValidateRunnerDeletions(result.Comparison.RunnerDeletions); err != nil {
+			planErr = &app.PlanError{Stage: "read-failure", Path: settings.RunnersPath, Target: result.Target, Err: err}
+			result.Comparison = settings.Comparison{}
+		}
+	}
 	if planErr == nil {
 		if err := settings.ValidateWebhookChanges(result.Comparison.Webhooks); err != nil {
 			planErr = &app.PlanError{Stage: "read-failure", Path: settings.WebhooksPath, Target: result.Target, Err: err}
@@ -202,6 +209,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.Runners {
 		before, after := change.Values()
 		report.Runners = append(report.Runners, RunnerPlanChange{Field: change.Field(), Before: before, After: after})
+	}
+	for _, deletion := range result.Comparison.RunnerDeletions {
+		report.RunnerDeletions = append(report.RunnerDeletions, RunnerDeletionEntry{Field: settings.RunnersPath, Before: deletion})
 	}
 	for _, change := range result.Comparison.OIDCSubject {
 		before, after := change.Values()
