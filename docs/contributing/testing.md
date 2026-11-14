@@ -147,6 +147,13 @@ binaries and the public Action through
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
 
+The candidate public Action inspection runs every `TestBuilt*` test in
+`tests/github-actions` with the `acceptance` build tag and the supplied binary.
+New tests using that prefix must run on the hosted Linux runner, consume that
+binary rather than rebuild the product, and use isolated local fixtures and
+dummy credentials without live GitHub access. The workflow selects the prefix
+so a new supplied-product fixture does not need a separate allowlist entry.
+
 Main CI concurrency is grouped by source SHA. A later merge therefore keeps
 earlier commits' build and acceptance runs active; only duplicate runs for the
 same SHA share a cancelling group. Implementation can continue while those runs
