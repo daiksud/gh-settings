@@ -224,3 +224,16 @@ deletion count the family once. See [Deploy keys](../settings.md#deploy-keys).
 ## Autolink report boundary
 
 The same-version `autolinks` report array contains exactly one `before` or `after` configuration per operation. A deletion has a complete positive-ID `before`; a creation has a complete IDless `after`. Each configuration contains `reference_prefix`, `target_url` and `reference_format`. There is no update operation. Closed decoding rejects null/unknown members; model validation rejects collisions, invalid URLs, missing controls and invalid identities. Mixed create/delete changes count one family. Private acquisition timestamps and target snapshots never enter reports. Detailed rendering quotes these non-secret controls; status-only projects only outcome/count metadata.
+
+## Runner custom-label report boundary
+
+The optional `runners` array contains one typed change per changed selected ID,
+with the fixed `repository.settings.actions.runners` field and complete
+`before`/`after` objects containing only `id` and `custom_labels`. Numeric IDs
+retain exact integer precision through decoding. Reconstruction
+rejects unknown or noncanonical keys, nulls, invalid/duplicate IDs or label
+identities, cross-ID changes, no-ops, normalization metadata and insufficient
+managed counts. The family counts once regardless of selected runner count.
+Detailed presentation shares the CLI formatter and escapes labels; status-only
+hides the ID and labels. Name/OS/readonly snapshots and raw API metadata never
+enter this report or become apply input.

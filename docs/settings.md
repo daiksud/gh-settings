@@ -426,6 +426,72 @@ A cache size eviction limit above 10 GB can incur additional charges. It is an e
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
 
+## Existing runner custom labels
+
+Use `repository.settings.actions.runners` to manage custom labels on existing
+repository self-hosted runners in a personally owned public repository:
+
+```yaml
+runners:
+  - id: 23
+    custom_labels: [gpu, accelerated]
+  - id: 24
+    custom_labels: []
+```
+
+Each entry requires a unique positive numeric runner `id` and an explicit
+`custom_labels` list of at most 100 strings. The ID selects an existing runner;
+there is no name-based adoption, creation, rename or ID writeback. Omitting the
+family leaves it unmanaged. `runners: []` selects no runners and makes no family
+requests during plan/apply. An entry with `custom_labels: []` clears that runner's
+custom labels. Unlisted runners remain untouched; there is no runner prune scope,
+and `--prune all` never deletes runners.
+
+Labels form a case-insensitive set. The client uses Unicode simple folding,
+without trimming or Unicode normalization; order and case-only changes are no-ops.
+Submitted spelling remains in YAML and the request. Duplicate case identities,
+blank or control-containing names, nulls, unknown YAML fields and malformed IDs
+fail locally. The nonblank/control rule is a product guard, not an additional
+GitHub schema claim. A desired custom label that collides with an acquired
+read-only label is rejected before this family's first write.
+
+Export acquires the complete paginated inventory plus each runner's detail and
+labels before replacing this family. Known empty inventory exports `runners: []`.
+Any incomplete, denied or inconsistent runner/label observation omits the family
+on first export or retains its valid prior declaration with bounded info; other
+families continue. Missing/null/unknown label type never implies custom or
+read-only, and default labels are never inferred from OS. Label IDs are optional
+observation evidence, not YAML bindings. Present IDs must be positive; conflicting
+known IDs fail. Both reads contribute the strongest available ID evidence.
+
+Plan reads only selected runner IDs and compares their complete custom sets.
+Apply prepares every selected runner before the first label update, then freshly
+reads each runner and repository before writing. A match makes no PUT. A needed
+write on an archived repository fails; an explicitly requested unarchive still
+precedes configuration. Replacement sends only the complete declared custom list.
+HTTP 200 must contain a complete matching label acknowledgment, followed by
+independent repository, same-ID runner and label GETs. Verification preserves
+fresh runner name/OS and exact read-only label names/types, including every
+previously known read-only ID. Custom-label IDs are not owned. Missing prior IDs
+remain unknown, and later missing known read-only IDs fail verification.
+
+Operational status, busy, version and other liveness metadata are not drift
+conditions. Failed pre-write reads are distinguished from uncertain effects after
+a PUT attempt. Earlier verified writes remain applied; later work stops, without
+retry or rollback. Detailed plans and Action Summaries show selected IDs and
+custom labels; status-only hides them. Private name/OS/read-only evidence and raw
+API errors never enter reports. Input files are not modified.
+
+The [official labels guide](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/apply-labels)
+confirms the user-repository UI and case-insensitivity. The
+[repository runner REST API](https://docs.github.com/en/rest/actions/self-hosted-runners)
+provides observation and custom-label replacement. Reads require repository
+Administration read and writes require Administration write. Local fixtures do
+not prove a populated UI, exact server Unicode comparison, live writes, runner
+availability, routing, physical OS or job completion. This support does not
+register/remove runners, generate tokens, install software, manage groups or
+modify workflows and hosts.
+
 ## Actions OIDC subject template
 
 Use `repository.settings.actions.oidc.subject_claim` for the **Subject claim**

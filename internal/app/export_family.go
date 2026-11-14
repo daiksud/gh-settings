@@ -11,6 +11,8 @@ import (
 func exportAcquiredFamily(path string, d settings.Declaration) (settings.Declaration, error) {
 	var family settings.Declaration
 	switch path {
+	case settings.RunnersPath:
+		family.Runners = d.Runners
 	case settings.OIDCSubjectPath:
 		family.OIDCSubject = d.OIDCSubject
 	case settings.DeployKeysPath:
