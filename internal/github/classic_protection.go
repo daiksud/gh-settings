@@ -14,9 +14,9 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-const classicTargetFields = `id nameWithOwner isArchived isPrivate owner { __typename } squashMergeAllowed rebaseMergeAllowed`
-const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced requiresApprovingReviews requiredApprovingReviewCount dismissesStaleReviews requiresCodeOwnerReviews requireLastPushApproval requiresDeployments requiredDeploymentEnvironments requiresStatusChecks requiresStrictStatusChecks requiredStatusCheckContexts requiredStatusChecks { context app { id } } allowsForcePushes`
-const classicCompanionFields = `blocksCreations lockAllowsFetchAndMerge restrictsPushes restrictsReviewDismissals`
+const classicTargetFields = `id nameWithOwner isArchived isPrivate isFork owner { __typename } squashMergeAllowed rebaseMergeAllowed`
+const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced requiresApprovingReviews requiredApprovingReviewCount dismissesStaleReviews requiresCodeOwnerReviews requireLastPushApproval requiresDeployments requiredDeploymentEnvironments lockAllowsFetchAndMerge requiresStatusChecks requiresStrictStatusChecks requiredStatusCheckContexts requiredStatusChecks { context app { id } } allowsForcePushes`
+const classicCompanionFields = `blocksCreations restrictsPushes restrictsReviewDismissals`
 const classicRuleFields = classicOwnedFields + ` ` + classicCompanionFields + ` repository { ` + classicTargetFields + ` }`
 const classicInventoryQuery = `query ClassicProtectionInventory($owner: String!, $name: String!, $cursor: String) { repository(owner:$owner,name:$name,followRenames:false) { ` + classicTargetFields + ` branchProtectionRules(first:100,after:$cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { ` + classicRuleFields + ` } } } }`
 const classicNodeQuery = `query ClassicProtectionRule($id:ID!) { node(id:$id) { __typename ... on BranchProtectionRule { ` + classicRuleFields + ` } } }`
@@ -74,13 +74,13 @@ func classicNullable[T any](raw json.RawMessage) (settings.ClassicNullable[T], e
 }
 
 type classicTarget struct {
-	id                       string
-	archived, squash, rebase bool
+	id                               string
+	archived, squash, rebase, isFork bool
 }
 
 func decodeClassicTarget(raw json.RawMessage, repo repository.Repository) (classicTarget, error) {
 	var t classicTarget
-	m, err := classicObject(raw, "id", "nameWithOwner", "isArchived", "isPrivate", "owner", "squashMergeAllowed", "rebaseMergeAllowed")
+	m, err := classicObject(raw, "id", "nameWithOwner", "isArchived", "isPrivate", "isFork", "owner", "squashMergeAllowed", "rebaseMergeAllowed")
 	if err != nil {
 		return t, err
 	}
@@ -100,6 +100,10 @@ func decodeClassicTarget(raw json.RawMessage, repo repository.Repository) (class
 	if err != nil || private {
 		return t, fmt.Errorf("classic protection requires a public repository")
 	}
+	t.isFork, err = classicBool(m, "isFork")
+	if err != nil {
+		return t, err
+	}
 	t.archived, err = classicBool(m, "isArchived")
 	if err != nil {
 		return t, err
@@ -112,8 +116,8 @@ func decodeClassicTarget(raw json.RawMessage, repo repository.Repository) (class
 	return t, err
 }
 
-var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"}
-var classicCompanionKeys = []string{"blocksCreations", "lockAllowsFetchAndMerge", "restrictsPushes", "restrictsReviewDismissals"}
+var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"}
+var classicCompanionKeys = []string{"blocksCreations", "restrictsPushes", "restrictsReviewDismissals"}
 
 func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete bool) (settings.ClassicState, classicTarget, error) {
 	var s settings.ClassicState
@@ -143,7 +147,7 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 	if err != nil {
 		return s, target, err
 	}
-	s.RepositoryID = target.id
+	s.RepositoryID, s.IsFork = target.id, target.isFork
 	for k, dest := range map[string]**bool{"requiresConversationResolution": &s.Rule.RequireConversationResolutionBeforeMerging, "requiresCommitSignatures": &s.Rule.RequireSignedCommits, "requiresLinearHistory": &s.Rule.RequireLinearHistory, "allowsDeletions": &s.Rule.AllowDeletions, "lockBranch": &s.Rule.LockBranch, "isAdminEnforced": &s.Rule.DoNotAllowBypassingTheAboveSettings} {
 		v, e := classicBool(m, k)
 		if e != nil {
@@ -152,6 +156,11 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 		*dest = &v
 	}
 	c := &s.Companions
+	c.LockAllowsFetchAndMerge, err = classicBool(m, "lockAllowsFetchAndMerge")
+	if err != nil {
+		return s, target, err
+	}
+	s.Rule.AllowForkSyncing = settings.ClassicForkSyncProjection(target.isFork, *s.Rule.LockBranch, c.LockAllowsFetchAndMerge)
 	for key, dest := range map[string]*bool{"requiresApprovingReviews": &c.RequiresApprovingReviews, "dismissesStaleReviews": &c.DismissesStaleReviews, "requiresCodeOwnerReviews": &c.RequiresCodeOwnerReviews, "requireLastPushApproval": &c.RequireLastPushApproval} {
 		v, e := classicBool(m, key)
 		if e != nil {
@@ -192,7 +201,7 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 	if !complete {
 		return s, target, nil
 	}
-	for k, dest := range map[string]*bool{"blocksCreations": &c.BlocksCreations, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
+	for k, dest := range map[string]*bool{"blocksCreations": &c.BlocksCreations, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
 		v, e := classicBool(m, k)
 		if e != nil {
 			return s, target, e
@@ -282,10 +291,10 @@ func (c *ClassicProtectionClient) Read(repo repository.Repository) (settings.Cla
 		if err != nil {
 			return result, err
 		}
-		if result.RepositoryID != "" && (result.RepositoryID != target.id || result.Archived != target.archived) {
+		if result.RepositoryID != "" && (result.RepositoryID != target.id || result.Archived != target.archived || result.IsFork != target.isFork) {
 			return result, fmt.Errorf("classic repository identity changed during pagination")
 		}
-		result.RepositoryID, result.Archived = target.id, target.archived
+		result.RepositoryID, result.Archived, result.IsFork = target.id, target.archived, target.isFork
 		nodes, total, end, next, err := classicPage(connection)
 		if err != nil {
 			return result, err
@@ -299,7 +308,7 @@ func (c *ClassicProtectionClient) Read(repo repository.Repository) (settings.Cla
 			if err != nil {
 				return result, err
 			}
-			if t.id != target.id || t.archived != target.archived {
+			if t.id != target.id || t.archived != target.archived || t.isFork != target.isFork {
 				return result, fmt.Errorf("classic rule repository changed")
 			}
 			if err := c.readClassicActors(repo, &s, target); err != nil {
@@ -362,7 +371,7 @@ func (c *ClassicProtectionClient) readClassicActors(repo repository.Repository, 
 				return fmt.Errorf("classic actor parent database identity changed")
 			}
 			target, e := decodeClassicTarget(m["repository"], repo)
-			if e != nil || target.id != s.RepositoryID || target.archived != expectedTarget.archived {
+			if e != nil || target.id != s.RepositoryID || target.archived != expectedTarget.archived || target.isFork != expectedTarget.isFork {
 				return fmt.Errorf("classic actor repository changed")
 			}
 			nodes, total, end, next, e := classicPage(m[group.name])
@@ -447,7 +456,7 @@ func (c *ClassicProtectionClient) readOne(repo repository.Repository, id string)
 	if err = c.readClassicActors(repo, &s, target); err != nil {
 		return s, target, err
 	}
-	err = (settings.ClassicObservation{RepositoryID: target.id, Archived: target.archived, Rules: []settings.ClassicState{s}}).Validate()
+	err = (settings.ClassicObservation{RepositoryID: target.id, Archived: target.archived, IsFork: target.isFork, Rules: []settings.ClassicState{s}}).Validate()
 	return s, target, err
 }
 func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection settings.ClassicSelection) (settings.ClassicWriteResult, error) {
@@ -474,10 +483,10 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 			return pre(err)
 		}
 		target = t
-		if target.id != selection.RepositoryID {
+		if target.id != selection.RepositoryID || target.isFork != selection.IsFork {
 			return pre(fmt.Errorf("classic repository identity changed"))
 		}
-		if fresh.RepositoryID != initial.RepositoryID || *fresh.Rule.ID != *initial.Rule.ID || fresh.Rule.BranchNamePattern != initial.Rule.BranchNamePattern {
+		if fresh.RepositoryID != initial.RepositoryID || fresh.IsFork != initial.IsFork || *fresh.Rule.ID != *initial.Rule.ID || fresh.Rule.BranchNamePattern != initial.Rule.BranchNamePattern {
 			return pre(fmt.Errorf("classic update identity or original pattern changed"))
 		}
 		before = &fresh
@@ -496,7 +505,7 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 			if err != nil {
 				return pre(err)
 			}
-			if inventory.RepositoryID != target.id || inventory.Archived != target.archived {
+			if inventory.RepositoryID != target.id || inventory.Archived != target.archived || inventory.IsFork != target.isFork {
 				return pre(fmt.Errorf("classic target changed before rename"))
 			}
 			if _, err := settings.PrepareClassicRules(inventory, []settings.ClassicRule{desired}); err != nil {
@@ -514,7 +523,7 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 		if _, err := settings.PrepareClassicRules(inventory, []settings.ClassicRule{desired}); err != nil {
 			return pre(err)
 		}
-		target.id, target.archived = inventory.RepositoryID, inventory.Archived
+		target.id, target.archived, target.isFork = inventory.RepositoryID, inventory.Archived, inventory.IsFork
 		for _, s := range inventory.Rules {
 			known[*s.Rule.ID] = true
 			knownNodes[s.NodeID] = true
@@ -534,16 +543,19 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 		if err != nil {
 			return pre(err)
 		}
-		if t.id != target.id || t.archived != target.archived {
+		if t.id != target.id || t.archived != target.archived || t.isFork != target.isFork {
 			return pre(fmt.Errorf("classic creation target changed"))
 		}
 		target = t
-		if target.id != selection.RepositoryID {
+		if target.id != selection.RepositoryID || target.isFork != selection.IsFork {
 			return pre(fmt.Errorf("classic repository identity changed"))
 		}
 		if target.archived {
 			return pre(fmt.Errorf("archived repository cannot create classic protection"))
 		}
+	}
+	if desired.AllowForkSyncing != nil && !target.isFork {
+		return pre(fmt.Errorf("allow_fork_syncing requires a fork repository"))
 	}
 	if desired.RequireLinearHistory != nil && *desired.RequireLinearHistory && (before == nil || !*before.Rule.RequireLinearHistory) && !target.squash && !target.rebase {
 		return pre(fmt.Errorf("linear history requires squash or rebase merging"))
@@ -582,6 +594,9 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 		if v != nil && (before == nil || *v != *existing[i]) {
 			input[names[i]] = *v
 		}
+	}
+	if desired.AllowForkSyncing != nil && (before == nil || *desired.AllowForkSyncing != before.Companions.LockAllowsFetchAndMerge) {
+		input["lockAllowsFetchAndMerge"] = *desired.AllowForkSyncing
 	}
 	classicReviewInputs(input, before, desired.RequireAPullRequestBeforeMerging)
 	if settings.ClassicDeploymentsSelected(group) {
@@ -632,7 +647,7 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 	if err != nil {
 		return result, fmt.Errorf("classic mutation acknowledgment invalid (recovery node %q, id %d): %w", result.NodeID, result.ID, err)
 	}
-	if t.id != target.id || t.archived || !classicAcknowledgmentMatches(ack, desired) {
+	if t.id != target.id || t.isFork != target.isFork || t.archived || !classicAcknowledgmentMatches(ack, desired) {
 		return result, fmt.Errorf("classic mutation acknowledgment differs from request")
 	}
 	if before != nil && (ack.NodeID != before.NodeID || *ack.Rule.ID != *before.Rule.ID) {
@@ -645,7 +660,7 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 	if err != nil {
 		return result, fmt.Errorf("verify classic mutation (effects may have applied): %w", err)
 	}
-	if t.id != target.id || t.archived || actual.NodeID != ack.NodeID || *actual.Rule.ID != *ack.Rule.ID || !settings.ClassicMatches(actual.Rule, desired) {
+	if t.id != target.id || t.isFork != target.isFork || t.archived || actual.NodeID != ack.NodeID || *actual.Rule.ID != *ack.Rule.ID || !settings.ClassicMatches(actual.Rule, desired) {
 		return result, fmt.Errorf("classic mutation readback identity or requested controls differ")
 	}
 	if before != nil {

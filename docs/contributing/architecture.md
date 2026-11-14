@@ -291,6 +291,11 @@ needed writes with selected active references bind paginated Environment node
 identities before mutation and verify them after rule readback. Matching rules
 skip that prerequisite. Global Environment prune rejects contradictory selected
 references before any write without silently retaining deletion candidates.
+Fork syncing is a conditional projection of its raw Boolean: only locked forks
+expose it publicly, and selecting it requires explicit lock ownership. Required
+typed fork status travels through private observations/selections and all target
+checks, including actor pages and prune absence confirmation. Inactive raw sync
+remains omission-preservation evidence; public reports contain no fork metadata.
 Force-push ownership retains a separate raw boolean and typed actor snapshot.
 Complete acquired Before admits known Team while desired input admits User/App;
 active Team export is unavailable. Needed writes resolve selected actor IDs/types,

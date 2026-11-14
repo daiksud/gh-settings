@@ -24,6 +24,10 @@ func TestBuiltCompositeClassicAdmin(t *testing.T) {
 	testBuiltCompositeClassicToggle(t, "do_not_allow_bypassing_the_above_settings", "isAdminEnforced")
 }
 
+func TestBuiltCompositeClassicForkSync(t *testing.T) {
+	testBuiltCompositeClassicToggle(t, "allow_fork_syncing", "lockAllowsFetchAndMerge")
+}
+
 func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string) {
 	product, version := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "enable", "disable", "fork-sync-drift"} {
@@ -35,6 +39,9 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			desired := scenario != "disable"
 			input := fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'PRIVATE_LOCK/**', %s: %t}]}}\n", declarationKey, desired)
+			if declarationKey == "allow_fork_syncing" {
+				input = strings.Replace(input, "allow_fork_syncing:", "lock_branch: true, allow_fork_syncing:", 1)
+			}
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
 			directory, err := os.MkdirTemp("/tmp", "ghs-lock-")
@@ -46,7 +53,7 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 			if err != nil {
 				t.Fatal(err)
 			}
-			target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isArchived": false, "isPrivate": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": false}
+			target := map[string]any{"id": "R_config", "nameWithOwner": "owner/config", "isArchived": false, "isPrivate": false, "isFork": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": false}
 			lock := !desired
 			if scenario == "matching" {
 				lock = desired
@@ -58,6 +65,9 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 				"requiredApprovingReviewCount": nil, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": nil, "requiredStatusChecks": nil,
 			}
 			rule[apiKey] = lock
+			if declarationKey == "allow_fork_syncing" {
+				target["isFork"], rule["lockBranch"] = true, true
+			}
 			page := func(nodes []any) map[string]any {
 				return map[string]any{"totalCount": len(nodes), "nodes": nodes, "pageInfo": map[string]any{"hasNextPage": false, "endCursor": nil}}
 			}
@@ -124,7 +134,7 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 					writes++
 					rule[apiKey] = desired
 					ack := map[string]any{}
-					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"} {
+					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"} {
 						ack[k] = rule[k]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}

@@ -40,16 +40,19 @@ type ClassicCompanions struct {
 	PushActors, ReviewDismissalActors, ForcePushActors, PullRequestActors                        []ClassicActor
 }
 type ClassicState struct {
+	IsFork               bool
 	Rule                 ClassicRule
 	NodeID, RepositoryID string
 	Companions           ClassicCompanions
 }
 type ClassicObservation struct {
+	IsFork       bool
 	RepositoryID string
 	Archived     bool
 	Rules        []ClassicState
 }
 type ClassicSelection struct {
+	IsFork       bool
 	RepositoryID string
 	Before       *ClassicState
 	Desired      ClassicRule
@@ -67,6 +70,7 @@ type ClassicWriteResult struct {
 }
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
+	r.AllowForkSyncing = cloneClassicValue(r.AllowForkSyncing)
 	r.RequireStatusChecksToPassBeforeMerging = CloneClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging)
 	r.RequireAPullRequestBeforeMerging = CloneClassicReviews(r.RequireAPullRequestBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
@@ -94,6 +98,9 @@ func ValidateClassicRules(rules []ClassicRule) error { return validateClassicRul
 func validateClassicRules(rules []ClassicRule, acquired bool) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
+		if r.AllowForkSyncing != nil && (r.LockBranch == nil || !*r.LockBranch) {
+			return fmt.Errorf("allow_fork_syncing requires explicit lock_branch: true")
+		}
 		if err := ValidateClassicForcePush(r.AllowForcePushes, acquired); err != nil {
 			return err
 		}
@@ -132,7 +139,7 @@ func (o ClassicObservation) Validate() error {
 		if err := validateClassicRules([]ClassicRule{s.Rule}, true); err != nil {
 			return err
 		}
-		if s.Rule.ID == nil || ids[*s.Rule.ID] || s.NodeID == "" || nodes[s.NodeID] || s.RepositoryID != o.RepositoryID {
+		if s.Rule.ID == nil || ids[*s.Rule.ID] || s.NodeID == "" || nodes[s.NodeID] || s.RepositoryID != o.RepositoryID || s.IsFork != o.IsFork {
 			return fmt.Errorf("incomplete or ambiguous classic rule identity")
 		}
 		ids[*s.Rule.ID], nodes[s.NodeID] = true, true
@@ -140,6 +147,9 @@ func (o ClassicObservation) Validate() error {
 			if v == nil {
 				return fmt.Errorf("incomplete classic protection controls")
 			}
+		}
+		if !reflect.DeepEqual(ClassicForkSyncProjection(s.IsFork, *s.Rule.LockBranch, s.Companions.LockAllowsFetchAndMerge), s.Rule.AllowForkSyncing) {
+			return fmt.Errorf("incomplete or inconsistent classic fork-sync projection")
 		}
 		c := s.Companions
 		force, err := ClassicForcePushProjection(c.AllowsForcePushes, c.ForcePushActors)
@@ -200,6 +210,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	}
 	result := make([]ClassicSelection, 0, len(desired))
 	for _, d := range desired {
+		if d.AllowForkSyncing != nil && !o.IsFork {
+			return nil, fmt.Errorf("allow_fork_syncing requires a fork repository")
+		}
 		var selected *ClassicState
 		for _, s := range o.Rules {
 			if d.ID != nil && *d.ID == *s.Rule.ID {
@@ -228,7 +241,7 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 				return nil, err
 			}
 		}
-		result = append(result, ClassicSelection{RepositoryID: o.RepositoryID, Before: selected, Desired: CloneClassicRule(d)})
+		result = append(result, ClassicSelection{RepositoryID: o.RepositoryID, IsFork: o.IsFork, Before: selected, Desired: CloneClassicRule(d)})
 	}
 	// Requested outcomes may not introduce a collision through two edits/creates.
 	for i, a := range result {
@@ -241,6 +254,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	return result, nil
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
+	if desired.AllowForkSyncing != nil && (observed.AllowForkSyncing == nil || *desired.AllowForkSyncing != *observed.AllowForkSyncing) {
+		return false
+	}
 	if ClassicForcePushSelected(desired.AllowForcePushes) && !ClassicForcePushEqual(observed.AllowForcePushes, desired.AllowForcePushes) {
 		return false
 	}
@@ -375,13 +391,16 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 // VerifyClassicPreservation compares all unowned known controls, including owned
 // controls omitted from this partial request. Exact nullable raw state is retained.
 func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) error {
-	if before.NodeID != after.NodeID || before.RepositoryID != after.RepositoryID || *before.Rule.ID != *after.Rule.ID {
+	if before.NodeID != after.NodeID || before.RepositoryID != after.RepositoryID || before.IsFork != after.IsFork || *before.Rule.ID != *after.Rule.ID {
 		return fmt.Errorf("classic rule identity changed")
 	}
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
 	bCompanions, aCompanions := before.Companions, after.Companions
+	if desired.AllowForkSyncing != nil {
+		bCompanions.LockAllowsFetchAndMerge = aCompanions.LockAllowsFetchAndMerge
+	}
 	maskSelectedClassicForcePush(&bCompanions, aCompanions, desired.AllowForcePushes)
 	maskSelectedClassicReviews(&bCompanions, aCompanions, desired.RequireAPullRequestBeforeMerging)
 	if ClassicStatusChecksManaged(desired.RequireStatusChecksToPassBeforeMerging) {

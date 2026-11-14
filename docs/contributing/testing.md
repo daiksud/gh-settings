@@ -256,7 +256,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForcePush|CompositeRunnerLabels)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -564,6 +564,20 @@ matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Acti
 for activation, count-zero, deactivation, no-op, guarded failure and readback drift,
 checking private plans, unchanged checkout and success-only outputs. These isolated
 fixtures do not establish live approval behavior or effective merge enforcement.
+
+## Classic fork-sync verification
+
+The [Classic specification](../features/classic-protection.feature.md#conditional-fork-syncing)
+links the literal baseline and model/API/app cases. They distinguish unavailable
+fork metadata from false, bind every private target comparison, preserve inactive
+raw values and verify prewrite versus uncertain postwrite failures. The CLI fork
+cases export and validate both values after application; the actual supplied
+`TestBuiltCompositeClassicForkSync` verifies matching, enable/disable, private plans,
+readback failure and source immutability. The official UI documentation is evidence
+for the control; fixtures do not establish live syncing or branch authorization.
+Combined fork/force/PR-review/status-check/deployment cases verify exact create and
+update payloads, matching repeats, both raw omission directions, selected matching
+sync acknowledgment drift, fork identity drift and prewrite actor lookup failure.
 
 ## Classic force-push verification
 

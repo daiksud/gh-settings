@@ -191,6 +191,11 @@ and their ordering remain private. Status-only rendering suppresses the supporte
 names and App IDs as well as rule identity. The group does not add another managed
 family count.
 
+Classic `allow_fork_syncing` is conditional: when present in Before or After it
+requires `lock_branch: true`. Missing Before sync can describe an inactive rule or
+a non-fork; reports cannot prove target applicability. Private acquired `isFork`
+and the complete native Boolean supply that evidence without entering the report.
+
 ## Collaborator presentation
 
 The same-version `collaborators` report array contains `username`, user `id`,

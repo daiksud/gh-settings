@@ -1582,8 +1582,8 @@ See the [behavior specification](features/autolinks.feature.md).
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and six independent checkboxes plus complete PR-review, required status-check,
-deployment and force-push groups. It is separate
+and six independent checkboxes, conditional fork syncing, and complete PR-review,
+required status-check, deployment and force-push groups. It is separate
 from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1645,8 +1645,8 @@ requires fresh squash or rebase availability, after any earlier repository updat
 it does not implicitly enable a merge method. Creation sends the exact pattern
 and declared controls; other defaults are controlled by GitHub.
 
-Lock branch makes matching branches read-only. It does not enable fork syncing;
-the acquired fork-sync setting stays unowned and must survive updates unchanged.
+Lock branch makes matching branches read-only. Selecting lock alone sends no
+fork-sync value; an omitted sync setting must survive updates unchanged.
 GitHub documents that locked branches cannot be deleted, even when deletion is
 otherwise allowed. This checkbox does not rewrite the separate deletion setting
 or promise that it will take effect while locked. Readback verifies stored
@@ -1748,6 +1748,40 @@ Collateral changes or failed readback stop later work with uncertain effects;
 earlier verified writes remain applied. No retry, rollback or atomic lock is
 promised. Stored-value readback does not establish effective branch enforcement.
 
+`allow_fork_syncing` is an optional Boolean for a personally owned public fork.
+Selecting either `true` or `false` requires explicit `lock_branch: true` in the
+same rule. Omission preserves the native value; null and non-booleans fail. This
+does not implicitly lock a branch, fetch or merge upstream changes, create a fork,
+or change permissions:
+
+```yaml
+branch_protection_rules:
+  - id: 123456
+    branch_name_pattern: main
+    lock_branch: true
+    allow_fork_syncing: false
+```
+
+The official [creation guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule#creating-a-branch-protection-rule)
+documents Allow fork syncing under Lock branch. The GraphQL
+`lockAllowsFetchAndMerge` Boolean has direct true/false polarity. This is documented
+UI evidence; no authenticated fork form or live syncing was tested.
+
+Plan and apply reject a selected value on a confirmed non-fork. Complete typed
+`isFork` evidence is required throughout inventory, actor pages, fresh selection,
+acknowledgment and independent readback. Missing evidence is unavailable, never
+assumed false. A changed fork status fails target verification, including private
+whole-rule prune rechecks and final absence confirmation.
+
+Export includes the observed value only for locked fork rules, together with
+`lock_branch: true`. Unlocked rules and non-forks omit this inactive projection;
+their exact native Boolean remains private preservation/prune evidence. Missing
+active projection fails acquisition instead of producing incomplete YAML. Existing
+updates send only changed declared values; creation sends both selected lock and
+sync values. A matching rule makes no mutation. Selecting lock alone never sends
+fork syncing, and unlocking with sync omitted still verifies that its raw value
+survived. Unexpected changes remain uncertain effects after mutation, not success.
+
 `allow_force_pushes` owns a complete active group. Omission or `{}` leaves it
 unmanaged. `enabled: false` forbids children. `enabled: true` requires
 `who_can_force_push: everyone` or `specified_actors`. Everyone forbids `actors`;
@@ -1803,13 +1837,12 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern, six checkboxes and
+Automatic export projects every readable rule's ID, pattern, six checkboxes, applicable fork syncing and
 active PR-review, status-check, deployment and force-push groups. It does not export or adopt the other controls.
 Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
-GraphQL cannot reveal future unselected schema fields. Actor restrictions,
-fork-sync and additional actor controls remain separate work;
+GraphQL cannot reveal future unselected schema fields. Additional actor controls remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
@@ -1893,7 +1926,7 @@ companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-six flags, active PR-review/status-check/deployment/force-push projections and all known raw companions,
+six flags, fork applicability and conditional syncing, active PR-review/status-check/deployment/force-push projections and all known raw companions,
 including inactive PR-review, status-check, deployment and force-push values. Missing, denied, partial,
 unsupported or inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck

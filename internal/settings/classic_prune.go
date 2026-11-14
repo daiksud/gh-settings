@@ -16,6 +16,7 @@ type ClassicPruneCandidate struct {
 }
 
 type ClassicPruneObservation struct {
+	isFork       bool
 	repositoryID string
 	archived     bool
 	candidates   []ClassicPruneCandidate
@@ -55,7 +56,7 @@ func PrepareClassicPrune(observed ClassicObservation, desired []ClassicRule) (Cl
 			retained[*rule.ID] = true
 		}
 	}
-	result := ClassicPruneObservation{repositoryID: observed.RepositoryID, archived: observed.Archived, candidates: []ClassicPruneCandidate{}}
+	result := ClassicPruneObservation{repositoryID: observed.RepositoryID, isFork: observed.IsFork, archived: observed.Archived, candidates: []ClassicPruneCandidate{}}
 	for _, state := range observed.Rules {
 		if !retained[*state.Rule.ID] {
 			result.candidates = append(result.candidates, ClassicPruneCandidate{repositoryID: observed.RepositoryID, archived: observed.Archived, state: cloneClassicState(state), acquired: true})
@@ -104,7 +105,7 @@ func (o ClassicPruneObservation) Recheck(fresh ClassicObservation) error {
 	if err := fresh.Validate(); err != nil {
 		return err
 	}
-	if fresh.RepositoryID != o.repositoryID || fresh.Archived != o.archived {
+	if fresh.RepositoryID != o.repositoryID || fresh.Archived != o.archived || fresh.IsFork != o.isFork {
 		return fmt.Errorf("classic prune target identity or archive state changed")
 	}
 	for _, candidate := range o.candidates {
@@ -132,17 +133,17 @@ func (c ClassicPruneCandidate) ID() int64 {
 }
 func (c ClassicPruneCandidate) NodeID() string  { return c.state.NodeID }
 func (c ClassicPruneCandidate) Pattern() string { return c.state.Rule.BranchNamePattern }
-func (c ClassicPruneCandidate) VerifyTarget(repositoryID string, archived bool) error {
-	if !c.acquired || c.repositoryID == "" || c.archived || archived || repositoryID != c.repositoryID {
+func (c ClassicPruneCandidate) VerifyTarget(repositoryID string, archived, isFork bool) error {
+	if !c.acquired || c.repositoryID == "" || c.archived || archived || repositoryID != c.repositoryID || isFork != c.state.IsFork {
 		return fmt.Errorf("classic deletion target unavailable, changed or archived")
 	}
 	return nil
 }
 func (c ClassicPruneCandidate) Verify(state ClassicState, repositoryID string, archived bool) error {
-	if err := c.VerifyTarget(repositoryID, archived); err != nil {
+	if err := c.VerifyTarget(repositoryID, archived, state.IsFork); err != nil {
 		return err
 	}
-	if err := (ClassicObservation{RepositoryID: repositoryID, Archived: archived, Rules: []ClassicState{state}}).Validate(); err != nil {
+	if err := (ClassicObservation{RepositoryID: repositoryID, Archived: archived, IsFork: state.IsFork, Rules: []ClassicState{state}}).Validate(); err != nil {
 		return err
 	}
 	if !reflect.DeepEqual(c.state, state) {

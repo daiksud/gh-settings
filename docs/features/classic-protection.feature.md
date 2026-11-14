@@ -3,11 +3,11 @@
 The [configuration contract](../settings.md#classic-branch-protection) owns public
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
 Ordinary reconciliation manages conversation resolution, signed commits, linear
-history, branch locking, administrator enforcement, the Allow deletions checkbox
+history, branch locking, conditional fork syncing, administrator enforcement, the Allow deletions checkbox
 and complete active PR-review, required status-check, deployment and force-push groups,
 separately from Rulesets. Explicit
 [classic prune](prune.feature.md#classic-branch-protection-deletion) additionally
-removes whole unlisted rules. Fork-sync and other actor controls remain separate work.
+removes whole unlisted rules. Other actor controls remain separate work.
 
 ## Behavioral boundaries
 
@@ -33,7 +33,7 @@ removes whole unlisted rules. Fork-sync and other actor controls remain separate
   Private report/summary behavior and guarded ID writeback use existing boundaries.
 
 - Lock branch supports explicit lock and unlock, including false-valued export.
-  Omitted lock state and the unowned fork-sync flag are independently preserved.
+  Omitted lock state and fork-sync values are independently preserved.
   Unexpected fork-sync changes fail after the write with uncertain effects.
   Stored lock and deletion flags do not imply deletion is permitted while locked.
 
@@ -127,6 +127,29 @@ permission or effective enforcement. No live branch protection was changed.
 The added status-check YAML case separately fails against unchanged source with
 an unknown group key. The source menu was inspected without submitting a form;
 App resolution and storage behavior are covered by local fixtures, not live writes.
+
+## Conditional fork syncing
+
+Both Boolean values require explicit `lock_branch: true` and a confirmed personal
+public fork. Export shows the value only when locked and applicable. Otherwise
+the projection is omitted while exact raw state remains available for preservation
+and whole-rule pruning. Lock-only and unlock requests never implicitly own sync.
+
+Required typed `isFork` is bound across every inventory/actor page, fresh selection,
+creation prerequisites, ACK, readback and private prune target. Changed or missing
+evidence stops work; postwrite failure keeps uncertain effects and recovery separate
+from confirmed success. Reports validate the explicit lock prerequisite when the
+conditional field is present, but private acquisition owns applicability proof.
+
+`TestClassicForkSyncLiteralCodec` fails on the original unsupported YAML key.
+The `classic_fork_sync_test.go` files in settings, github and app cover active and
+inactive projections, both no-ops, exact payloads, target drift, omission, report
+closure, prune/unarchive, recovery and independent export retention. CLI fork
+lifecycle cases verify export/validate/plan/apply/repeat and final roundtrip.
+`TestBuiltCompositeClassicForkSync` uses the supplied public Action for both values,
+matching state, private plans, readback failure and unchanged checkout. Official
+UI documentation supplies evidence; no authenticated fork form, fork creation,
+upstream synchronization or live protection change was performed.
 
 ## Force-push actor ownership
 
