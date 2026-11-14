@@ -13,6 +13,7 @@ type Collaborator struct {
 }
 
 type RepositorySettings struct {
+	Webhooks              *[]Webhook
 	DeployKeys            *[]DeployKey
 	Autolinks             *[]Autolink
 	BranchProtectionRules *[]BranchProtectionRule

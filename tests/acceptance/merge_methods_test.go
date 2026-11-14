@@ -212,7 +212,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				}
 				mu.Lock()
 				defer mu.Unlock()
-				if len(paths) < 9 || !reflect.DeepEqual(paths[:9], []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/labels"}) {
+				if len(paths) < 10 || !reflect.DeepEqual(paths[:10], []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/labels"}) {
 					t.Fatalf("paths=%v", paths)
 				}
 				return
@@ -339,7 +339,7 @@ settings:
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})

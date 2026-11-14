@@ -26,6 +26,21 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if general.General != (uimodel.General{}) {
 		result.Settings = &uimodel.RepositorySettings{General: &general.General}
 	}
+	if source.Webhooks != nil {
+		if err := settings.ValidateWebhooks(*source.Webhooks); err != nil {
+			return uimodel.Repository{}, err
+		}
+		values := make([]uimodel.Webhook, 0, len(*source.Webhooks))
+		for _, raw := range *source.Webhooks {
+			d := raw.Clone()
+			id := d.ID
+			values = append(values, uimodel.Webhook{ID: &id, PayloadURL: d.PayloadURL, ContentType: d.ContentType})
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Webhooks = &values
+	}
 	if source.DeployKeys != nil {
 		values := make([]uimodel.DeployKey, 0, source.DeployKeys.Len())
 		for _, d := range source.DeployKeys.Values() {

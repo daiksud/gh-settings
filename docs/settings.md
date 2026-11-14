@@ -1002,6 +1002,98 @@ General's `pull_requests.merge_commit.default_commit_message` accepts `default_m
 
 `repository.about.topics` manages the complete topic set. It is a direct array, not a mapping. Omission leaves it unmanaged; `[]` explicitly clears all topics; `{}` and null are invalid. Names are unique lowercase letters/numbers/hyphens, 1–50 characters each, at most 20 entries. Names are public metadata even on private repositories. Export, comparison and PUT use sorted set order without rewriting existing input YAML. Apply reads complete, validated current membership and skips PUT when the set matches, regardless of order. Changed membership uses one full-set PUT followed by an independent GET; the PUT response alone is not confirmation. A failed prerequisite read makes no Topics write. A rejected update or failed/mismatching readback stops later resources with uncertain effects and no automatic retry or rollback. Metadata read and Administration write must already exist. See [Topics and ordering](commands.md#apply-behavior).
 
+## Existing webhook configuration
+
+Use `repository.settings.webhooks` to manage **Payload URL** and **Content type**
+on existing repository webhooks in a personally owned public repository:
+
+```yaml
+webhooks:
+  - id: 12345678
+    payload_url: https://example.com/github
+    content_type: application/json
+  - id: 87654321
+    content_type: application/x-www-form-urlencoded
+```
+
+Each entry requires a unique positive integer `id` and at least one selected
+control. IDs bind existing hooks; URLs never identify or adopt them. Both controls
+are independently optional. Omitted fields and unlisted hooks remain unmanaged.
+Omitting the family or using `webhooks: []` makes no webhook requests during
+plan/apply. There is no creation, deletion, ID writeback or webhook prune scope;
+`--prune all` does not select webhook deletion.
+
+Content type accepts exactly the two MIME strings above, mapped to GitHub's
+`json` and `form` values. Payload URL must be an absolute HTTP(S) URL with a host,
+without userinfo, fragments, whitespace, control characters or malformed escapes.
+These URL constraints are product guards, not additional GitHub schema claims.
+Valid ports, paths and queries are accepted. The exact accepted bytes are retained;
+there is no trimming, URL normalization, DNS lookup or destination request.
+Nulls, empty selected strings, wrong types, duplicate fields/IDs and unsupported
+fields such as `url`, `secret`, `config`, `insecure_ssl`, `active` or `events` fail
+locally before API work.
+
+Payload URLs are nonsecret configuration and appear in YAML and detailed plans.
+GitHub [advises against embedding credentials in webhook URLs][webhook-practices].
+Path/query tokens cannot be reliably detected or redacted while preserving an
+exact, reviewable destination. Status-only output hides URLs and hook IDs; it is
+not credential storage.
+
+Export completes the paginated inventory and obtains each hook's parent and
+configuration records. A complete empty inventory exports `webhooks: []`.
+Inaccessible, incomplete, conflicting or unsupported evidence omits this entire
+family on first export or retains its valid prior declaration on re-export;
+independent families continue. No subset replaces a prior collection.
+
+Plan reads only declared IDs and compares selected controls without writing.
+Apply acquires the entire selected family before its first hook update and then
+freshly reads each hook before deciding whether to write. Complete matching state
+skips PATCH, including on an archived target. A needed write requires a freshly
+unarchived repository; explicit unarchive precedes configuration, and archive
+remains last.
+
+Reads require complete personal-public repository/owner identity, archive state,
+repository hook identity and creation timestamp. Parent and dedicated config
+records must agree on URL, content type and SSL state. Active and the entire event
+set must also be known. Unknown config members, missing/null controls, malformed
+values and identity drift fail rather than imply defaults. SSL accepts the two
+native string/numeric states; it is preserved privately and is not a YAML control.
+Future nonempty event names are retained as an exact set.
+
+A needed write PATCHes only changed selected members at the dedicated
+`/repos/{owner}/{repo}/hooks/{id}/config` endpoint. It never sends Secret, SSL,
+parent Active/events, an omitted member or an empty payload. HTTP 200 must provide
+complete matching nonsecret configuration. Independent parent/config and target
+GETs then verify the full original selection, omitted nonsecret configuration,
+creation identity, Active and events against the fresh snapshot. A selected value
+that matched before PATCH must still match afterward.
+
+Secret strings are discarded during decoding; absent, empty or masked strings
+never establish secret presence or equality. Secret is neither compared nor
+replayed. This relies on the dedicated endpoint's documented partial-update
+contract. It cannot prove cryptographic secret equality or receiver behavior.
+Raw response/error/debug bodies, unknown member names and private snapshots do not
+enter logs or reports. Detailed reports contain only selected public projections.
+
+Pre-write failure is distinct from unconfirmed effects after a PATCH attempt.
+Earlier verified writes remain applied when later work fails; there is no retry,
+rollback or success output after failed verification. Each hook is verified before
+the next update. Input files stay unchanged.
+
+The [official creation/editing guides][webhook-ui] document these UI controls, and
+[repository webhook REST][webhook-rest] plus the
+[partial configuration announcement][webhook-partial] establish the dedicated
+observation/update path. Reads require Webhooks read; updates require Webhooks
+write. Local fixtures do not prove a live write, delivery, authentication,
+reachability or absence of concurrent changes between requests. Parent
+Active/events writes, personal-public SSL UI confirmation, lifecycle/pruning and
+receiver configuration remain separate work. Secret values are outside policy.
+
+[webhook-practices]: https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks
+[webhook-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
+[webhook-rest]: https://docs.github.com/en/rest/repos/webhooks
+[webhook-partial]: https://github.blog/changelog/2020-10-26-webhooks-configuration-enhancements/
+
 ## Deploy keys
 
 Current source manages the **Title**, public **Key** and **Allow write access**

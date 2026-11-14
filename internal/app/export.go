@@ -79,6 +79,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.Topics.Names = &names
 		return nil
 	})
+	observe(settings.WebhooksPath, read.Webhooks != nil, func(candidate *settings.Declaration) error {
+		observed, err := read.Webhooks(repo, nil)
+		if err != nil {
+			return err
+		}
+		value, err := observed.Declaration()
+		if err != nil {
+			return err
+		}
+		candidate.Webhooks = &value
+		return nil
+	})
 	observe(settings.DeployKeysPath, read.DeployKeys != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.DeployKeys(repo)
 		if err != nil {

@@ -47,6 +47,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Pull request access](pull-request-access.feature.md) | Manage pull-request availability and creation policy. |
 | [Issue creation](issue-creation-policy.feature.md) | Manage issue creation policy. |
 | [Sponsorships](sponsorships.feature.md) | Manage Sponsor button visibility. |
+| [Existing webhook configuration](webhooks.feature.md) | Reconcile selected nonsecret controls on existing webhook IDs. |
 | [Deploy keys](deploy-keys.feature.md) | Manage public-key creation, immutable ID binding and explicit guarded deletion. |
 | [Repository access](repository-access.feature.md) | Manage personal collaborator identities and pending invitations without resending matching requests. |
 

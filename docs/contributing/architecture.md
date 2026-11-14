@@ -345,3 +345,16 @@ selection before its first write, then records per-runner actual-write results,
 excluding acquisition and no-ops from earlier completed-write evidence. Presentation
 uses only selected IDs/custom labels. There is no prune registration, lifecycle
 writer, token generation, recovery ID or hidden journal.
+
+## Existing webhook reconciliation
+
+`internal/settings/webhooks.go` separates partial public intent from complete
+nonsecret observations and immutable selection identity. The REST adapter discards
+secret strings, suppresses debug logging and bounds all error diagnostics. Export
+uses a complete fixed-route inventory; plan/apply acquire selected IDs. The app
+prepares the whole family, then each writer freshly reconciles, PATCHes only
+changed selected config members and independently confirms target, hook identity
+and all preserved nonsecret companions. No parent endpoint or destination URL is
+used for mutation. Closed report projections contain only selected controls.
+The [configuration reference](../settings.md#existing-webhook-configuration) owns
+constraints, partial-update evidence and limits of the preservation guarantee.
