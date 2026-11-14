@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -93,7 +94,7 @@ func TestEnvironmentAppsBinaryValidationAndExport(t *testing.T) {
 }
 
 func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
-	for _, mode := range []string{"replace", "readback-failure", "omitted"} {
+	for _, mode := range []string{"replace", "readback-failure", "parent-update-app-rejected", "omitted"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rule := func(id int64) map[string]any {
@@ -102,6 +103,7 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 			rules := []map[string]any{rule(1)}
 			operations := []string{}
 			timer := 0
+			parentUpdated, updatedParentRead := false, false
 			path := "/repos/owner/current/environments/production"
 			f, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
@@ -123,6 +125,9 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 						fmt.Fprint(w, `{"total_count":1,"environments":[{"id":7,"name":"production"}]}`)
 						return
 					case path:
+						if parentUpdated && timer == 5 {
+							updatedParentRead = true
+						}
 						parent()
 						return
 					case path + "/deployment_protection_rules":
@@ -148,7 +153,11 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 					if _, ok := body["custom_rules"]; ok {
 						t.Error("custom payload leaked", body)
 					}
+					if mode == "parent-update-app-rejected" && body["wait_timer"] != float64(5) {
+						t.Error("parent update did not request the desired wait timer", body)
+					}
 					timer = 5
+					parentUpdated = true
 					parent()
 					return
 				}
@@ -158,6 +167,14 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 					json.NewDecoder(r.Body).Decode(&body)
 					if len(body) != 1 || body["integration_id"] != 2 {
 						t.Error(body)
+					}
+					if mode == "parent-update-app-rejected" {
+						if !updatedParentRead {
+							t.Error("App enable attempted before updated parent readback")
+						}
+						w.WriteHeader(403)
+						fmt.Fprint(w, `{"message":"fixture rejected App enable"}`)
+						return
 					}
 					rules = append(rules, rule(2))
 					w.WriteHeader(201)
@@ -184,6 +201,8 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 			controls := "custom_rules: [2]"
 			if mode == "omitted" {
 				controls = "wait_timer: 5"
+			} else if mode == "parent-update-app-rejected" {
+				controls = "wait_timer: 5, custom_rules: [2]"
 			}
 			input := repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {" + controls + "}}]}\n")
 			if err := writeSettingsFile(f.work, input); err != nil {
@@ -197,7 +216,11 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if mode == "readback-failure" {
+			if mode == "parent-update-app-rejected" {
+				if applied.runErr == nil || !strings.Contains(applied.stderr.String(), "earlier successful writes remain applied") || !strings.Contains(applied.stderr.String(), "enable custom environment protection App 2") || !strings.Contains(applied.stderr.String(), "write may have applied") {
+					t.Fatal(applied)
+				}
+			} else if mode == "readback-failure" {
 				if applied.runErr == nil || !strings.Contains(applied.stderr.String(), "binding rule ID 102") {
 					t.Fatal(applied)
 				}
@@ -226,6 +249,12 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 			}
 			if mode == "omitted" {
 				want = "parent"
+			}
+			if mode == "parent-update-app-rejected" {
+				want = "parent,add"
+				if timer != 5 || !reflect.DeepEqual(rules, []map[string]any{rule(1)}) {
+					t.Fatal("parent update or original binding was not retained", timer, rules)
+				}
 			}
 			if strings.Join(operations, ",") != want {
 				t.Fatal(operations)
