@@ -27,6 +27,33 @@ func TestPullRequestLimitsRead(t *testing.T) {
 		})
 	}
 }
+func TestPullRequestLimitsRejectsAmbiguousEvidence(t *testing.T) {
+	validWithExtra := `{"enabled":false,"max_open_pull_requests":7,"include_drafts":true,"future":"ok"}`
+	for _, tc := range []struct {
+		name, body string
+		valid      bool
+	}{
+		{"unknown metadata", validWithExtra, true},
+		{"duplicate enabled", `{"enabled":true,"enabled":false,"max_open_pull_requests":7,"include_drafts":true}`, false},
+		{"escaped duplicate", `{"enabled":true,"\u0065nabled":false,"max_open_pull_requests":7,"include_drafts":true}`, false},
+		{"alias enabled", `{"Enabled":true,"enabled":false,"max_open_pull_requests":7,"include_drafts":true}`, false},
+		{"duplicate maximum", `{"enabled":false,"max_open_pull_requests":8,"max_open_pull_requests":7,"include_drafts":true}`, false},
+		{"alias maximum", `{"enabled":false,"MAX_OPEN_PULL_REQUESTS":8,"max_open_pull_requests":7,"include_drafts":true}`, false},
+		{"duplicate drafts", `{"enabled":false,"max_open_pull_requests":7,"include_drafts":false,"include_drafts":true}`, false},
+		{"alias drafts", `{"enabled":false,"max_open_pull_requests":7,"Include_Drafts":false,"include_drafts":true}`, false},
+		{"oversized", validWithExtra + strings.Repeat(" ", 1<<20), false},
+		{"invalid utf8", validWithExtra + string([]byte{0xff}), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &PullRequestLimitsClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) { return labelsResponse(req, 200, tc.body), nil })).rest}
+			_, err := c.Read(repository.Repository{Owner: "owner", Name: "current"})
+			if (err == nil) != tc.valid {
+				t.Fatalf("valid=%v err=%v", tc.valid, err)
+			}
+		})
+	}
+}
+
 func TestPullRequestLimitsUpdate(t *testing.T) {
 	yes, no := true, false
 	maximum := 9
@@ -47,6 +74,8 @@ func TestPullRequestLimitsUpdate(t *testing.T) {
 		{name: "stale then match", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{capBaseline, capBaseline, strings.Replace(capBaseline, `false`, `true`, 1)}, wantPatch: map[string]any{"enabled": true}, calls: 4},
 		{name: "exhausted", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{capBaseline, capBaseline, capBaseline, capBaseline}, wantPatch: map[string]any{"enabled": true}, calls: 5, fail: true},
 		{name: "companion drift", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{capBaseline, `{"enabled":true,"max_open_pull_requests":8,"include_drafts":true}`}, wantPatch: map[string]any{"enabled": true}, calls: 3, fail: true},
+		{name: "ambiguous preflight", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{`{"enabled":true,"enabled":false,"max_open_pull_requests":7,"include_drafts":true}`}, calls: 1, fail: true, pre: true},
+		{name: "ambiguous readback", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{capBaseline, `{"enabled":false,"enabled":true,"max_open_pull_requests":7,"include_drafts":true}`}, wantPatch: map[string]any{"enabled": true}, calls: 3, fail: true},
 		{name: "malformed readback", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{capBaseline, `{}`}, wantPatch: map[string]any{"enabled": true}, calls: 3, fail: true},
 		{name: "denied preflight", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{`{}`}, status: 403, calls: 1, fail: true, pre: true},
 		{name: "denied readback", desired: settings.PullRequestLimitsDeclaration{Enabled: &yes}, reads: []string{capBaseline, `{}`}, status: 403, wantPatch: map[string]any{"enabled": true}, calls: 3, fail: true},

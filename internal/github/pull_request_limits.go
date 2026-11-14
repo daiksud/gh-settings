@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -42,20 +44,29 @@ func (c *PullRequestLimitsClient) Read(repo repository.Repository) (settings.Pul
 	if response.StatusCode != http.StatusOK {
 		return settings.PullRequestLimitsObservation{}, fmt.Errorf("unexpected pull request limits read status %d", response.StatusCode)
 	}
-	var raw struct {
-		Enabled *bool `json:"enabled"`
-		Maximum *int  `json:"max_open_pull_requests"`
-		Drafts  *bool `json:"include_drafts"`
-	}
-	dec := json.NewDecoder(response.Body)
-	if dec.Decode(&raw) != nil || raw.Enabled == nil || raw.Maximum == nil || raw.Drafts == nil {
+	const responseLimit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, responseLimit+1))
+	var fields map[string]json.RawMessage
+	if err != nil || len(body) > responseLimit || !utf8.Valid(body) || webhookJSON(body, &fields) != nil || fields == nil {
 		return settings.PullRequestLimitsObservation{}, fmt.Errorf("incomplete or invalid pull request limits")
 	}
-	var extra any
-	if dec.Decode(&extra) != io.EOF {
-		return settings.PullRequestLimitsObservation{}, fmt.Errorf("invalid trailing pull request limits response")
+	// Typed struct decoding accepts case-insensitive aliases; only canonical keys
+	// may supply the evidence for these fields.
+	for key := range fields {
+		for _, name := range []string{"enabled", "max_open_pull_requests", "include_drafts"} {
+			if key != name && strings.EqualFold(key, name) {
+				return settings.PullRequestLimitsObservation{}, fmt.Errorf("incomplete or invalid pull request limits")
+			}
+		}
 	}
-	return settings.NewPullRequestLimitsObservation(settings.PullRequestLimitsValues{Enabled: *raw.Enabled, Maximum: *raw.Maximum, IncludeDrafts: *raw.Drafts})
+	var enabled, drafts *bool
+	var maximum *int
+	if json.Unmarshal(fields["enabled"], &enabled) != nil || enabled == nil ||
+		json.Unmarshal(fields["max_open_pull_requests"], &maximum) != nil || maximum == nil ||
+		json.Unmarshal(fields["include_drafts"], &drafts) != nil || drafts == nil {
+		return settings.PullRequestLimitsObservation{}, fmt.Errorf("incomplete or invalid pull request limits")
+	}
+	return settings.NewPullRequestLimitsObservation(settings.PullRequestLimitsValues{Enabled: *enabled, Maximum: *maximum, IncludeDrafts: *drafts})
 }
 
 type pullRequestLimitsPreWriteFailure struct{ error }
