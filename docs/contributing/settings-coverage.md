@@ -62,9 +62,10 @@ A read-only browser pass on the personally owned public
 It saved no form, toggled no setting and made no API mutation. An unsaved classic
 branch-protection form and an existing Ruleset editor were inspected. Visibility
 of a checkbox does not prove its dependent form is usable or its value writable.
-The Collaborators page required sudo-mode authentication, which was not performed.
-The follow-ups below identify later unsaved form inspections separately from this
-initial pass; none applied settings or authorized a new integration.
+During this initial pass the Collaborators page required sudo-mode authentication,
+which was not performed. The later authenticated, unsaved observation is recorded
+below; it did not search, invite anyone or establish permission choices. Neither
+pass applied settings or authorized a new integration.
 
 | Inspected surface | Observation boundary |
 | --- | --- |
@@ -374,6 +375,20 @@ must not be erased merely because part of the resource cannot be managed.
 | Codespaces prebuild configuration | Eligible | Setup, schedule and advanced fields inspected unsaved 2026-11-14; `main` configuration selector offered only Default Codespaces Configuration; other branches uninspected; [documented personal-repository controls][prebuild-ui] | Investigated-unconfirmed complete settings contract in the fixed API recheck; workspace execution, prebuild provenance and file editing are distinct | Not implemented; no prebuild was created or workflow executed |
 | Additional sidebar, conditional and feature-dependent controls | Eligible if target UI is configurable | Unconfirmed until explicitly inventoried | Unconfirmed until matched to applicable official settings APIs | No completeness claim; record each newly observed control separately |
 
+### Webhook verification boundary
+
+On 2026-11-14, the user decided that live webhook delivery testing is not a
+v1 completion requirement. This includes creating a real hook that automatically
+pings, test deliveries and redeliveries. This decision does not authorize those
+operations or change verification requirements for other settings.
+
+Official API contracts and local fixtures remain separate from live evidence:
+no live delivery, TLS verification or Secret equality is established by those
+fixtures. Existing Active/events remain matching guards; a safe Secret-preserving
+parent-update contract remains unconfirmed. Publishing a release and updating
+published CLI/Action references remain separate work requiring explicit
+authorization; current source evidence does not establish the released contract.
+
 ## Explicit product and target boundaries
 
 These are policy or target decisions, not claims that an API is unavailable.
@@ -406,7 +421,7 @@ being confused with the missing implementations above.
 | Consistent optional pruning | [Collection pruning](../settings.md#collection-pruning) supports `labels`, `rulesets`, `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys`, `webhooks` and `runners`. Standalone `all` dynamically selects the current registry; each scope requires its corresponding declaration, and omitted collections remain unmanaged. Environment parent retention includes variable-only declarations. Each family has its own ownership, preflight and deletion effects. |
 | Complete observation and convergence | Readbacks and partial-failure evidence are described per family. API acknowledgment, normalization equality, pending invitation or asynchronous acceptance alone cannot establish the destination state. Unknown observations must remain unknown. |
 | One released CLI/Action contract | [Package identity and consumer pins](../github-actions.md#published-package-and-consumer-pins) determine actual availability. Current source documentation does not update an older immutable package. |
-| Exhaustive target UI/API evidence | The dated browser pass, earlier mappings and official contracts cover the named groups; unconfirmed rows, the sudo-blocked Access page and unexpanded forms remain evidence gaps. No exhaustive conditional-control survey or live write/readback certification is claimed. |
+| Exhaustive target UI/API evidence | The initial 2026-11-13 Access inspection stopped at sudo; the authenticated 2026-11-14 follow-up observed the Collaborators page and an empty Add people dialog without a search or invitation. Search results, email-only invitation success, selectable permissions and a complete applicable API identity/redeclaration path remain unconfirmed. Other conditional forms and the unconfirmed rows also remain evidence gaps. No exhaustive conditional-control survey or live write/readback certification is claimed. |
 
 [v1-goal]: https://github.com/daiksud/gh-settings/issues/668
 [openapi]: https://github.com/github/rest-api-description/blob/bd6df26d2a0104874fe5025a25ebcde356413364/descriptions/api.github.com/api.github.com.json
