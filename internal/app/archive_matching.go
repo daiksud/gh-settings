@@ -106,6 +106,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Labels = nil
 	remaining.Rulesets = nil
 	remaining.Webhooks = nil
+	remaining.Autolinks = nil
 	remaining.Environments = nil
 	remaining.Variables = nil
 	remaining.AgentsVariables = nil
@@ -208,6 +209,9 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 		return err
 	}
 	if err := verifyArchivedWebhooks(repo, desired.Webhooks, initial, read.ReadWebhooks); err != nil {
+		return err
+	}
+	if err := verifyArchivedAutolinks(repo, desired.Autolinks, initial, read.ReadAutolinks); err != nil {
 		return err
 	}
 	environmentIDs, err := verifyArchivedEnvironments(repo, desired.Environments, read.ReadEnvironments)
