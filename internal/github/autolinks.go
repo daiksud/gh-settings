@@ -28,17 +28,27 @@ func (c *Client) autolinkGET(path string, out any) error {
 		return fmt.Errorf("read autolink state failed")
 	}
 	defer response.Body.Close()
-	decoder := json.NewDecoder(response.Body)
-	var extra any
-	if response.StatusCode != 200 || response.Header.Get("Link") != "" || decoder.Decode(out) != nil || decoder.Decode(&extra) != io.EOF {
+	data, readErr := io.ReadAll(io.LimitReader(response.Body, environmentResponseLimit+1))
+	if response.StatusCode != 200 || len(response.Header.Values("Link")) != 0 || readErr != nil || len(data) > environmentResponseLimit || environmentJSON(data, out) != nil {
 		return fmt.Errorf("incomplete autolink response")
 	}
 	return nil
 }
 func (c *Client) autolinkTarget(repo repository.Repository) (settings.AutolinkTarget, error) {
-	var raw collaboratorRawRepository
-	if err := c.autolinkGET("repos/"+repo.Owner+"/"+repo.Name, &raw); err != nil {
+	var data json.RawMessage
+	if err := c.autolinkGET("repos/"+repo.Owner+"/"+repo.Name, &data); err != nil {
 		return settings.AutolinkTarget{}, err
+	}
+	var fields, owner map[string]json.RawMessage
+	var raw collaboratorRawRepository
+	if json.Unmarshal(data, &fields) != nil || fields == nil || rejectEnvironmentAliases(fields, "id", "full_name", "private", "visibility", "archived", "owner") != nil || json.Unmarshal(fields["owner"], &owner) != nil || owner == nil || rejectEnvironmentAliases(owner, "id", "type", "login") != nil || json.Unmarshal(data, &raw) != nil {
+		return settings.AutolinkTarget{}, fmt.Errorf("invalid autolink repository identity")
+	}
+	if visibility, ok := fields["visibility"]; ok {
+		var value *string
+		if json.Unmarshal(visibility, &value) != nil || value == nil || *value != "public" {
+			return settings.AutolinkTarget{}, fmt.Errorf("invalid autolink repository visibility")
+		}
 	}
 	if raw.ID == nil || *raw.ID <= 0 || raw.FullName == nil || !strings.EqualFold(*raw.FullName, repo.Owner+"/"+repo.Name) || raw.Private == nil || *raw.Private || raw.Archived == nil || raw.Owner == nil || raw.Owner.ID == nil || *raw.Owner.ID <= 0 || raw.Owner.Type == nil || *raw.Owner.Type != "User" || raw.Owner.Login == nil || !strings.EqualFold(*raw.Owner.Login, repo.Owner) {
 		return settings.AutolinkTarget{}, fmt.Errorf("autolinks require a complete personal public repository identity")

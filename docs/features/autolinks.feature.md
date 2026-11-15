@@ -19,6 +19,12 @@ an authenticated form observation, or external-link rendering.
 - ID-bound matching configuration is unchanged. Missing/differing bound entries
   and IDless collisions fail before mutation, including collisions with candidates
   the same apply would prune. No automatic update or replacement exists.
+- An archived repository with `archived: true` permits non-prune matching only
+  for selected positive IDs with all three fields equal on two complete reads.
+  Repository, owner and archive identity must remain consistent; unselected
+  entries remain unmanaged. Missing, ambiguous or differing evidence fails with
+  no write or ID recording. Independent reads do not constitute an atomic snapshot.
+  Live archived-repository readability remains unverified.
 
 ## Creation, retention and deletion
 
