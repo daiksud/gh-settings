@@ -38,6 +38,15 @@ Feature: Custom labels on selected existing repository runners
     And detail and listing contribute the strongest optional ID evidence
     And busy, status and software metadata are not drift conditions for ordinary label updates
 
+  Scenario: Match selected runners on an archived repository
+    Given a personally owned public archived repository and existing runner IDs
+    When two independent observations each acquire complete runner detail and labels
+    Then selected custom-label sets must match by Unicode simple-fold identity
+    And repository, owner, runner name and OS, label class and endpoint-specific optional IDs stay stable
+    And unknown IDs remain unknown rather than being inferred across endpoints
+    And ambiguous, missing or differing evidence and any prune selector fail without writes
+    And separate observations do not form an atomic snapshot
+
   Scenario: Explicitly prune a present runner list
     Given a complete stable personal-public inventory, details and labels
     And every unlisted candidate has known online or offline status and is idle
@@ -69,7 +78,11 @@ Mapped tests: `TestUIRunnerLabelsRoundTrip`, `TestUIRunnerLabelsBoundary`,
 `TestRunnerApplyPreparationAndProgress`, `TestRunnerExportRetentionAndDiagnostics`,
 `TestRunnerUnarchiveBeforeFamilyPreparation`, `TestRunnerReportClosedBoundary`,
 `TestRunnerReportExactNumericIDsAndOuterShape`,
+`TestArchivedRunnerMatching`, `TestArchivedRunnersApplyReadOnly`,
 `TestRunnerLabelsLifecycle`, `TestBuiltCompositeRunnerLabels`,
 `TestRunnerDeletionReportBoundaryAndPrivacy`, `TestRunnerPruneGlobalPreflightBeforeOtherWrites`,
 `TestRunnerPruneDeleteRequiresFreshEvidenceAndIndependentAbsence`,
 `TestRunnerPruneBuiltCLI`, and `TestBuiltCompositeRunnerPrune`.
+
+Archived runner readability on GitHub remains unverified. Local fixtures do not
+establish live repository or runner behavior.

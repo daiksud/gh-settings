@@ -107,6 +107,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Rulesets = nil
 	remaining.Webhooks = nil
 	remaining.Autolinks = nil
+	remaining.Runners = nil
 	remaining.DeployKeys = nil
 	remaining.Environments = nil
 	remaining.Variables = nil
@@ -214,6 +215,14 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 	}
 	if err := verifyArchivedAutolinks(repo, desired.Autolinks, initial, read.ReadAutolinks); err != nil {
 		return err
+	}
+	if desired.Runners != nil && len(*desired.Runners) > 0 {
+		if read.VerifyArchivedRunners == nil {
+			return fmt.Errorf("verify archived runners: reader unavailable")
+		}
+		if err := read.VerifyArchivedRunners(repo, *desired.Runners, initial); err != nil {
+			return fmt.Errorf("verify archived runners: %w", err)
+		}
 	}
 	if err := verifyArchivedDeployKeys(repo, desired.DeployKeys, initial, read.ReadDeployKeys); err != nil {
 		return err

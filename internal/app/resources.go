@@ -91,6 +91,7 @@ type Writer struct {
 	Webhook                          func(repository.Repository, settings.WebhookSelection) (bool, error)
 	ReadRunnerPrune                  func(repository.Repository) (settings.RunnerPruneObservation, error)
 	DeleteRunnerPrune                func(repository.Repository, settings.RunnerPruneObservation, []int64, int64) (bool, error)
+	VerifyArchivedRunners            func(repository.Repository, []settings.RunnerLabels, settings.ArchiveState) error
 	ReadRunners                      func(repository.Repository, []settings.RunnerLabels) (settings.RunnerObservation, error)
 	RunnerLabels                     func(repository.Repository, settings.RunnerLabels) (bool, error)
 	ReadDeployKeys                   func(repository.Repository) (settings.DeployKeyObservation, error)
