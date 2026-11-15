@@ -66,8 +66,10 @@ all selected Environment variables succeed before the fixed deletes run.
 
 Global acquisition binds repository/archive identity, positive parent ID,
 complete supported policy, active raw patterns, complete variables and secret
-name/created/updated metadata. Explicit custom-protection endpoint acquisition
-must be complete and known-empty at acquisition and each last recheck. Unsupported,
+name/created/updated metadata. Secret metadata pages are limited to 1 MiB and
+reject duplicate or case-aliased members, unknown fields, malformed Unicode,
+inconsistent totals and contradictory pagination evidence. Explicit
+custom-protection endpoint acquisition must be complete and known-empty at acquisition and each last recheck. Unsupported,
 normalized, denied or incomplete candidates block all writes. Retained unsupported
 parents need no deletion snapshot. Recheck the candidate set before Environment
 work, then each parent's observable state/identity before DELETE. Only this
@@ -135,7 +137,8 @@ absence after DELETE 204. Removing a restriction can permit future workflows.
   `internal/settings/environment_prune_test.go`, `internal/actions/environments_test.go`.
 - Child metadata pagination, custom-protection gates, late drift, escaped names,
   target/archive checks and deletion absence/recreation:
-  `internal/github/environment_prune_test.go`.
+  `internal/github/environment_prune_test.go`; strict metadata, size and Link
+  evidence: `internal/github/environment_secret_metadata_integrity_test.go`.
 - Global preflight, fixed candidates, retained policy/variable ordering, confirmed
   unarchive and partial progress: `internal/app/environment_prune_test.go`.
 - Supplied CLI present/empty/omitted lists, variable-only retention, combined variable

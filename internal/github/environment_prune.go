@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -99,43 +102,96 @@ func (c *EnvironmentsClient) readEnvironmentSecretMetadata(repo repository.Repos
 		if err != nil {
 			return nil, fmt.Errorf("read Environment secret metadata page %d failed", page)
 		}
-		var raw struct {
-			Total   *int `json:"total_count"`
-			Secrets *[]struct {
-				Name      *string `json:"name"`
-				CreatedAt *string `json:"created_at"`
-				UpdatedAt *string `json:"updated_at"`
-			} `json:"secrets"`
-		}
-		decoder := json.NewDecoder(response.Body)
-		decoder.DisallowUnknownFields()
-		decodeErr := decoder.Decode(&raw)
-		var extra any
-		trailing := decoder.Decode(&extra)
+		const pageLimit = 1 << 20
+		data, readErr := io.ReadAll(io.LimitReader(response.Body, pageLimit+1))
 		response.Body.Close()
-		if response.StatusCode != http.StatusOK || decodeErr != nil || trailing != io.EOF || raw.Total == nil || *raw.Total < 0 || raw.Secrets == nil || *raw.Secrets == nil {
+		links := response.Header.Values("Link")
+		for _, link := range links {
+			if strings.TrimSpace(link) == "" {
+				return nil, fmt.Errorf("invalid Environment secret metadata pagination")
+			}
+		}
+		next, linkErr := webhookHasNext(strings.Join(links, ","))
+		var raw map[string]json.RawMessage
+		if response.StatusCode != http.StatusOK || readErr != nil || linkErr != nil || len(data) > pageLimit || !validEnvironmentSecretJSONUnicode(data) || webhookJSON(data, &raw) != nil || raw == nil || environmentKnownFields(raw, "total_count", "secrets") != nil {
 			return nil, fmt.Errorf("incomplete or invalid Environment secret metadata page %d", page)
 		}
-		if expected >= 0 && expected != *raw.Total {
+		var total int
+		var entries []map[string]json.RawMessage
+		if requiredEnvironmentJSON(raw, "total_count", &total) != nil || total < 0 || requiredEnvironmentJSON(raw, "secrets", &entries) != nil || entries == nil || len(entries) > 100 {
+			return nil, fmt.Errorf("incomplete or invalid Environment secret metadata page %d", page)
+		}
+		if expected >= 0 && expected != total {
 			return nil, fmt.Errorf("Environment secret metadata count changed during pagination")
 		}
-		expected = *raw.Total
-		for _, entry := range *raw.Secrets {
-			if entry.Name == nil || entry.CreatedAt == nil || entry.UpdatedAt == nil {
+		expected = total
+		for _, entry := range entries {
+			var value settings.EnvironmentSecretMetadata
+			if entry == nil || environmentKnownFields(entry, "name", "created_at", "updated_at") != nil || requiredEnvironmentJSON(entry, "name", &value.Name) != nil || requiredEnvironmentJSON(entry, "created_at", &value.CreatedAt) != nil || requiredEnvironmentJSON(entry, "updated_at", &value.UpdatedAt) != nil {
 				return nil, fmt.Errorf("incomplete Environment secret metadata")
 			}
-			values = append(values, settings.EnvironmentSecretMetadata{Name: *entry.Name, CreatedAt: *entry.CreatedAt, UpdatedAt: *entry.UpdatedAt})
+			values = append(values, value)
 		}
 		if len(values) > expected {
 			return nil, fmt.Errorf("Environment secret metadata exceeds total count")
 		}
 		if len(values) == expected {
+			if next {
+				return nil, fmt.Errorf("incomplete Environment secret metadata inventory")
+			}
 			return values, nil
 		}
-		if len(*raw.Secrets) != 100 {
+		if len(entries) != 100 || len(links) > 0 && !next {
 			return nil, fmt.Errorf("incomplete Environment secret metadata inventory")
 		}
 	}
+}
+
+// encoding/json replaces malformed UTF-8 and unpaired UTF-16 escape values
+// with U+FFFD, which cannot establish exact private snapshot evidence.
+func validEnvironmentSecretJSONUnicode(data []byte) bool {
+	if !utf8.Valid(data) {
+		return false
+	}
+	inString := false
+	for i := 0; i < len(data); i++ {
+		if data[i] == '"' {
+			inString = !inString
+			continue
+		}
+		if !inString || data[i] != '\\' {
+			continue
+		}
+		if i+1 >= len(data) {
+			return false
+		}
+		i++
+		if data[i] != 'u' {
+			continue
+		}
+		if i+4 >= len(data) {
+			return false
+		}
+		value, err := strconv.ParseUint(string(data[i+1:i+5]), 16, 16)
+		if err != nil {
+			return false
+		}
+		i += 4
+		if value >= 0xdc00 && value <= 0xdfff {
+			return false
+		}
+		if value >= 0xd800 && value <= 0xdbff {
+			if i+6 >= len(data) || data[i+1] != '\\' || data[i+2] != 'u' {
+				return false
+			}
+			low, err := strconv.ParseUint(string(data[i+3:i+7]), 16, 16)
+			if err != nil || low < 0xdc00 || low > 0xdfff {
+				return false
+			}
+			i += 6
+		}
+	}
+	return true
 }
 
 func (c *EnvironmentsClient) DeleteEnvironment(repo repository.Repository, candidate settings.EnvironmentPruneCandidate) error {

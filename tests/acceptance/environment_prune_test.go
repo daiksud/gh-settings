@@ -14,12 +14,13 @@ import (
 )
 
 func TestEnvironmentPruneBinary(t *testing.T) {
-	for _, mode := range []string{"retained", "empty", "all", "omitted", "custom-denied", "late-custom", "recreated", "variables-prune"} {
+	for _, mode := range []string{"retained", "empty", "all", "omitted", "custom-denied", "late-custom", "recreated", "variables-prune", "ambiguous-secret-fresh"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			events := []string{}
 			deleted := false
 			customReads := 0
+			secretReads := 0
 			variableDeleted := false
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
@@ -85,6 +86,11 @@ func TestEnvironmentPruneBinary(t *testing.T) {
 				case base + "old/variables":
 					fmt.Fprint(w, `{"total_count":1,"variables":[{"name":"PRIVATE_CHILD","value":"PRIVATE_VARIABLE_CANARY"}]}`)
 				case base + "old/secrets":
+					secretReads++
+					if mode == "ambiguous-secret-fresh" && secretReads >= 2 {
+						fmt.Fprint(w, `{"total_count":1,"secrets":[{"name":"SECRET_METADATA_CANARY","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-02T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}]}`)
+						return
+					}
 					fmt.Fprint(w, `{"total_count":1,"secrets":[{"name":"SECRET_METADATA_CANARY","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}]}`)
 				case base + "kept-vars/variables":
 					if mode == "variables-prune" && !variableDeleted {
@@ -109,6 +115,7 @@ func TestEnvironmentPruneBinary(t *testing.T) {
 			}
 			defer fixture.close()
 			env := labelIDFixtureEnv(fixture.cfg, false)
+			env = append(env, "GH_DEBUG=api")
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
@@ -154,14 +161,15 @@ func TestEnvironmentPruneBinary(t *testing.T) {
 			// acquisition reads, two collection recheck reads, then last-delete reads.
 			mu.Lock()
 			customReads = 0
+			secretReads = 0
 			mu.Unlock()
 			applied, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply", "--prune", scope}, false)
 			if err != nil {
 				t.Fatal(err)
 			}
-			bad := mode == "custom-denied" || mode == "late-custom" || mode == "recreated"
+			bad := mode == "custom-denied" || mode == "late-custom" || mode == "recreated" || mode == "ambiguous-secret-fresh"
 			if (applied.runErr != nil) != bad {
-				t.Fatal(applied.stdout.String(), applied.stderr.String(), applied.runErr)
+				t.Error(applied.stdout.String(), applied.stderr.String(), applied.runErr)
 			}
 			if strings.Contains(applied.stdout.String()+applied.stderr.String(), "CANARY") {
 				t.Fatal("private child evidence leaked")
@@ -170,9 +178,12 @@ func TestEnvironmentPruneBinary(t *testing.T) {
 			count := len(events)
 			ordered := strings.Join(events, ",")
 			mu.Unlock()
-			if mode == "omitted" || mode == "custom-denied" || mode == "late-custom" {
+			if mode == "omitted" || mode == "custom-denied" || mode == "late-custom" || mode == "ambiguous-secret-fresh" {
 				if count != 0 {
 					t.Fatal(events)
+				}
+				if mode == "ambiguous-secret-fresh" && secretReads < 2 {
+					t.Fatal("ambiguous secret endpoint not reached")
 				}
 			} else if mode == "variables-prune" {
 				if ordered != "/repos/owner/current/environments/kept-vars/variables/REMOVE,/repos/owner/current/environments/old" {

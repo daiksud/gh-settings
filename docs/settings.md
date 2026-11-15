@@ -135,8 +135,10 @@ secret/protection removal and failure of jobs waiting on protection rules. A lat
 workflow reference can recreate a name without restoring the deleted resource's
 protection. Secret values are never read, exported or backed up; YAML cannot
 restore them. Secret metadata is only private drift evidence, not complete
-rotation detection, and is excluded from plans/reports. Prune snapshot transport
-ignores inherited `GH_DEBUG` so child evidence is not copied to debug logs.
+rotation detection, and is excluded from plans/reports. Metadata pages must be
+complete, bounded and unambiguous; duplicate members, case aliases, malformed
+Unicode and unknown fields are not evidence of equality. Prune snapshot
+transport ignores inherited `GH_DEBUG` so child evidence is not copied to debug logs.
 
 [Environment list/detail](https://docs.github.com/en/rest/deployments/environments)
 and [custom-protection reads](https://docs.github.com/en/rest/deployments/protection-rules#get-all-deployment-protection-rules-for-an-environment)
