@@ -12,8 +12,8 @@ import (
 )
 
 // The selected empty collections are unmanaged only without pruning. Each
-// nonempty entry is valid and must stay outside archived matching until its
-// resource-specific reader and comparator are explicitly supported.
+// nonempty entry must fail without the required matching reader, or when its
+// resource family is outside the supported archived matching scope.
 func TestArchivedMatchingUsesOrdinaryEmptyCollectionSelection(t *testing.T) {
 	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	yes, desc, content, color := true, "same", "application/json", "112233"

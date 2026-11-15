@@ -84,45 +84,46 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
-	ReadWebhookPrune           func(repository.Repository) (settings.WebhookPruneObservation, error)
-	DeleteWebhook              func(repository.Repository, settings.WebhookPruneObservation, int64) (bool, error)
-	ReadWebhooks               func(repository.Repository, []int64) (settings.WebhookObservation, error)
-	CreateWebhook              func(repository.Repository, settings.WebhookObservation, settings.Webhook) (settings.WebhookCreateResult, error)
-	Webhook                    func(repository.Repository, settings.WebhookSelection) (bool, error)
-	ReadRunnerPrune            func(repository.Repository) (settings.RunnerPruneObservation, error)
-	DeleteRunnerPrune          func(repository.Repository, settings.RunnerPruneObservation, []int64, int64) (bool, error)
-	ReadRunners                func(repository.Repository, []settings.RunnerLabels) (settings.RunnerObservation, error)
-	RunnerLabels               func(repository.Repository, settings.RunnerLabels) (bool, error)
-	ReadDeployKeys             func(repository.Repository) (settings.DeployKeyObservation, error)
-	CreateDeployKey            func(repository.Repository, settings.DeployKeyObservation, settings.DeployKeyDeclaration) (settings.DeployKeyWriteResult, error)
-	DeleteDeployKey            func(repository.Repository, settings.DeployKeyObservation, int64) (settings.DeployKeyObservation, error)
-	ReadAutolinks              func(repository.Repository) (settings.AutolinkObservation, error)
-	CreateAutolink             func(repository.Repository, settings.AutolinkObservation, settings.Autolink) (settings.AutolinkWriteResult, error)
-	DeleteAutolink             func(repository.Repository, settings.AutolinkObservation, int64) (bool, error)
-	OIDCSubject                func(repository.Repository, settings.OIDCSubjectTemplate) (bool, error)
-	ReadArchivedOIDCSubject    func(repository.Repository, settings.ArchiveState) ([2]settings.OIDCSubjectObservation, error)
-	ReadAIScanRepositories     func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
-	AIScanRepositories         func(repository.Repository, settings.SecurityChange) (bool, error)
-	ReadCollaboratorPrune      func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)
-	RefreshCollaboratorPrune   func(repository.Repository, settings.CollaboratorPruneObservation, *settings.CollaboratorWriteResult) (settings.CollaboratorPruneObservation, error)
-	DeleteCollaborator         func(repository.Repository, settings.CollaboratorPruneObservation, settings.CollaboratorDeletion) (settings.CollaboratorPruneObservation, settings.CollaboratorDeleteResult, error)
-	ReadEnvironmentPrune       func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
-	DeleteEnvironment          func(repository.Repository, settings.EnvironmentPruneCandidate) error
-	ReadBranchProtectionRules  func(repository.Repository) (settings.ClassicObservation, error)
-	BranchProtectionRule       func(repository.Repository, settings.ClassicSelection) (settings.ClassicWriteResult, error)
-	DeleteBranchProtectionRule func(repository.Repository, settings.ClassicPruneCandidate) error
-	ReadCollaborators          func(repository.Repository) (settings.CollaboratorObservation, error)
-	ResolveCollaborator        func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
-	Collaborator               func(repository.Repository, settings.CollaboratorSelection) (settings.CollaboratorWriteResult, error)
-	BindCollaboratorID         func(string, int64) error
-	ReadVariables              func(repository.Repository) (settings.VariableInventory, error)
-	ReadAgentVariables         func(repository.Repository) (settings.VariableInventory, error)
-	ReadArchivedVariable       func(repository.Repository, string) (settings.VariableObservation, error)
-	ReadArchivedAgentVariable  func(repository.Repository, string) (settings.VariableObservation, error)
-	ReadEnvironmentVariables   func(repository.Repository, string) (settings.VariableInventory, error)
-	DeleteVariable             func(repository.Repository, settings.VariableChange) error
-	DeleteAgentVariable        func(repository.Repository, settings.VariableChange) error
-	DeleteEnvironmentVariable  func(repository.Repository, string, int64, settings.VariableChange) error
+	ReadWebhookPrune                 func(repository.Repository) (settings.WebhookPruneObservation, error)
+	DeleteWebhook                    func(repository.Repository, settings.WebhookPruneObservation, int64) (bool, error)
+	ReadWebhooks                     func(repository.Repository, []int64) (settings.WebhookObservation, error)
+	CreateWebhook                    func(repository.Repository, settings.WebhookObservation, settings.Webhook) (settings.WebhookCreateResult, error)
+	Webhook                          func(repository.Repository, settings.WebhookSelection) (bool, error)
+	ReadRunnerPrune                  func(repository.Repository) (settings.RunnerPruneObservation, error)
+	DeleteRunnerPrune                func(repository.Repository, settings.RunnerPruneObservation, []int64, int64) (bool, error)
+	ReadRunners                      func(repository.Repository, []settings.RunnerLabels) (settings.RunnerObservation, error)
+	RunnerLabels                     func(repository.Repository, settings.RunnerLabels) (bool, error)
+	ReadDeployKeys                   func(repository.Repository) (settings.DeployKeyObservation, error)
+	CreateDeployKey                  func(repository.Repository, settings.DeployKeyObservation, settings.DeployKeyDeclaration) (settings.DeployKeyWriteResult, error)
+	DeleteDeployKey                  func(repository.Repository, settings.DeployKeyObservation, int64) (settings.DeployKeyObservation, error)
+	ReadAutolinks                    func(repository.Repository) (settings.AutolinkObservation, error)
+	CreateAutolink                   func(repository.Repository, settings.AutolinkObservation, settings.Autolink) (settings.AutolinkWriteResult, error)
+	DeleteAutolink                   func(repository.Repository, settings.AutolinkObservation, int64) (bool, error)
+	OIDCSubject                      func(repository.Repository, settings.OIDCSubjectTemplate) (bool, error)
+	ReadArchivedOIDCSubject          func(repository.Repository, settings.ArchiveState) ([2]settings.OIDCSubjectObservation, error)
+	ReadAIScanRepositories           func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
+	AIScanRepositories               func(repository.Repository, settings.SecurityChange) (bool, error)
+	ReadCollaboratorPrune            func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)
+	RefreshCollaboratorPrune         func(repository.Repository, settings.CollaboratorPruneObservation, *settings.CollaboratorWriteResult) (settings.CollaboratorPruneObservation, error)
+	DeleteCollaborator               func(repository.Repository, settings.CollaboratorPruneObservation, settings.CollaboratorDeletion) (settings.CollaboratorPruneObservation, settings.CollaboratorDeleteResult, error)
+	ReadEnvironmentPrune             func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
+	DeleteEnvironment                func(repository.Repository, settings.EnvironmentPruneCandidate) error
+	ReadBranchProtectionRules        func(repository.Repository) (settings.ClassicObservation, error)
+	BranchProtectionRule             func(repository.Repository, settings.ClassicSelection) (settings.ClassicWriteResult, error)
+	DeleteBranchProtectionRule       func(repository.Repository, settings.ClassicPruneCandidate) error
+	ReadCollaborators                func(repository.Repository) (settings.CollaboratorObservation, error)
+	ResolveCollaborator              func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
+	Collaborator                     func(repository.Repository, settings.CollaboratorSelection) (settings.CollaboratorWriteResult, error)
+	BindCollaboratorID               func(string, int64) error
+	ReadVariables                    func(repository.Repository) (settings.VariableInventory, error)
+	ReadAgentVariables               func(repository.Repository) (settings.VariableInventory, error)
+	ReadArchivedVariable             func(repository.Repository, string) (settings.VariableObservation, error)
+	ReadArchivedAgentVariable        func(repository.Repository, string) (settings.VariableObservation, error)
+	ReadArchivedEnvironmentVariables func(repository.Repository, string, []string) (int64, []settings.VariableObservation, error)
+	ReadEnvironmentVariables         func(repository.Repository, string) (settings.VariableInventory, error)
+	DeleteVariable                   func(repository.Repository, settings.VariableChange) error
+	DeleteAgentVariable              func(repository.Repository, settings.VariableChange) error
+	DeleteEnvironmentVariable        func(repository.Repository, string, int64, settings.VariableChange) error
 
 	PullRequestExemptions   func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error)
 	EnvironmentVariable     func(repository.Repository, string, settings.RepositoryVariable) (bool, error)
