@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -36,8 +37,25 @@ func (c *Client) ReadEnvironmentVariables(repo repository.Repository, environmen
 	return settings.NewEnvironmentVariableInventory(environment, id, values)
 }
 
-// The public variable-list contract caps pages at 30. Require a stable total,
-// every name/value, no duplicates, and exactly the promised complete count.
+// Each requested page contains at most 30 variable values, each potentially
+// large and JSON-escaped. Bound acquisition without accepting a partial page.
+const variableInventoryPageLimit = 16 << 20
+
+// Unknown response metadata remains unowned, but aliases of selected keys
+// cannot coexist with or replace the canonical field.
+func variableInventoryAliases(fields map[string]json.RawMessage, canonical ...string) bool {
+	for name := range fields {
+		for _, key := range canonical {
+			if name != key && strings.EqualFold(name, key) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// We request 30 items per page. Require a stable total, every name/value, no
+// duplicates, and exactly the promised complete count.
 func (c *Client) readVariableInventory(path string) (settings.VariableInventory, error) {
 	values := []settings.RepositoryVariable{}
 	expected := -1
@@ -46,39 +64,49 @@ func (c *Client) readVariableInventory(path string) (settings.VariableInventory,
 		if err != nil {
 			return settings.VariableInventory{}, fmt.Errorf("read variable inventory page %d failed", page)
 		}
-		var raw struct {
-			Total     *int `json:"total_count"`
-			Variables *[]struct {
-				Name  *string `json:"name"`
-				Value *string `json:"value"`
-			} `json:"variables"`
-		}
-		decoder := json.NewDecoder(response.Body)
-		decodeErr := decoder.Decode(&raw)
-		var extra any
-		trailing := decoder.Decode(&extra)
+		body, readErr := io.ReadAll(io.LimitReader(response.Body, variableInventoryPageLimit+1))
 		response.Body.Close()
-		if response.StatusCode != http.StatusOK || decodeErr != nil || trailing != io.EOF || raw.Total == nil || *raw.Total < 0 || raw.Variables == nil || *raw.Variables == nil {
+		links := response.Header.Values("Link")
+		for _, link := range links {
+			if strings.TrimSpace(link) == "" {
+				return settings.VariableInventory{}, fmt.Errorf("invalid variable inventory pagination")
+			}
+		}
+		next, linkErr := webhookHasNext(strings.Join(links, ","))
+		var fields map[string]json.RawMessage
+		if response.StatusCode != http.StatusOK || readErr != nil || linkErr != nil || len(body) > variableInventoryPageLimit || !validVariableJSONUnicode(body) || webhookJSON(body, &fields) != nil || fields == nil || variableInventoryAliases(fields, "total_count", "variables") {
+			return settings.VariableInventory{}, fmt.Errorf("incomplete or invalid variable inventory page %d", page)
+		}
+		var total *int
+		var entries []map[string]json.RawMessage
+		if json.Unmarshal(fields["total_count"], &total) != nil || total == nil || *total < 0 || json.Unmarshal(fields["variables"], &entries) != nil || entries == nil || len(entries) > 30 {
 			return settings.VariableInventory{}, fmt.Errorf("incomplete or invalid variable inventory page %d", page)
 		}
 		if expected < 0 {
-			expected = *raw.Total
-		} else if expected != *raw.Total {
+			expected = *total
+		} else if expected != *total {
 			return settings.VariableInventory{}, fmt.Errorf("variable inventory count changed during pagination")
 		}
-		for _, item := range *raw.Variables {
-			if item.Name == nil || item.Value == nil {
+		for _, item := range entries {
+			var name, value *string
+			if item == nil || variableInventoryAliases(item, "name", "value") || json.Unmarshal(item["name"], &name) != nil || name == nil || json.Unmarshal(item["value"], &value) != nil || value == nil {
 				return settings.VariableInventory{}, fmt.Errorf("incomplete variable inventory entry")
 			}
-			values = append(values, settings.RepositoryVariable{Name: *item.Name, Value: *item.Value})
+			values = append(values, settings.RepositoryVariable{Name: *name, Value: *value})
 		}
 		if len(values) > expected {
 			return settings.VariableInventory{}, fmt.Errorf("variable inventory exceeds total count")
 		}
 		if len(values) == expected {
+			if next {
+				return settings.VariableInventory{}, fmt.Errorf("variable inventory pagination contradicts total count")
+			}
 			return settings.NewVariableInventory(values)
 		}
-		if len(*raw.Variables) != 30 {
+		if len(links) > 0 && !next {
+			return settings.VariableInventory{}, fmt.Errorf("variable inventory pagination contradicts total count")
+		}
+		if len(entries) != 30 {
 			return settings.VariableInventory{}, fmt.Errorf("incomplete variable inventory before total count")
 		}
 	}
