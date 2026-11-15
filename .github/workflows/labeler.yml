@@ -21,7 +21,7 @@ jobs:
       # code in this write-capable pull_request_target workflow.
       - name: Sync documentation triage
         # Post-v7.0.0 fix: preserve externally managed labels during synchronization.
-        uses: actions/labeler@bc32c493030cc908233048429a1f81da3057fbbc
+        uses: actions/labeler@a4c9e93145dff057e9782320b30e8b5e57174f4d
         with:
           sync-labels: true
           dot: true
