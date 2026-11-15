@@ -47,12 +47,34 @@ func (c *Client) deployKeysGET(path string, out any) (string, error) {
 	}
 	defer response.Body.Close()
 	b, err := deployKeysBody(response.Body)
-	if err != nil || response.StatusCode != 200 || json.Unmarshal(b, out) != nil {
+	if err != nil || response.StatusCode != 200 || (!validVariableJSONUnicode(b) || webhookJSON(b, out) != nil) {
 		return "", fmt.Errorf("deploy key observation incomplete or unavailable")
 	}
-	return response.Header.Get("Link"), nil
+	links := response.Header.Values("Link")
+	for _, link := range links {
+		if strings.TrimSpace(link) == "" {
+			return "", fmt.Errorf("deploy key pagination metadata is incomplete")
+		}
+	}
+	joined := strings.Join(links, ",")
+	if _, err := webhookHasNext(joined); err != nil {
+		return "", fmt.Errorf("deploy key pagination metadata is incomplete")
+	}
+	return joined, nil
 }
 func (c *Client) deployKeysTarget(repo repository.Repository) (settings.DeployKeyTarget, error) {
+	if repo.Host != "github.com" {
+		return settings.DeployKeyTarget{}, fmt.Errorf("deploy keys require a github.com target")
+	}
+	var fields map[string]json.RawMessage
+	link, err := c.deployKeysGET(securityRepositoryPath(repo), &fields)
+	if err != nil || fields == nil || deployKeyCaseAlias(fields, "id", "full_name", "archived", "visibility", "owner") {
+		return settings.DeployKeyTarget{}, fmt.Errorf("deploy key repository identity is incomplete")
+	}
+	var ownerFields map[string]json.RawMessage
+	if json.Unmarshal(fields["owner"], &ownerFields) != nil || ownerFields == nil || deployKeyCaseAlias(ownerFields, "id", "login", "type") {
+		return settings.DeployKeyTarget{}, fmt.Errorf("deploy key repository identity is incomplete")
+	}
 	var raw struct {
 		ID         *int64  `json:"id"`
 		FullName   *string `json:"full_name"`
@@ -64,17 +86,24 @@ func (c *Client) deployKeysTarget(repo repository.Repository) (settings.DeployKe
 			Type  *string `json:"type"`
 		} `json:"owner"`
 	}
-	if repo.Host != "github.com" {
-		return settings.DeployKeyTarget{}, fmt.Errorf("deploy keys require a github.com target")
-	}
-	link, err := c.deployKeysGET(securityRepositoryPath(repo), &raw)
-	if err != nil {
-		return settings.DeployKeyTarget{}, err
+	encoded, _ := json.Marshal(fields)
+	if json.Unmarshal(encoded, &raw) != nil {
+		return settings.DeployKeyTarget{}, fmt.Errorf("deploy key repository identity is incomplete")
 	}
 	if link != "" || raw.ID == nil || *raw.ID <= 0 || raw.FullName == nil || !strings.EqualFold(*raw.FullName, repo.Owner+"/"+repo.Name) || raw.Archived == nil || raw.Visibility == nil || *raw.Visibility != "public" || raw.Owner == nil || raw.Owner.ID == nil || *raw.Owner.ID <= 0 || raw.Owner.Login == nil || !strings.EqualFold(*raw.Owner.Login, repo.Owner) || raw.Owner.Type == nil || *raw.Owner.Type != "User" {
 		return settings.DeployKeyTarget{}, fmt.Errorf("deploy keys require complete personally owned public repository identity")
 	}
 	return settings.DeployKeyTarget{ID: *raw.ID, OwnerID: *raw.Owner.ID, FullName: repo.Owner + "/" + repo.Name, Archived: *raw.Archived}, nil
+}
+func deployKeyCaseAlias(fields map[string]json.RawMessage, names ...string) bool {
+	for key := range fields {
+		for _, name := range names {
+			if key != name && strings.EqualFold(key, name) {
+				return true
+			}
+		}
+	}
+	return false
 }
 func decodeDeployKey(repo repository.Repository, raw map[string]json.RawMessage) (settings.DeployKeyState, error) {
 	var result settings.DeployKeyState
@@ -153,7 +182,8 @@ func (c *Client) ReadDeployKeys(repo repository.Repository) (settings.DeployKeyO
 		if err != nil {
 			return settings.DeployKeyObservation{}, err
 		}
-		if raw == nil || len(raw) > 100 || len(raw) < 100 && strings.Contains(link, `rel="next"`) {
+		hasNext, linkErr := webhookHasNext(link)
+		if linkErr != nil || raw == nil || len(raw) > 100 || len(raw) < 100 && hasNext {
 			return settings.DeployKeyObservation{}, fmt.Errorf("deploy key inventory is incomplete")
 		}
 		for _, item := range raw {

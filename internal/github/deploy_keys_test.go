@@ -320,3 +320,72 @@ func TestDeployKeyDeleteFrozenStateAndAbsence(t *testing.T) {
 		})
 	}
 }
+
+func TestDeployKeyStrictObservationJSON(t *testing.T) {
+	row := deployJSON(deployKeyJSON(3, deployPublicOne))
+	for _, mode := range []string{"duplicate target", "target alias", "owner duplicate", "owner alias", "duplicate key", "key alias", "invalid unicode", "valid"} {
+		t.Run(mode, func(t *testing.T) {
+			target, body := deployTargetJSON, "["+row+"]"
+			switch mode {
+			case "duplicate target":
+				target = strings.Replace(target, `"id":1`, `"id":1,"id":1`, 1)
+			case "target alias":
+				target = strings.Replace(target, `"id":1`, `"id":1,"ID":2`, 1)
+			case "owner duplicate":
+				target = strings.Replace(target, `"id":2`, `"id":2,"id":2`, 1)
+			case "owner alias":
+				target = strings.Replace(target, `"id":2`, `"id":2,"ID":3`, 1)
+			case "duplicate key":
+				body = strings.Replace(body, `"read_only":true`, `"read_only":true,"read_only":false`, 1)
+			case "key alias":
+				body = strings.Replace(body, `"read_only":true`, `"read_only":true,"READ_ONLY":false`, 1)
+			case "invalid unicode":
+				body = strings.Replace(body, `"same title"`, `"\ud800"`, 1)
+			}
+			c := topicsClient(t, func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/repos/owner/current" {
+					return collaboratorsHTTPResponse(req, 200, target), nil
+				}
+				return collaboratorsHTTPResponse(req, 200, body), nil
+			})
+			_, err := c.ReadDeployKeys(deployRepo)
+			if (err == nil) != (mode == "valid") {
+				t.Fatalf("mode=%s err=%v", mode, err)
+			}
+			if err != nil && strings.Contains(err.Error(), deployPublicOne) {
+				t.Fatal("raw key in error")
+			}
+		})
+	}
+}
+
+func TestDeployKeyPaginationMetadataIntegrity(t *testing.T) {
+	for _, mode := range []string{"malformed", "empty header", "next second header", "uppercase next", "valid final"} {
+		t.Run(mode, func(t *testing.T) {
+			c := topicsClient(t, func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/repos/owner/current" {
+					return collaboratorsHTTPResponse(req, 200, deployTargetJSON), nil
+				}
+				r := collaboratorsHTTPResponse(req, 200, "[]")
+				switch mode {
+				case "malformed":
+					r.Header.Add("Link", "not a link")
+				case "empty header":
+					r.Header.Add("Link", "")
+				case "next second header":
+					r.Header.Add("Link", `<https://example.invalid/last>; rel="last"`)
+					r.Header.Add("Link", `<https://example.invalid/next>; rel="next"`)
+				case "uppercase next":
+					r.Header.Add("Link", `<https://example.invalid/next>; rel="NEXT"`)
+				case "valid final":
+					r.Header.Add("Link", `<https://example.invalid/previous>; rel="prev"`)
+				}
+				return r, nil
+			})
+			_, err := c.ReadDeployKeys(deployRepo)
+			if (err == nil) != (mode == "valid final") {
+				t.Fatalf("mode=%s err=%v", mode, err)
+			}
+		})
+	}
+}

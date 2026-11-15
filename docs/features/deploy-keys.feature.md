@@ -25,6 +25,14 @@ Feature: Manage repository deploy keys without implicit replacement
     Then the operation fails without adopting or recreating a key
     And ordinary empty declarations preserve all remote keys
 
+  Scenario: Match existing keys on an archived target without writes
+    Given a personally owned public archived target and existing positive IDs
+    When two complete observations match the selected title, canonical public key and grant
+    Then apply checks stable repository, owner, archive and selected key identity
+    And it performs no remote writes or local ID binding
+    And unknown enabled remains unknown and differences or incomplete reads fail closed
+    And independent reads do not form an atomic snapshot
+
   Scenario: Guard every explicit deletion
     Given a present deploy_keys list and deploy-keys or standalone all prune
     When complete preflight freezes the target, selected keys and unlisted candidates
@@ -47,7 +55,7 @@ Feature: Manage repository deploy keys without implicit replacement
 | --- | --- |
 | [Model](../../internal/settings/deploy_keys_test.go) | Maintained parser, single-line/private/options guards, comments and canonical identity, immutable selection, enabled tri-state and dynamic metadata |
 | [Transport](../../internal/github/deploy_keys_test.go) | Complete target and pages, required native fields, exact canonical URL, payload polarity, recovery-ID limits, independent detail/full inventory, target/state drift and fresh absence |
-| [Application](../../internal/app/deploy_keys_test.go) | Independent export retention, global preflight, own-unarchive, fixed create-before-delete membership, no-op, binding failure and read/uncertain/partial outcomes |
+| [Application](../../internal/app/deploy_keys_test.go) and [archived matching](../../internal/app/archive_deploy_keys_test.go) | Independent export retention, global preflight, own-unarchive, fixed create-before-delete membership, no-op, binding failure, read/uncertain/partial outcomes and read-only archived matching |
 | [Workspace](../../internal/workspace/created_deploy_key_ids_test.go) | Same-title key binding with comments, existing ID, alias/merge, duplicate material and concurrent edit guards |
 | [Action report](../../internal/actions/deploy_keys_test.go) | Safe typed projection, strict shape, exact integer IDs, duplicate detection and managed count |
 | [Built CLI](../../tests/acceptance/deploy_keys_test.go) | Literal export/create/bind/repeat/prune lifecycle, invalid private input before remote work, debug-enabled unverified recovery without writeback |
@@ -56,3 +64,5 @@ Feature: Manage repository deploy keys without implicit replacement
 These are local API fixtures using static public material. They establish neither
 live GitHub key acceptance, installed credentials, SSH usability nor published
 Action behavior. No private key parsing or live key operations are part of testing.
+
+Archived-repository readability on GitHub remains unverified; local fixtures do not establish it.
