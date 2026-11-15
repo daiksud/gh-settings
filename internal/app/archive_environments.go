@@ -10,12 +10,12 @@ import (
 // verifyArchivedEnvironments acquires and compares selected existing
 // Environments twice. Matching owns only the values in each declaration;
 // separate reads do not provide an atomic snapshot.
-func verifyArchivedEnvironments(repo repository.Repository, desired *settings.EnvironmentDeclarations, read func(repository.Repository, []string) (settings.EnvironmentObservation, error)) error {
+func verifyArchivedEnvironments(repo repository.Repository, desired *settings.EnvironmentDeclarations, read func(repository.Repository, []string) (settings.EnvironmentObservation, error)) (map[string]int64, error) {
 	if desired == nil || desired.Len() == 0 {
-		return nil
+		return nil, nil
 	}
 	if read == nil {
-		return fmt.Errorf("verify archived environments: reader unavailable")
+		return nil, fmt.Errorf("verify archived environments: reader unavailable")
 	}
 	names := environmentNames(desired)
 	observe := func() (map[string]int64, error) {
@@ -47,16 +47,16 @@ func verifyArchivedEnvironments(repo repository.Repository, desired *settings.En
 	}
 	first, err := observe()
 	if err != nil {
-		return fmt.Errorf("verify archived environments: %w", err)
+		return nil, fmt.Errorf("verify archived environments: %w", err)
 	}
 	fresh, err := observe()
 	if err != nil {
-		return fmt.Errorf("verify archived environments: %w", err)
+		return nil, fmt.Errorf("verify archived environments: %w", err)
 	}
 	for name, id := range first {
 		if fresh[name] != id {
-			return fmt.Errorf("verify archived environments: identity changed")
+			return nil, fmt.Errorf("verify archived environments: identity changed")
 		}
 	}
-	return nil
+	return fresh, nil
 }

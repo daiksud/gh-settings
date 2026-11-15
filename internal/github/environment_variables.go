@@ -73,3 +73,28 @@ func (c *Client) UpsertEnvironmentVariable(repo repository.Repository, environme
 	}
 	return c.upsertVariable(path, desired)
 }
+
+// ReadArchivedEnvironmentVariables binds selected values to a stable parent ID.
+// These independent GETs do not form an atomic snapshot.
+func (c *Client) ReadArchivedEnvironmentVariables(repo repository.Repository, environment string, names []string) (int64, []settings.VariableObservation, error) {
+	path, id, err := c.environmentVariableScope(repo, environment)
+	if err != nil {
+		return 0, nil, fmt.Errorf("read archived environment variable parent failed")
+	}
+	observed := make([]settings.VariableObservation, 0, len(names))
+	for _, name := range names {
+		if _, err := settings.VariableName(name); err != nil {
+			return 0, nil, fmt.Errorf("invalid selected environment variable")
+		}
+		value, err := c.readVariable(path, name)
+		if err != nil {
+			return 0, nil, fmt.Errorf("read archived environment variable failed")
+		}
+		observed = append(observed, value)
+	}
+	_, freshID, err := c.environmentVariableScope(repo, environment)
+	if err != nil || freshID != id {
+		return 0, nil, fmt.Errorf("archived environment variable parent identity changed or unavailable")
+	}
+	return id, observed, nil
+}
