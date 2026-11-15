@@ -269,7 +269,10 @@ mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt' -
 The supplied-product Environment prune check also runs the real composite's
 plan (detailed and status-only) and repeated `all` apply against a local API. It
 verifies omitted sibling scopes, complete parent deletion, unchanged YAML,
-private child evidence and cleanup without live deletion. Owning tests cover
+private child evidence and cleanup without live deletion. The secret metadata
+integrity fixtures additionally cover ambiguous pages, a bounded response,
+complete pagination and privacy; built CLI and supplied-product Action cases
+reject ambiguous fresh evidence before DELETE. Owning tests cover
 child drift/custom protection and partial progress; the
 [prune specification](../features/prune.feature.md#environment-stage-test-mapping)
 records their boundaries.
