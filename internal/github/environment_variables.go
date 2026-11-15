@@ -30,22 +30,26 @@ func (c *Client) environmentVariableScope(repo repository.Repository, environmen
 	if response.StatusCode != http.StatusOK {
 		return "", 0, fmt.Errorf("unexpected selected environment read status %d", response.StatusCode)
 	}
-	var raw struct {
-		ID   *int64  `json:"id"`
-		Name *string `json:"name"`
-	}
-	decoder := json.NewDecoder(response.Body)
-	if decoder.Decode(&raw) != nil || raw.ID == nil || *raw.ID <= 0 || raw.Name == nil {
+	// An Environment detail can include large, unowned reviewer profiles. Do
+	// not interpret duplicate members or Go's case-insensitive struct aliases
+	// as complete evidence for the parent selected by name.
+	data, err := io.ReadAll(io.LimitReader(response.Body, environmentResponseLimit+1))
+	var raw map[string]json.RawMessage
+	if err != nil || len(data) > environmentResponseLimit || environmentJSON(data, &raw) != nil || raw == nil {
 		return "", 0, fmt.Errorf("incomplete or invalid selected environment identity")
 	}
-	var extra any
-	if decoder.Decode(&extra) != io.EOF {
-		return "", 0, fmt.Errorf("invalid trailing selected environment response")
+	if rejectEnvironmentAliases(raw, "id", "name") != nil {
+		return "", 0, fmt.Errorf("ambiguous selected environment identity")
 	}
-	if settings.EnvironmentIdentity(*raw.Name) != settings.EnvironmentIdentity(environment) {
+	var id *int64
+	var name *string
+	if json.Unmarshal(raw["id"], &id) != nil || id == nil || *id <= 0 || json.Unmarshal(raw["name"], &name) != nil || name == nil {
+		return "", 0, fmt.Errorf("incomplete or invalid selected environment identity")
+	}
+	if settings.EnvironmentIdentity(*name) != settings.EnvironmentIdentity(environment) {
 		return "", 0, fmt.Errorf("selected environment response identity mismatch")
 	}
-	return path + "/variables", *raw.ID, nil
+	return path + "/variables", *id, nil
 }
 
 func (c *Client) ReadEnvironmentVariable(repo repository.Repository, environment, name string) (settings.VariableObservation, error) {

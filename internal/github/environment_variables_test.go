@@ -92,6 +92,15 @@ func TestEnvironmentVariableIdentityFailuresStopBeforeVariableRequests(t *testin
 		{"wrong id type", 200, `{"id":"42","name":"prod"}`},
 		{"wrong name", 200, `{"id":42,"name":"other"}`},
 		{"trailing", 200, `{"id":42,"name":"prod"} {}`},
+		{"duplicate id", 200, `{"id":99,"id":42,"name":"prod"}`},
+		{"duplicate name", 200, `{"id":42,"name":"other","name":"prod"}`},
+		{"id alias", 200, `{"id":42,"ID":99,"name":"prod"}`},
+		{"name alias", 200, `{"id":42,"Name":"other","name":"prod"}`},
+		{"nested duplicate", 200, `{"id":42,"name":"prod","protection_rules":[{"type":"future","type":"future"}]}`},
+		{"bad utf8", 200, "{\"id\":42,\"name\":\"\xff\"}"},
+		{"unpaired surrogate", 200, `{"id":42,"name":"\ud800"}`},
+		{"oversized", 200, `{"id":42,"name":"prod","unknown":"` + strings.Repeat("x", 16<<20) + `"}`},
+		{"partial content", 206, `{"id":42,"name":"prod"}`},
 	} {
 		for _, write := range []bool{false, true} {
 			t.Run(tc.name+map[bool]string{false: " read", true: " write"}[write], func(t *testing.T) {
