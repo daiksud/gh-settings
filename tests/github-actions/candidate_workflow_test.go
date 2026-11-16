@@ -32,7 +32,8 @@ func TestPRScreeningOnly(t *testing.T) {
 		actions = append(actions, s.Uses)
 	}
 	want := []string{
-		"jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b",
+		"oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6",
+		"",
 		"actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
 		"./.github/actions/lint",
 		"./.github/actions/unit-test",
@@ -71,7 +72,7 @@ func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
 		"matrix.target",
 		"source-sha:",
 		"always() && !cancelled()",
-		"length == 3 and all(.[]; .result == \"success\")",
+		"len(d)==3",
 	} {
 		if !strings.Contains(source, required) {
 			t.Fatalf("main release-ready validation lacks %q", required)

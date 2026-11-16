@@ -62,10 +62,6 @@ func TestPRLintMessageAndFailurePropagation(t *testing.T) {
 	// checks message transport and exit status without installing tools or
 	// asserting any action version, step position or runner configuration.
 	const runner = `#!/bin/sh
-if [ "$1" = which ]; then
-  printf 'commitlint\n'
-  exit 0
-fi
 case " $* " in *" commitlint "*) ;; *) exit 99 ;; esac
 case " $* " in *" --strict "*) ;; *) exit 99 ;; esac
 cat > "$PRLINT_CAPTURE"
@@ -76,7 +72,7 @@ exit "$PRLINT_EXIT"
 	for _, exit := range []string{"0", "7"} {
 		t.Run("validator-exit-"+exit, func(t *testing.T) {
 			bin := t.TempDir()
-			if err := os.WriteFile(filepath.Join(bin, "mise"), []byte(runner), 0700); err != nil {
+			if err := os.WriteFile(filepath.Join(bin, "bun"), []byte(runner), 0700); err != nil {
 				t.Fatal(err)
 			}
 			capture := filepath.Join(bin, "message")

@@ -59,13 +59,11 @@ runs:
         binary-sha256: ${{ steps.artifact.outputs.sha256 }}
         version: ${{ inputs.version }}
         source-directory: .action
-    - name: Install Go for the public Action fixture only
+    - name: Set up Go from source module
       if: inputs.target == 'candidate-action'
-      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        version: 2026.10.8
-        working_directory: .action
-        install_args: go
+        go-version-file: .action/go.mod
         cache: false
     - name: Validate the candidate public Action
       if: inputs.target == 'candidate-action'

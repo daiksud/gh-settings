@@ -115,7 +115,7 @@ YAML
         expected_requests+=$'\nGET /repos/example-owner/settings-fixture'
       fi
       [[ "$(cat "$PLAN_FIXTURE/requests")" == "$expected_requests" ]]
-      [[ "$(jq -cS . "$PLAN_FIXTURE/patch.json")" == '{"description":"","has_issues":false}' ]]
+      python3 -c 'import json,sys; assert json.load(open(sys.argv[1])) == {"description":"", "has_issues":False}' "$PLAN_FIXTURE/patch.json"
     else
       [[ "$(cat "$PLAN_FIXTURE/requests")" == 'GET /repos/example-owner/settings-fixture' ]]
     fi

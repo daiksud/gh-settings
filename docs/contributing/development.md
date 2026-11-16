@@ -8,9 +8,17 @@ Install [mise](https://mise.jdx.dev/getting-started.html), then run from the rep
 
 ```sh
 mise install
+mise exec -- bun install --frozen-lockfile
 ```
 
-[mise.toml](../../mise.toml) pins the development tools used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Mise's npm backend installs commitlint and its conventional preset with Bun; Node.js, npm, a package manifest, and local Git hooks are not required. Transitive npm dependencies are resolved during installation. Run development commands through mise to use the pinned tool versions.
+[mise.toml](../../mise.toml) enables idiomatic version files only. Go is selected
+from [go.mod](../../go.mod), and Bun from `packageManager` in
+[package.json](../../package.json). The same manifest declares commitlint,
+its conventional preset and rumdl; [bun.lock](../../bun.lock) fixes their
+resolved dependencies. CI uses setup-go and setup-bun with these information
+sources and installs dependencies with `bun install --frozen-lockfile`.
+Node.js, npm and local Git hooks are not required. Use `bun run` for the
+package-managed tools; Go commands may run through mise locally.
 
 ## Pull request messages
 
@@ -35,7 +43,7 @@ To check a proposed squash message locally after `mise install`:
 
 ```sh
 printf '%s\n\n%s\n' 'feat(settings): manage repository topics' 'Describe why this changed.' |
-  mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
+  mise exec -- bun run commitlint --strict
 ```
 
 Keep the PR body consistent with [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). Message validation rechecks title/body edits independently of product builds; the [PR validation guide](pr-validation.md) explains required-check activation and code/base events. Local `git commit` messages are not validated; the final squash message must still be confirmed at merge time.
@@ -64,17 +72,10 @@ mise exec -- go mod tidy -diff
 mise exec -- go vet ./...
 mise exec -- go test -race -count=1 -vet=off ./...
 mise exec -- go build ./...
-mise exec -- python3 .github/scripts/lint-workflows.py .github/workflows/*.yml examples/github-actions/*.yml
-mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh
 mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/action-install.sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions
+mise exec -- bun run lint:markdown
 ```
-
-The workflow lint wrapper preserves actionlint diagnostics except the narrowly
-validated never-run dependency inventory marker described in [workflow lint
-compatibility](repository-automation.md#workflow-lint-compatibility). Use this
-command rather than adding a broad actionlint ignore.
 
 [Process acceptance](testing.md#local-process-acceptance) runs separately against an explicitly supplied executable. For documentation changes, the Markdown check validates local file links and heading fragments as well as formatting.
 

@@ -74,11 +74,10 @@ runs:
         chmod 0755 "$release_dir/gh-settings-linux-amd64" "$release_dir/gh-settings-darwin-arm64"
         [[ "$(find "$release_dir" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" == 2 ]] || { echo 'publication inventory changed' >&2; exit 1; }
         printf 'release-dir=%s\n' "$release_dir" >> "$GITHUB_OUTPUT"
-    - name: Install pinned publication tools
-      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+    - name: Set up Go from source module
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        version: 2026.10.8
-        install_args: go
+        go-version-file: go.mod
         cache: false
     - name: Verify, stage, and publish accepted products
       shell: bash
