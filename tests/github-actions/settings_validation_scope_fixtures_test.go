@@ -17,7 +17,7 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6
+      - uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2
         with: {command: validate}
 `
 
@@ -48,7 +48,7 @@ func TestSettingsEnvironmentScopeRequiresOneValidator(t *testing.T) {
 		t.Fatal("retired workflow accepted")
 	}
 	files = settingsValidationFixtureWorkflows()
-	files[settingsPRWorkflowPath] = []byte(strings.ReplaceAll(settingsValidationFixture, "6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", strings.Repeat("a", 40)))
+	files[settingsPRWorkflowPath] = []byte(strings.ReplaceAll(settingsValidationFixture, "998576e7326d1075406b84e4988cf728108772f2", strings.Repeat("a", 40)))
 	if err := checkSettingsEnvironmentScope(files); err != nil {
 		t.Fatalf("another immutable pin must be allowed: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestSettingsValidationRequiredBoundaries(t *testing.T) {
 		{"workflow concurrency", "permissions: {}", "permissions: {}\nconcurrency: shared"},
 		{"job concurrency", "    steps:\n", "    concurrency: {group: shared}\n    steps:\n"},
 		{"wrong job", "  settings-pr:\n", "  other:\n"},
-		{"mutable validator", "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", "daiksud/gh-settings@main"},
+		{"mutable validator", "daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2", "daiksud/gh-settings@main"},
 		{"wrong validator", "daiksud/gh-settings@", "other/validator@"},
 		{"plan instead of validate", "with: {command: validate}", "with: {command: plan}"},
 		{"token input", "with: {command: validate}", "with: {command: validate, token: unsafe}"},
