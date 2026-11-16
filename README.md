@@ -50,7 +50,7 @@ repository:
 
 Current source requires the exact `version` string above and uses UI wording in snake_case. Omission, false, empty strings and empty lists retain distinct meanings; `about.topics: []` clears the topic set. Old envelopes and API-shaped aliases are rejected without migration. See the [configuration reference](docs/settings.md) for every supported path and ownership rule.
 
-The pinned v0.27.0 package below supports this YAML. The [package boundary](docs/github-actions.md#published-package-and-consumer-pins) explains how an Action pin selects its CLI release.
+The pinned v0.43.0 package below supports this YAML. The [package boundary](docs/github-actions.md#published-package-and-consumer-pins) explains how an Action pin selects its CLI release.
 
 Labels and repository Rulesets select existing objects by numeric ID. Only listed objects are managed; an omitted object or empty list does not delete it. Entries without IDs are create-only. Updating a listed Ruleset can change branch protection, reviews and checks; read the [Labels](docs/settings.md#labels) and [Rulesets](docs/settings.md#rulesets) contracts before applying.
 
@@ -95,12 +95,12 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6 # v0.27.0
+      - uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
         with:
           command: validate
 ```
 
-The example pins the immutable v0.27.0 Action, which supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
+The example pins the immutable v0.43.0 Action, which supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
 
 Current source additionally supports [Action export](docs/github-actions.md#export-a-local-configuration), producing a local settings file and a success-only path output. Use a reviewed package that implements it; the example pin above is unchanged. Export does not commit or upload the generated file.
 
