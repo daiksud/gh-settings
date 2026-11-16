@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "packageManager": "bun@1.4.3",
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "rumdl": "0.2.79"
+  },
+  "scripts": {
+    "commitlint": "bun --bun ./node_modules/@commitlint/cli/cli.js",
+    "lint:markdown": "bun --bun ./node_modules/rumdl/bin/rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions"
+  }
+}

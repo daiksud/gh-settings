@@ -8,12 +8,13 @@ fi
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/bin" "$fixture/assets" "$fixture/release"
+cp "$repo_root/tests/release-fixture.py" "$fixture/release-fixture.py"
 cat > "$fixture/bin/gh" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >> "$MOCK_ROOT/calls"
 release_json() {
-  jq -n --arg tag "$VERSION" --arg invalid_draft "${MOCK_INVALID_DRAFT:-}" --arg duplicate_assets "${MOCK_DUPLICATE_ASSET:-}" --rawfile body "$MOCK_ROOT/body" --rawfile draft "$MOCK_ROOT/draft" --argjson assets "$(find "$MOCK_ROOT/assets" -type f -exec basename {} \; | jq -R . | jq -s .)" '{id:123,tag_name:$tag,name:$tag,prerelease:false,draft:(if $invalid_draft == "1" then "unknown" else ($draft == "true\n") end),body:$body,assets:([$assets[] | {name:.}] | if $duplicate_assets == "1" then . + [.[0]] else . end)}'
+  python3 "$MOCK_ROOT/release-fixture.py" release
 }
 if [[ "$1" == api ]]; then
   shift
@@ -29,12 +30,7 @@ if [[ "$1" == api ]]; then
           echo 'unexpected release creation arguments' >&2; exit 1
         }
         # The independent complete-notes golden below owns the body bytes.
-        jq -e --arg tag "$VERSION" --arg commit "$SOURCE_SHA" '
-          . == {tag_name:$tag,target_commitish:$commit,name:$tag,body:.body,draft:true,prerelease:false}
-          and (.body | type == "string")
-        ' "$5" > /dev/null || { echo 'unexpected release creation payload' >&2; exit 1; }
-        jq -r .body "$5" > "$MOCK_ROOT/body"
-        jq -r .draft "$5" > "$MOCK_ROOT/draft"
+        python3 "$MOCK_ROOT/release-fixture.py" create "$5"
         release_json ;;
       PATCH:*/releases/123)
         printf 'false\n' > "$MOCK_ROOT/draft"
@@ -70,7 +66,7 @@ if [[ "$1" == api ]]; then
     */releases\?per_page=100)
       if [[ -f "$MOCK_ROOT/body" ]]; then
         release_json > "$MOCK_ROOT/current.json"
-        jq --slurpfile current "$MOCK_ROOT/current.json" '.[0] += $current' "$MOCK_ROOT/catalog.json"
+        python3 "$MOCK_ROOT/release-fixture.py" catalog
       else
         cat "$MOCK_ROOT/catalog.json"
       fi ;;
@@ -186,7 +182,7 @@ done
 
 # Incomplete predecessor history must fail before creating a remote tag or draft.
 mv "$fixture/catalog.json" "$fixture/catalog.saved"
-jq '.[0][0].tag_name = "v1.2.1"' "$fixture/catalog.saved" > "$fixture/catalog.json"
+python3 "$fixture/release-fixture.py" predecessor "$fixture/catalog.saved" > "$fixture/catalog.json"
 reject
 grep -q 'resolve previous release v1.2.1' "$fixture/output"
 if grep -q '^api -X ' "$fixture/calls"; then
@@ -263,7 +259,7 @@ $(cat "$RELEASE_DIR/$checksums")
 
 Built from main commit [\`${SOURCE_SHA:0:7}\`](https://github.com/$repo/commit/$SOURCE_SHA).
 EOF
-# The local gh stand-in writes decoded body with jq -r, adding one newline.
+# The local gh stand-in writes decoded body with a trailing newline, adding one newline.
 printf '\n' >> "$fixture/expected-notes"
 cmp "$fixture/expected-notes" "$fixture/body"
 [[ "$(cat "$fixture/draft")" == false ]]

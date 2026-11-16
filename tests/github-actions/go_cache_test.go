@@ -9,9 +9,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// All build jobs use mise to install tools, then reuse that Go installation
-// with setup-go's standard module and compilation cache.
-func TestBuildJobsUseMiseWithSetupGoCache(t *testing.T) {
+// Build jobs resolve Go from go.mod and Bun from package.json.
+func TestBuildJobsUseManifestToolchains(t *testing.T) {
 	for _, tc := range []struct {
 		workflow string
 		job      string
@@ -35,20 +34,22 @@ func TestBuildJobsUseMiseWithSetupGoCache(t *testing.T) {
 			}
 
 			steps := workflow.Jobs[tc.job].Steps
-			miseIndex, cacheIndex, buildIndex := -1, -1, -1
+			bunIndex, cacheIndex, buildIndex := -1, -1, -1
 			for i, s := range steps {
 				switch {
 				case strings.HasPrefix(s.Uses, "jdx/mise-action@"):
-					if miseIndex != -1 || s.With["install_args"] != "" || s.With["cache"] == "false" {
-						t.Fatalf("toolchain must be installed once by mise with cache enabled: %+v", s)
+					t.Fatal("CI must not install tools through mise")
+				case strings.HasPrefix(s.Uses, "oven-sh/setup-bun@"):
+					if bunIndex != -1 || s.With["bun-version-file"] != "package.json" {
+						t.Fatal("Bun must use package.json")
 					}
-					miseIndex = i
+					bunIndex = i
 				case strings.HasPrefix(s.Uses, "actions/setup-go@"):
 					if cacheIndex != -1 || s.With["go-version"] != "" ||
-						s.With["go-version-file"] != "" ||
+						s.With["go-version-file"] != "go.mod" ||
 						s.With["cache-dependency-path"] != "go.sum" ||
 						s.With["cache"] == "false" {
-						t.Fatalf("setup-go must cache the Go already installed by mise: %+v", s)
+						t.Fatalf("setup-go must install Go from go.mod and enable caches: %+v", s)
 					}
 					cacheIndex = i
 				case strings.Contains(s.Uses, "go-cache") || strings.HasPrefix(s.Uses, "actions/cache/"):
@@ -60,9 +61,9 @@ func TestBuildJobsUseMiseWithSetupGoCache(t *testing.T) {
 					}
 				}
 			}
-			if miseIndex < 0 || cacheIndex != miseIndex+1 || buildIndex <= cacheIndex {
-				t.Fatalf("install tools, restore Go caches, then build: mise=%d cache=%d build=%d",
-					miseIndex, cacheIndex, buildIndex)
+			if bunIndex < 0 || cacheIndex <= bunIndex || buildIndex <= cacheIndex {
+				t.Fatalf("install Bun, resolve Go, then build: bun=%d cache=%d build=%d",
+					bunIndex, cacheIndex, buildIndex)
 			}
 		})
 	}

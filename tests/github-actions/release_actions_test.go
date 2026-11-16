@@ -212,16 +212,16 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 	ci, _ := readReleaseAction(t, "ci-acceptance")
 	var ciSetup step
 	for _, s := range ci.Runs.Steps {
-		if strings.HasPrefix(s.Uses, "jdx/mise-action@") {
+		if strings.HasPrefix(s.Uses, "actions/setup-go@") {
 			ciSetup = s
 		}
 	}
 	setupIndex, candidateIndex := -1, -1
 	for i, s := range action.Runs.Steps {
-		if strings.HasPrefix(s.Uses, "jdx/mise-action@") {
+		if strings.HasPrefix(s.Uses, "actions/setup-go@") {
 			setupIndex = i
 			if s.Uses != ciSetup.Uses || !reflect.DeepEqual(s.With, ciSetup.With) ||
-				s.With["working_directory"] != ".action" || s.With["install_args"] != "go" ||
+				s.With["go-version-file"] != ".action/go.mod" || s.With["go-version"] != "" ||
 				s.If != "inputs.target == 'candidate-action'" {
 				t.Fatalf("release fixture must use the same pinned source toolchain as CI: %+v", s)
 			}
@@ -236,7 +236,7 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 
 	// Build and execute the actual fixture with automatic toolchain downloads
 	// disabled, just as e2e-test does. This does not rebuild the product
-	// or claim that a hosted mise installation has been exercised locally.
+	// or claim that a hosted setup-go installation has been exercised locally.
 	binary := filepath.Join(t.TempDir(), "plan-fixture")
 	command := exec.Command("go", "build", "-o", binary, "./tests/github-actions/plan-fixture")
 	command.Dir = root()

@@ -205,6 +205,17 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 			if tc.mutate == "kind" {
 				kind = "invalid"
 			}
+			helper := filepath.Join(dir, ".action/.github/scripts/ci-manifest.py")
+			if err := os.MkdirAll(filepath.Dir(helper), 0755); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(filepath.Join(root(), ".github/scripts/ci-manifest.py"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(helper, data, 0644); err != nil {
+				t.Fatal(err)
+			}
 			outputFile := filepath.Join(dir, "outputs")
 			cmd := exec.Command("bash", "-euo", "pipefail", "-c", verify)
 			cmd.Dir = dir

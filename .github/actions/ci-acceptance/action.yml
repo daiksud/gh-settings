@@ -33,15 +33,14 @@ runs:
         [[ "$(find "$ARTIFACT_DIRECTORY" -maxdepth 1 -type f -print | wc -l | tr -d ' ')" == 2 ]] || { echo 'artifact inventory differs' >&2; exit 1; }
         manifest="$ARTIFACT_DIRECTORY/manifest.json"
         binary="$ARTIFACT_DIRECTORY/gh-settings"
-        jq -e --arg source_sha "$SOURCE_SHA" --arg target "$TARGET" \
-          '.source_sha == $source_sha and .target == $target and .binary_name == "gh-settings" and (.binary_sha256 | test("^[0-9a-f]{64}$")) and (.product_version | test("^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"))' \
-          "$manifest" > /dev/null
-        expected_sha256="$(jq -r .binary_sha256 "$manifest")"
+        identity="$(python3 .action/.github/scripts/ci-manifest.py "$manifest" "$SOURCE_SHA" "$TARGET")"
+        expected_sha256="${identity%% *}"
+        product_version="${identity#* }"
         actual_sha256="$(sha256sum "$binary" | cut -d ' ' -f 1)"
         [[ "$actual_sha256" == "$expected_sha256" ]] || { echo 'artifact bytes differ from manifest' >&2; exit 1; }
         chmod +x "$binary"
         printf 'binary-path=%s\nbinary-sha256=%s\nproduct-version=%s\n' \
-          "$binary" "$expected_sha256" "$(jq -r .product_version "$manifest")" >> "$GITHUB_OUTPUT"
+          "$binary" "$expected_sha256" "$product_version" >> "$GITHUB_OUTPUT"
     - name: Run process acceptance without rebuilding
       if: inputs.kind == 'process'
       uses: ./.action/.github/actions/integration-test
@@ -50,13 +49,11 @@ runs:
         binary-sha256: ${{ steps.verify.outputs.binary-sha256 }}
         version: ${{ steps.verify.outputs.product-version }}
         source-directory: .action
-    - name: Install Go for the public Action fixture only
+    - name: Set up Go from source module
       if: inputs.kind == 'public-action'
-      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        version: 2026.10.8
-        working_directory: .action
-        install_args: go
+        go-version-file: .action/go.mod
         cache: false
     - name: Exercise the candidate public Action
       if: inputs.kind == 'public-action'

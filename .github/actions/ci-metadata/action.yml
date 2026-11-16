@@ -17,6 +17,6 @@ runs:
         set -euo pipefail
         build='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"}]}'
         acceptance='{"include":[{"target":"linux-amd64","kind":"process","runner":"ubuntu-slim"},{"target":"linux-amd64","kind":"public-action","runner":"ubuntu-24.04"}]}'
-        jq -e '.include | length > 0' <<< "$build" > /dev/null
-        jq -e '.include | length > 0' <<< "$acceptance" > /dev/null
+        python3 -c 'import json,sys; assert len(json.load(sys.stdin)["include"]) > 0' <<< "$build"
+        python3 -c 'import json,sys; assert len(json.load(sys.stdin)["include"]) > 0' <<< "$acceptance"
         printf 'build-matrix=%s\nacceptance-matrix=%s\n' "$build" "$acceptance" >> "$GITHUB_OUTPUT"

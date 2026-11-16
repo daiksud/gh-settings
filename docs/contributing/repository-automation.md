@@ -54,7 +54,7 @@ resource-specific behavior.
 | --- | --- |
 | [`pr.yml`](../../.github/workflows/pr.yml) | Default pull_request activities run the single `screening` job for source checks, unit tests, and a native build |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
-| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; install the cached mise toolchain, build native release-ready binaries, and inspect them, ending in `ci-push` |
+| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; install the manifest-selected toolchain, build native release-ready binaries, and inspect them, ending in `ci-push` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Default pull_request events validate the PR merge declaration only; the validation check is `settings-pr` |
 | [`settings-apply.yml`](../../.github/workflows/settings-apply.yml) | Manual dispatch from `main`; one Environment-bound direct apply job |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
@@ -103,11 +103,10 @@ its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
 
-PR Screening and native build jobs in `ci-push` and `release` install the
-pinned toolchain with `mise-action`, then use `actions/setup-go` without a
-version input to cache the Go already on PATH. This separates mise's tool
-installation cache from Go's module/compilation cache without installing Go
-twice. No custom Go cache Actions are needed.
+PR Screening and native build jobs use setup-go with `go-version-file: go.mod`
+and setup-bun with `bun-version-file: package.json`. Bun installs the frozen
+package lock for Markdown and message validation. Setup-go owns the standard
+module/compilation cache; no mise-action or custom Go cache Action is used.
 
 `ci-push` and `release` still use the
 [full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
@@ -125,24 +124,6 @@ same workflow's generated lock entries. Changing a nested dependency requires
 regenerating the lockfile and updating the main/release inventory. Existing candidate, consumer and release verification
 checks still own checkout identity and execution isolation; the dependency
 inventory does not replace those checks or authorize a release.
-
-### Workflow lint compatibility
-
-The pinned actionlint 1.7.12 treats `$/` as an external Action missing a ref and
-also diagnoses a literal false condition. The
-[workflow lint wrapper](../../.github/scripts/lint-workflows.py) retains the
-normal actionlint checks and filters only those two exact structured diagnostics
-for the inventory step in `ci-push` and `release`. It verifies the actual
-source lines contain the adjacent literal-false condition and exact inventory
-reference. Other references, conditions, workflow paths and diagnostics remain
-errors. Invalid linter output and unexpected linter failures remain failures;
-this is not a blanket ignore of Action-format or condition checks.
-
-Use the wrapper in both the [lint Action](../../.github/actions/lint/action.yml)
-and [local development](development.md#development-checks). The independent
-inventory tests validate the bridge and its dependencies because the old linter
-cannot resolve that `$/` call itself. This exception must not be extended to
-runtime Action calls or enabled inventory steps.
 
 ### Security boundary
 

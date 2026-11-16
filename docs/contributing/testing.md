@@ -34,7 +34,7 @@ and workflow execution were not tested.
 
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
 
-Markdown checks use the pinned rumdl from [mise.toml](../../mise.toml) and [.rumdl.toml](../../.rumdl.toml). MD051 checks local heading fragments and MD057 checks relative file links; external HTTP availability is not a CI dependency.
+Markdown checks use the package-managed rumdl from [package.json](../../package.json) and [.rumdl.toml](../../.rumdl.toml). MD051 checks local heading fragments and MD057 checks relative file links; external HTTP availability is not a CI dependency.
 
 ## Internal UI repository preparation
 
@@ -161,40 +161,27 @@ execute. Track each merged commit through its own aggregate result, and repair
 failed CI before continuing implementation. Runner availability can still delay
 individual jobs; a queued or cancelled job is not successful verification.
 
-Both main and release build jobs install the pinned `mise.toml` toolchain
-with `mise-action` cache enabled. They use one setup step on Linux and macOS,
-and the same build Action. PR Screening retains `setup-go` for Go compilation
-and module caching and installs only its non-Go lint tools with mise.
+PR Screening and native build jobs resolve Go from [go.mod](../../go.mod) with
+`actions/setup-go`, and Bun from `packageManager` in
+[package.json](../../package.json) with `oven-sh/setup-bun`. Dependencies install
+from [bun.lock](../../bun.lock) with `bun install --frozen-lockfile`.
+Screening calls [lint](../../.github/actions/lint/action.yml),
+[unit-test](../../.github/actions/unit-test/action.yml) and
+[build](../../.github/actions/build/action.yml). It does not upload artifacts.
+Actionlint and ShellCheck are not part of the check suite. Structural workflow,
+permission, dependency-inventory and shell fixture tests continue in Go/Python.
 
-After checkout, PR Screening installs the pinned tools, including Go, with
-`mise-action`, then lets `actions/setup-go` cache the existing Go toolchain's
-module downloads and compilation results. It then calls
-[lint](../../.github/actions/lint/action.yml),
-[unit-test](../../.github/actions/unit-test/action.yml), and
-[build](../../.github/actions/build/action.yml) in separate steps. A failed lint, unit-test, or build step fails
-`screening`. PR CI does not upload artifacts or run process/public-Action
-Inspection. The Go cache restores compilation and module data, never binary
-artifacts; a cache hit does not skip source checks.
-
-PR Screening uses no inert Action inventory. Its `mise-action` and
-`actions/setup-go` steps supply the external Action pins in
-[actions.lock](../../.github/workflows/actions.lock).
-The [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
-remains for the main and release workflows.
+The [full CI/release dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
+remains for main and release. PR Screening's external dependencies are read
+from its runtime steps directly.
 
 ### Go cache in CI
 
-PR Screening and native build jobs in `ci-push` and `release` use the same
-two-step setup. `mise-action` installs tools declared in
-[mise.toml](../../mise.toml), including Go, using its installation cache.
-Then `actions/setup-go` finds that Go on PATH without specifying a version or
-version file, and caches Go module downloads and compilation results using
-[go.sum](../../go.sum). Go is not installed a second time.
-
-No custom cache key, environment fingerprint or restore/save Action is needed.
-A cache hit never skips module validation, `go vet`, race-detected tests or
-the native build. Release artifacts and manifests are not cached as Go
-build outputs, and these caches must not contain secrets.
+Setup-go caches module downloads and compilation data using
+[go.sum](../../go.sum). A cache hit never skips validation, race-detected tests
+or the native build. Release artifacts and manifests are separately verified;
+they are not restored from the Go cache. Frozen acceptance harnesses and
+publication helpers select Go from their own source checkout's go.mod.
 
 ### Hosted candidate composite
 

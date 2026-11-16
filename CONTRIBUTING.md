@@ -97,7 +97,7 @@ does not. Keep the selected Action pin and CLI identity as operational facts.
 After installing the pinned tools, run from the repository root:
 
 ```sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions
+mise exec -- bun run lint:markdown
 git diff --check
 ```
 
