@@ -12,6 +12,7 @@ import (
 
 type workflowReadFailure struct{ error }
 
+func (failure *workflowReadFailure) Error() string  { return failure.error.Error() }
 func (*workflowReadFailure) ReadFailedBeforeWrite() {}
 
 func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {

@@ -12,11 +12,13 @@ import (
 
 type repositoryReadFailure struct{ error }
 
+func (failure *repositoryReadFailure) Error() string  { return failure.error.Error() }
 func (*repositoryReadFailure) ReadFailedBeforeWrite() {}
 func (failure *repositoryReadFailure) Unwrap() error  { return failure.error }
 
 type repositoryCompletedWriteFailure struct{ error }
 
+func (failure *repositoryCompletedWriteFailure) Error() string           { return failure.error.Error() }
 func (*repositoryCompletedWriteFailure) RepositoryWritesMayHaveApplied() {}
 func (failure *repositoryCompletedWriteFailure) Unwrap() error           { return failure.error }
 

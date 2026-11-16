@@ -14,6 +14,7 @@ import (
 
 type accessPrerequisiteFixtureFailure struct{ error }
 
+func (failure *accessPrerequisiteFixtureFailure) Error() string  { return failure.error.Error() }
 func (*accessPrerequisiteFixtureFailure) ReadFailedBeforeWrite() {}
 func (failure *accessPrerequisiteFixtureFailure) Unwrap() error  { return failure.error }
 
