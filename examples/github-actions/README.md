@@ -4,8 +4,9 @@ Copy these workflows into the repository whose settings you want to manage. The 
 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
-The examples pin v0.27.0. Its ID-selected label and Ruleset declarations
-leave unlisted objects untouched; an explicitly empty list deletes nothing.
+The examples pin v0.43.0. Its ID-selected label and Ruleset declarations
+leave unlisted objects untouched without explicit pruning; the examples do not
+select prune scopes, so an explicitly empty list deletes nothing.
 Updating a listed Ruleset can still change branch protection through declared
 values and defaults. Inspect the selected binary's contract and permissions
 in the [Action guide](../../docs/github-actions.md#labels-and-permissions).
