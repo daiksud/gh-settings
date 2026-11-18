@@ -222,6 +222,43 @@ event starts this workflow.
 
 The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER26_PRIVATE_KEY`, limits installation scope to the triggering owner/repository, and requests Administration write and Issues write. The resulting token is passed only to the Action's apply input; the token Action owns its normal post-job revocation. Source checks verify those bindings, not the remote App installation or actual token revocation.
 
+### Bounded published Action verification
+
+The separate manual [Topics probe](../../.github/workflows/verify-public-action.yml)
+also uses Environment `gh-settings`, only from this repository's `main` after its
+normal Environment approval. It reuses the existing App credential on the runner
+without copying or displaying it. The token selects only
+`daiksud/test-gh-settings-public` and requests Administration write; that repository
+must already be included in the App installation. No App grant or Environment
+protection is changed by the probe.
+
+The job creates a configuration-only Git consumer in its ephemeral workspace,
+with a direct test-repository origin and a local commit; it never pushes that
+commit or changes the test repository's files. The public Action installs the
+pinned published CLI from its real release URLs for validate, plan and apply.
+Only Topics are declared. Original membership and repository identity are
+recorded before adding one fixed probe topic; fresh checks precede apply and the
+matching repeat. Status-only plans must report `no-difference` for the repeat and
+restored state, alongside independent API readback.
+
+An `always()` cleanup prepares and applies original membership after an armed
+attempt, including an apply with uncertain effects. Unknown competing membership
+or identity drift blocks restoration instead of overwriting it. No atomic lock
+exists between a check and an Action's write. Cancellation, runner loss, token
+expiry or API failures can prevent cleanup: inspect the original Topics in the
+prepare log and independently read the test repository before manual recovery.
+Do not cancel an active probe or run another Topics writer concurrently. The
+token Action retains its normal post-job cleanup; verify the actual run's logs
+before claiming revocation or restoration succeeded.
+
+This is a hosted public-package test targeting a dedicated live repository, not
+a workflow installed in that target. It does not test export (unsupported by the
+pinned package), pruning, other settings or the installation of unreleased main.
+Candidate fixture acceptance remains separate; the probe does not publish tags or
+releases and does not establish released-v1 parity.
+
+### Managed credential Environment
+
 The configuration manages only the `gh-settings` Environment. It requires
 `daiksud` (User ID `155234749`) as reviewer, with self-review permitted, no wait
 timer (`wait_timer: 0`), administrator bypass disabled, and only the typed Branch
@@ -244,7 +281,8 @@ There is no prepare/handoff job or main-side pre-approval plan. The validated de
 The ordinary Go suite retains the
 [Environment scope tests](../../tests/github-actions/settings_environment_scope_test.go)
 in `pr` and `ci-push`. They allow the literal `gh-settings` Environment only
-in `.github/workflows/settings-apply.yml/jobs.settings-apply`, require manual dispatch,
+in `.github/workflows/settings-apply.yml/jobs.settings-apply` and the bounded
+`.github/workflows/verify-public-action.yml/jobs.topics` probe, require manual dispatch,
 and require a single credential-free validation job in `settings-pr.yml`.
 They reject dynamic Environment names, workflow/job aliases and merges,
 duplicate keys, reusable workflow jobs, and retired check-name collisions.

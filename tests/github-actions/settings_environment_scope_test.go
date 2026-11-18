@@ -14,6 +14,7 @@ import (
 
 const (
 	settingsWorkflowPath      = ".github/workflows/settings-apply.yml"
+	publicProbeWorkflowPath   = ".github/workflows/verify-public-action.yml"
 	settingsPRWorkflowPath    = ".github/workflows/settings-pr.yml"
 	settingsEnvironment       = "gh-settings"
 	settingsGuardCheckName    = "settings-env"
@@ -51,6 +52,7 @@ func TestSettingsEnvironmentScope(t *testing.T) {
 
 func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	found := 0
+	probeFound := 0
 	planChecks := 0
 	if _, present := workflows[retiredSettingsPlanPath]; present {
 		return fmt.Errorf("%s is retired; required settings validation belongs in %s", retiredSettingsPlanPath, settingsPRWorkflowPath)
@@ -72,7 +74,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
-		if path == settingsWorkflowPath {
+		if path == settingsWorkflowPath || path == publicProbeWorkflowPath {
 			if err := checkSettingsMainTrigger(workflow["on"]); err != nil {
 				return fmt.Errorf("%s: on: %w", path, err)
 			}
@@ -132,14 +134,21 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
 			}
+			if path == publicProbeWorkflowPath && jobName == "topics" && name == settingsEnvironment {
+				probeFound++
+				continue
+			}
 			if path != settingsWorkflowPath || jobName != "settings-apply" || name != settingsEnvironment {
-				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only as a literal in %s jobs.settings-apply", path, jobName, name, settingsWorkflowPath)
+				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only in the operational apply or bounded public Topics probe", path, jobName, name)
 			}
 			found++
 		}
 	}
 	if found != 1 {
 		return fmt.Errorf("expected exactly one %q Environment, at %s jobs.settings-apply; found %d", settingsEnvironment, settingsWorkflowPath, found)
+	}
+	if _, present := workflows[publicProbeWorkflowPath]; present && probeFound != 1 {
+		return fmt.Errorf("expected exactly one bounded Topics probe Environment; found %d", probeFound)
 	}
 	if planChecks != 1 {
 		return fmt.Errorf("expected exactly one settings validation check in %s; found %d", settingsPRWorkflowPath, planChecks)
