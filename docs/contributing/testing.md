@@ -36,6 +36,38 @@ and workflow execution were not tested.
 
 Markdown checks use the package-managed rumdl from [package.json](../../package.json) and [.rumdl.toml](../../.rumdl.toml). MD051 checks local heading fragments and MD057 checks relative file links; external HTTP availability is not a CI dependency.
 
+## Personal-public contract reconciliation
+
+For a contract verification pass, reconcile the existing owners below before
+adding tests. These are representative checks, not an exhaustive platform matrix.
+Record the actual source SHA, supplied binary identity, workflow run and observed
+results in the tracking Issue or PR. Keep final-candidate selection and published
+artifact verification separate from current-source fixture results.
+
+| Contract boundary | CLI evidence | Public Action evidence |
+| --- | --- | --- |
+| Export, validate, plan and apply composition; native false/empty values | [Export/edit lifecycle](../../tests/acceptance/apply_test.go), [export/validate](../../tests/acceptance/export_validate_test.go) and [topics lifecycle](../../tests/acceptance/topics_test.go) | [Supplied-product export](../../tests/github-actions/composite_export_acceptance_test.go), [webhook lifecycle](../../tests/github-actions/composite_webhooks_acceptance_test.go) and [hosted operation wiring](../../.github/actions/e2e-test/action.yml) |
+| Omission and unavailable observations without invented state | [Independent export acquisition](../../tests/acceptance/repository_export_isolation_test.go) and [CodeQL configuration](../../tests/acceptance/codeql_configuration_test.go) | [First/repeated export](../../tests/github-actions/composite_export_acceptance_test.go) and [unavailable webhook retention](../../tests/github-actions/composite_webhooks_acceptance_test.go); shared acquisition owners retain detailed family cases |
+| Repeat no-op and independent readback | [Topics](../../tests/acceptance/topics_test.go), [labels](../../tests/acceptance/label_readback_test.go) and [Rulesets](../../tests/acceptance/ruleset_readback_test.go) | [Runner labels](../../tests/github-actions/runners_acceptance_test.go) and [webhooks](../../tests/github-actions/composite_webhooks_acceptance_test.go) |
+| Selected prune scopes, omitted siblings and standalone `all` | [Prune specification and owner mappings](../features/prune.feature.md), including [Environment process checks](../../tests/acceptance/environment_prune_test.go) | [Environment prune](../../tests/github-actions/environment_prune_acceptance_test.go), [runner prune](../../tests/github-actions/runner_prune_acceptance_test.go) and [mixed webhook prune](../../tests/github-actions/composite_webhook_prune_mixed_acceptance_test.go) |
+| Partial failure, earlier progress and absent success outputs | [Label ID recovery](../../tests/acceptance/label_ids_test.go) and [webhook mixed prune](../../tests/acceptance/webhook_prune_mixed_test.go) | [Apply progress diagnostics](../../tests/github-actions/apply_progress_acceptance_test.go) and [mixed webhook prune](../../tests/github-actions/composite_webhook_prune_mixed_acceptance_test.go) |
+
+The [same-artifact acceptance workflow](../../.github/actions/release-acceptance/action.yml)
+runs the native process suite and the supplied-product `TestBuilt` Action checks;
+the hosted lane additionally expands the actual root composite. Those API fixtures
+use dummy credentials, not live target settings. Bounded live observations need
+their own target, authorization, method and limits; they do not certify every
+setting, effective enforcement or App permission. Live webhook delivery is not a
+v1 completion requirement, and organization-only features are outside this pass.
+
+Before claiming released CLI/Action parity, check the selected immutable package,
+its installed CLI and the [consumer pins](../github-actions.md#published-package-and-consumer-pins),
+not only source metadata. In particular, source Action export does not make export
+available in the examples' v0.43.0 pin. Do not mark final-candidate or publication
+checks complete until those specific artifacts have actually been selected and
+verified. The [evidence categories](#release-and-publication-evidence) explain what
+each check can establish.
+
 ## Internal UI repository preparation
 
 The [prepared About/General/Labels mapping](ui-repository-mapping.md) was prepared in #482 and is now consumed by the current UI codec/root composition. These tests independently specify mapping behavior without invoking live writes:
