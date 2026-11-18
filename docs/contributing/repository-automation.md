@@ -222,7 +222,7 @@ event starts this workflow.
 
 The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER26_PRIVATE_KEY`, limits installation scope to the triggering owner/repository, and requests Administration write and Issues write. The resulting token is passed only to the Action's apply input; the token Action owns its normal post-job revocation. Source checks verify those bindings, not the remote App installation or actual token revocation.
 
-### Bounded published Action verification
+### Bounded candidate Action verification
 
 The separate manual [Topics probe](../../.github/workflows/verify-public-action.yml)
 also uses Environment `gh-settings`, only from this repository's `main` after its
@@ -232,10 +232,27 @@ without copying or displaying it. The token selects only
 must already be included in the App installation. No App grant or Environment
 protection is changed by the probe.
 
+Before issuing the App token, the job requires the latest exact-SHA main
+`ci-push` to have completed successfully, using the existing release CI gate.
+It downloads that run's Linux artifact with archive-digest checking and verifies
+the source/version/target manifest and product digest with `release-artifact.sh`.
+Missing, failed, unfinished, expired or mismatching evidence stops the probe;
+there is no rebuild or published-release fallback. The source checkout must be
+clean and match the artifact's source and dispatched workflow SHA.
+
+The existing `prepare-candidate-download.sh` supplies the verified product through
+the unchanged root Action installer. Its bounded curl fixture serves only the
+two selected release-shaped asset/checksum URLs, without network forwarding or
+credentials. This is candidate installation evidence, not a public-release
+download. No API fixture or Unix-socket transport is installed: the App token and
+independent `gh api` reads use the real GitHub.com repository. The workflow token
+has only Contents/Actions read for producer inspection and artifact download;
+the App token remains scoped to the dedicated test repository.
+
 The job creates a configuration-only Git consumer in its ephemeral workspace,
 with a direct test-repository origin and a local commit; it never pushes that
-commit or changes the test repository's files. The public Action installs the
-pinned published CLI from its real release URLs for validate, plan and apply.
+commit or changes the test repository's files. The local root Action runs
+validate, plan and apply with its manifest-verified candidate CLI.
 Only Topics are declared. Original membership and repository identity are
 recorded before adding one fixed probe topic; fresh checks precede apply and the
 matching repeat. Status-only plans must report `no-difference` for the repeat and
@@ -251,11 +268,18 @@ Do not cancel an active probe or run another Topics writer concurrently. The
 token Action retains its normal post-job cleanup; verify the actual run's logs
 before claiming revocation or restoration succeeded.
 
-This is a hosted public-package test targeting a dedicated live repository, not
-a workflow installed in that target. It does not test export (unsupported by the
-pinned package), pruning, other settings or the installation of unreleased main.
-Candidate fixture acceptance remains separate; the probe does not publish tags or
-releases and does not establish released-v1 parity.
+This is a hosted candidate test targeting a dedicated live repository, not a
+workflow installed in that target. Export uses the existing fixture/CLI evidence
+rather than expanding the live token's grants. Pruning and other live settings
+remain outside this probe. Normal public installation of unreleased main remains
+unverified; supplying a candidate download fixture does not publish it.
+
+After separately authorized publication, reuse `release.yml`'s existing
+`verify-release` job and `release-verify` Action to compare public assets against
+accepted manifests and verify the published root Action. Do not dispatch a release
+to run that check during a pre-release pass. Candidate live results, public-package
+live results and post-publication verification remain separate evidence; retain
+their exact sources and run URLs in the tracking Issue.
 
 ### Managed credential Environment
 

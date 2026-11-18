@@ -1,8 +1,9 @@
-name: Verify published Action Topics
+name: Verify candidate Action Topics
 on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: verify-public-action-test-gh-settings-public
   cancel-in-progress: false
@@ -19,6 +20,55 @@ jobs:
           ref: ${{ github.sha }}
           path: .verification-source
           persist-credentials: false
+      - name: Require a successful exact-SHA main CI producer
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cd .verification-source
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          result="$RUNNER_TEMP/topics-ci-output"
+          GITHUB_OUTPUT="$result" python3 .github/scripts/release-ci.py status
+          run_id="$(sed -n 's/^ci-run-id=//p' "$result")"
+          [[ "$run_id" =~ ^[1-9][0-9]*$ ]] || { echo 'successful exact-SHA CI is required; no build fallback' >&2; exit 1; }
+          printf 'ci-run-id=%s\n' "$run_id" >> "$GITHUB_OUTPUT"
+      - name: Download only the selected CI Linux product
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-linux-amd64
+          path: ${{ runner.temp }}/topics-candidate-linux
+          github-token: ${{ github.token }}
+          repository: daiksud/gh-settings
+          run-id: ${{ steps.ci.outputs.ci-run-id }}
+          digest-mismatch: error
+      - name: Verify candidate manifest and prepare the bounded installer fixture
+        id: candidate
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} && -z ${GH_CONFIG_DIR:-} ]]
+          [[ "$GITHUB_API_URL" == https://api.github.com ]]
+          source="$GITHUB_WORKSPACE/.verification-source"
+          [[ "$(git -C "$source" rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          [[ -z "$(git -C "$source" status --porcelain)" ]]
+          directory="$RUNNER_TEMP/topics-candidate-linux"
+          version="$(sed -n 's/^version=//p' "$directory/release-manifest")"
+          bash "$source/.github/scripts/release-artifact.sh" verify linux-amd64 "$version" "$SOURCE_SHA" "$directory" "$GITHUB_OUTPUT"
+          digest="$(sed -n 's/^sha256=//p' "$GITHUB_OUTPUT")"
+          bash "$source/tests/github-actions/prepare-candidate-download.sh" "$directory/gh-settings-linux-amd64" "$digest" "$SOURCE_SHA" "$version"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+      - name: Recheck the CI producer before issuing any live token
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          CI_RUN_ID: ${{ steps.ci.outputs.ci-run-id }}
+        run: |
+          set -euo pipefail
+          cd .verification-source
+          python3 .github/scripts/release-ci.py status "$CI_RUN_ID"
       - name: Mint a token only for the dedicated test repository
         id: app
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -33,25 +83,32 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: python3 .verification-source/.github/scripts/verify-public-topics.py prepare
-      - name: Validate through the published Action and real release installer
+      - name: Validate through the candidate root Action and bounded installer fixture
         id: validate
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        uses: ./.verification-source
         with:
           command: validate
       - name: Plan the single-topic addition
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        uses: ./.verification-source
         with:
           command: plan
           token: ${{ steps.app.outputs.token }}
       - name: Check package identity and fresh baseline immediately before apply
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          EXPECTED_CLI_VERSION: ${{ steps.candidate.outputs.version }}
+          EXPECTED_CLI_SHA256: ${{ steps.candidate.outputs.sha256 }}
           ACTION_TARGET: ${{ steps.validate.outputs.target }}
           ACTION_VERSION: ${{ steps.validate.outputs.cli-version }}
           ACTION_DIGEST: ${{ steps.validate.outputs.cli-sha256 }}
-        run: python3 .verification-source/.github/scripts/verify-public-topics.py arm
-      - name: Apply Topics through the published Action
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        run: |
+          set -euo pipefail
+          [[ "$(git -C .verification-source rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          [[ -z "$(git -C .verification-source status --porcelain)" ]]
+          python3 .verification-source/.github/scripts/verify-public-topics.py arm
+      - name: Apply Topics through the candidate root Action
+        uses: ./.verification-source
         with:
           command: apply
           token: ${{ steps.app.outputs.token }}
@@ -61,7 +118,7 @@ jobs:
         run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-desired
       - name: Plan the matching repeat
         id: repeat-plan
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        uses: ./.verification-source
         with:
           command: plan
           plan-reporting: status-only
@@ -71,8 +128,8 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           PLAN_OUTCOME: ${{ steps.repeat-plan.outputs.plan-outcome }}
         run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-repeat
-      - name: Repeat apply through the published Action
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+      - name: Repeat apply through the candidate root Action
+        uses: ./.verification-source
         with:
           command: apply
           token: ${{ steps.app.outputs.token }}
@@ -86,9 +143,9 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: python3 .verification-source/.github/scripts/verify-public-topics.py restore-config
-      - name: Restore original Topics through the published Action
+      - name: Restore original Topics through the candidate root Action
         if: always() && steps.restore-config.outputs.ready == 'true'
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        uses: ./.verification-source
         with:
           command: apply
           token: ${{ steps.app.outputs.token }}
@@ -100,7 +157,7 @@ jobs:
       - name: Plan the restored baseline
         id: final-plan
         if: always() && steps.restore-config.outputs.ready == 'true'
-        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        uses: ./.verification-source
         with:
           command: plan
           plan-reporting: status-only

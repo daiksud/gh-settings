@@ -1,4 +1,4 @@
-"""Bounded live Topics probe; only the pinned public Action performs writes."""
+"""Bounded live Topics probe; only the selected root Action performs writes."""
 
 import json
 import os
@@ -10,8 +10,6 @@ import sys
 
 TARGET = "daiksud/test-gh-settings-public"
 MARKER = "gh-settings-854-public-action"
-VERSION = "v0.43.0"
-DIGEST = "f415c9f82b8cf0f81d13625a60588e96cc68f755838eb8d62ca0d69e38284143"
 
 
 def command(args, cwd=None):
@@ -95,9 +93,14 @@ class Probe:
         return state
 
     def arm(self):
-        if (os.environ.get("ACTION_TARGET") != TARGET or os.environ.get("ACTION_VERSION") != VERSION
-                or os.environ.get("ACTION_DIGEST") != DIGEST):
-            raise RuntimeError("installed public Action identity differs from the reviewed package")
+        version = os.environ.get("EXPECTED_CLI_VERSION", "")
+        digest = os.environ.get("EXPECTED_CLI_SHA256", "")
+        if (re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version) is None
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+                or os.environ.get("ACTION_TARGET") != TARGET
+                or os.environ.get("ACTION_VERSION") != version
+                or os.environ.get("ACTION_DIGEST") != digest):
+            raise RuntimeError("installed Action identity differs from the verified product")
         state = self.check("original")
         state["armed"] = True
         self.save(state)
@@ -113,7 +116,7 @@ class Probe:
         self.declaration(state["original"])
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write("ready=true\n")
-        print("original Topics declaration restored locally; public Action restoration still required")
+        print("original Topics declaration restored locally; root Action restoration still required")
 
 
 def main():
