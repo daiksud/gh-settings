@@ -50,7 +50,7 @@ def observe():
 class Probe:
     def __init__(self):
         self.workspace = Path(os.environ["GITHUB_WORKSPACE"])
-        self.directory = Path(os.environ["PROBE_STATE"])
+        self.directory = Path(os.environ["RUNNER_TEMP"]) / "public-action-topics"
         self.path = self.directory / "state.json"
 
     def save(self, state):

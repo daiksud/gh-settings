@@ -12,8 +12,6 @@ jobs:
     environment: gh-settings
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env:
-      PROBE_STATE: ${{ runner.temp }}/public-action-topics
     steps:
       - name: Checkout reviewed probe source without credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
