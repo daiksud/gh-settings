@@ -1068,8 +1068,33 @@ Every bound entry needs a unique positive integer ID and at least one selected
 control. Omitted controls and unlisted hooks remain unmanaged. Declaring only
 Active/events is a useful guard: matching values make no change; a mismatch fails
 before this family's first write. A missing selected ID fails, without recreation.
-The CLI does not use the parent PATCH endpoint because its documented omitted-
-Secret behavior does not provide the preservation contract used by config PATCH.
+Existing **Active/events updates are outside v1** under the current design,
+which does not own Secret values. The [parent PATCH endpoint][webhook-parent-update]
+exists and accepts Active/events, but warns that an existing Secret must be
+supplied again or replaced to avoid removing it. A general safe preservation
+contract without Secret ownership is unconfirmed. This is a technical-contract
+limitation, not a claim that the API is absent or that creation is unsupported.
+The dedicated config PATCH remains supported for URL, Content type and SSL
+verification; it cannot update Active/events.
+
+To change Active/events on an existing hook:
+
+1. In the target repository's GitHub **Settings → Webhooks**, edit the existing
+   hook's Active/event selection and save it through GitHub's UI.
+2. From that repository's checkout, run `gh settings export`, then inspect the
+   `.github/settings.yml` diff. Export reads GitHub settings and changes the local
+   file; it does not update the hook. It also refreshes other supported readable
+   settings, so review the whole diff before retaining it.
+3. Confirm the hook's existing ID and newly observed Active/events were exported,
+   then run `gh settings plan`. These fields now guard the observed values;
+   editing them in YAML cannot request an update.
+
+If webhook acquisition is unavailable, re-export retains valid prior declarations
+as unverified intent. Retained old values do not confirm the UI change; resolve
+acquisition and inspect a successful export before relying on the guards. This
+workflow does not provision, export or verify Secrets, authenticate a receiver or
+verify delivery. The bounded observations in [#776][webhook-observations] do not
+establish general Secret preservation or supersede the official warning.
 
 Omit `id` to create a hook, and explicitly supply URL, Content type, Active and
 events. SSL verification is optional; false and an empty event set are meaningful values:
@@ -1182,10 +1207,12 @@ The [creation/editing guides][webhook-ui], [repository webhook REST][webhook-res
 and [partial configuration announcement][webhook-partial] establish these paths.
 Reads require Webhooks read; creation/updates require Webhooks write. Local fixtures
 do not prove live delivery, authentication, reachability, cryptographic secret
-equality or absence of races between requests. Parent Active/events mutation and receiver configuration remain separate work. Secret values are outside policy.
+equality or absence of races between requests. Existing parent Active/events mutation is outside v1; receiver configuration and Secret values are outside policy.
 
 [webhook-practices]: https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks
 [webhook-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
+[webhook-parent-update]: https://docs.github.com/en/rest/repos/webhooks#update-a-repository-webhook
+[webhook-observations]: https://github.com/daiksud/gh-settings/issues/776
 [webhook-rest]: https://docs.github.com/en/rest/repos/webhooks
 [webhook-partial]: https://github.blog/changelog/2020-10-26-webhooks-configuration-enhancements/
 

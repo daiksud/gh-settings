@@ -431,7 +431,8 @@ must not be erased merely because part of the resource cannot be managed.
 | Control or group | Policy | UI evidence | API evidence | Source coverage |
 | --- | --- | --- | --- | --- |
 | Existing repository webhooks: Payload URL and Content type | Eligible | Official [creation][webhooks-ui] and [editing](https://docs.github.com/en/webhooks/using-webhooks/editing-webhooks) guides; earlier form reached sudo; new form later inspected without saving | Complete parent/config GET and dedicated config PATCH; official [partial updates][webhooks-config-announcement] establish omitted-secret update contract | [Implemented](../settings.md#webhook-configuration-and-creation): existing IDs, selected fields, fresh no-op and independent preservation readback; fixtures do not prove secret equality or live delivery |
-| Repository webhooks: Active/events and creation | Eligible where target UI is configurable | Documented repository controls; prior Add webhook navigation observed | [Repository hooks REST][webhooks-api] confirms explicit creation POST and complete observation; creation automatically pings | [Implemented](../settings.md#webhook-configuration-and-creation): full IDless creation, guarded ID binding, exported Active/events and bound matching guards; no parent Active/events mutation because omitted-Secret preservation remains unconfirmed |
+| Repository webhooks: creation, including Active/events | Eligible where target UI is configurable | Documented repository controls; prior Add webhook navigation observed | [Repository hooks REST][webhooks-api] confirms explicit creation POST and complete observation; creation automatically pings | [Implemented](../settings.md#webhook-configuration-and-creation): full IDless creation and guarded ID binding, without Secret provisioning |
+| Existing repository webhooks: Active/events updates | Eligible | Documented repository controls | Partial: parent GET/PATCH exist, but the [parent PATCH warning][webhook-parent-update] leaves safe opaque-Secret preservation unconfirmed; dedicated config PATCH cannot update these fields | Outside v1 under the current no-Secret-ownership design; export and equality guards are implemented, mutation is not. [Change in GitHub UI and re-export](../settings.md#webhook-configuration-and-creation). Technical-contract limitation, not API absence or a policy exclusion; decision [#855](https://github.com/daiksud/gh-settings/issues/855) |
 | Repository webhooks: deletion/pruning | Eligible | [Documented repository deletion control](https://docs.github.com/en/webhooks/using-webhooks/disabling-webhooks) | [Repository hooks REST][webhooks-api] documents fixed-ID deletion with no version condition | [Implemented explicit whole-object prune](../settings.md#explicit-webhook-pruning), including opaque Secret; full nonsecret evidence and absence verification, without Secret-equality or atomic-lock claims |
 | Repository webhooks: SSL verification | Eligible | Personal-public new webhook form showed Enable selected and Disable available, 2026-11-14; no submission | [Repository webhook config API][webhook-config-update] reads and updates `insecure_ssl`; `0` verifies and `1` disables verification | [Implemented](../settings.md#webhook-configuration-and-creation): optional boolean, export, selected config update and creation; fixtures do not prove live TLS or Secret equality |
 | Repository webhook Secret values | Excluded | Policy excludes secret values | Read representations do not prove secret presence/equality | Never retained in model, exported, compared or replayed |
@@ -466,7 +467,12 @@ deleted and the temporary receiver and tunnel were stopped after the experiment.
 These observations cover only the tested requests and time; they do not change
 the [parent PATCH warning][webhook-parent-update] or establish a general
 Secret-preserving parent-update contract. Existing Active/events remain matching
-guards. Local fixtures do not establish live delivery, TLS behavior or Secret
+guards. Under the 2026-11-18 decision in [#855](https://github.com/daiksud/gh-settings/issues/855),
+existing Active/events mutation is outside v1 while that safe contract remains
+unconfirmed under the no-Secret-ownership design. This follows #668/#669 by
+separating eligible UI controls, technical uncertainty and implemented operations;
+it does not classify the known parent API as absent or weaken supported creation
+and dedicated config updates. Local fixtures do not establish live delivery, TLS behavior or Secret
 equality. Publishing a release and updating published CLI/Action references remain
 separate work requiring explicit authorization; current source evidence does not
 establish the released contract.
