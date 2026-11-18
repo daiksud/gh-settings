@@ -1,0 +1,115 @@
+name: Verify published Action Topics
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-public-action-test-gh-settings-public
+  cancel-in-progress: false
+jobs:
+  topics:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings'
+    environment: gh-settings
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PROBE_STATE: ${{ runner.temp }}/public-action-topics
+    steps:
+      - name: Checkout reviewed probe source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .verification-source
+          persist-credentials: false
+      - name: Mint a token only for the dedicated test repository
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.ANSWER26_CLIENT_ID }}
+          private-key: ${{ secrets.ANSWER26_PRIVATE_KEY }}
+          owner: daiksud
+          repositories: test-gh-settings-public
+          permission-administration: write
+      - name: Observe original Topics and create an isolated local consumer
+        id: prepare
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py prepare
+      - name: Validate through the published Action and real release installer
+        id: validate
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: validate
+      - name: Plan the single-topic addition
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: plan
+          token: ${{ steps.app.outputs.token }}
+      - name: Check package identity and fresh baseline immediately before apply
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          ACTION_TARGET: ${{ steps.validate.outputs.target }}
+          ACTION_VERSION: ${{ steps.validate.outputs.cli-version }}
+          ACTION_DIGEST: ${{ steps.validate.outputs.cli-sha256 }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py arm
+      - name: Apply Topics through the published Action
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: apply
+          token: ${{ steps.app.outputs.token }}
+      - name: Independently read back the topic set
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-desired
+      - name: Plan the matching repeat
+        id: repeat-plan
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: plan
+          plan-reporting: status-only
+          token: ${{ steps.app.outputs.token }}
+      - name: Require a no-difference plan and recheck before repeat apply
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PLAN_OUTCOME: ${{ steps.repeat-plan.outputs.plan-outcome }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-repeat
+      - name: Repeat apply through the published Action
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: apply
+          token: ${{ steps.app.outputs.token }}
+      - name: Independently read back the repeat
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-desired
+      - name: Check for conflicts before preparing restoration
+        id: restore-config
+        if: always() && steps.prepare.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py restore-config
+      - name: Restore original Topics through the published Action
+        if: always() && steps.restore-config.outputs.ready == 'true'
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: apply
+          token: ${{ steps.app.outputs.token }}
+      - name: Independently verify restoration
+        if: always() && steps.restore-config.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-restored
+      - name: Plan the restored baseline
+        id: final-plan
+        if: always() && steps.restore-config.outputs.ready == 'true'
+        uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2 # v0.43.0
+        with:
+          command: plan
+          plan-reporting: status-only
+          token: ${{ steps.app.outputs.token }}
+      - name: Require the restored no-difference plan and final independent readback
+        if: always() && steps.restore-config.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PLAN_OUTCOME: ${{ steps.final-plan.outputs.plan-outcome }}
+        run: python3 .verification-source/.github/scripts/verify-public-topics.py verify-final-plan
