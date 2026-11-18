@@ -23,7 +23,7 @@ class PublicTopicsProbe(unittest.TestCase):
         self.workspace.mkdir()
         self.output = self.root / "output"
         self.env = patch.dict(os.environ, {
-            "GITHUB_WORKSPACE": str(self.workspace), "PROBE_STATE": str(self.root / "state"),
+            "GITHUB_WORKSPACE": str(self.workspace), "RUNNER_TEMP": str(self.root),
             "GITHUB_OUTPUT": str(self.output), "ACTION_TARGET": probe.TARGET,
             "ACTION_VERSION": probe.VERSION, "ACTION_DIGEST": probe.DIGEST,
         })

@@ -20,7 +20,7 @@ func TestPublicTopicsProbeWorkflow(t *testing.T) {
 	w, source := readWorkflow(t, "../../.github/workflows/verify-public-action.yml")
 	j := w.Jobs["topics"]
 	if len(w.On) != 1 || w.On["workflow_dispatch"].Tag != "!!null" || len(w.Jobs) != 1 ||
-		j.Environment != "gh-settings" || j.Runner != "ubuntu-24.04" || j.Timeout != 15 ||
+		j.Environment != "gh-settings" || j.Runner != "ubuntu-24.04" || j.Timeout != 15 || len(j.Env) != 0 ||
 		j.If != "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings'" ||
 		!reflect.DeepEqual(w.Permissions, map[string]string{"contents": "read"}) || w.Concurrency.Cancel {
 		t.Fatal("probe must remain a manually approved main-only job with read-only workflow permissions")
