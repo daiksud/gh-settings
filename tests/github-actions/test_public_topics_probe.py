@@ -25,7 +25,8 @@ class PublicTopicsProbe(unittest.TestCase):
         self.env = patch.dict(os.environ, {
             "GITHUB_WORKSPACE": str(self.workspace), "RUNNER_TEMP": str(self.root),
             "GITHUB_OUTPUT": str(self.output), "ACTION_TARGET": probe.TARGET,
-            "ACTION_VERSION": probe.VERSION, "ACTION_DIGEST": probe.DIGEST,
+            "ACTION_VERSION": "v1.0.0", "ACTION_DIGEST": "a" * 64,
+            "EXPECTED_CLI_VERSION": "v1.0.0", "EXPECTED_CLI_SHA256": "a" * 64,
         })
         self.env.start()
         self.addCleanup(self.env.stop)
@@ -88,6 +89,15 @@ class PublicTopicsProbe(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.subject.arm()
         self.assertFalse(self.subject.load()["armed"])
+
+    def test_missing_or_invalid_verified_identity_never_arms(self):
+        self.prepare()
+        for change in ({"EXPECTED_CLI_SHA256": ""}, {"EXPECTED_CLI_SHA256": "not-a-digest"},
+                       {"EXPECTED_CLI_VERSION": "dev"}, {"EXPECTED_CLI_VERSION": "v2.0.0"}):
+            with self.subTest(change=change), patch.dict(os.environ, change):
+                with self.assertRaises(RuntimeError):
+                    self.subject.arm()
+                self.assertFalse(self.subject.load()["armed"])
         self.topics = ["retained-topic"]
         with patch.dict(os.environ, {"ACTION_DIGEST": "wrong"}):
             with self.assertRaises(RuntimeError):
