@@ -5,7 +5,12 @@ owns declarations and evidence limits. Explicit [whole-object pruning](webhook-p
 
 - Bound positive IDs select optional URL/Content type/SSL verification and optional Active/events
   matching guards. All guards pass before this family's first write. A mismatch
-  or missing selected ID fails without parent PATCH or recreation.
+  or missing selected ID fails without parent PATCH or recreation. Existing
+  Active/events mutation is outside v1 because a safe opaque-Secret preservation
+  contract is unconfirmed under the no-Secret-ownership design. Change those
+  controls through GitHub UI, then inspect a successful re-export before planning;
+  unavailable acquisition retains unverified prior intent. Creation and dedicated
+  config updates remain supported.
 - IDless creation requires URL, Content type, Active and events. SSL verification
   is optional and defaults to enabled for creation. Nulls, invalid URL
   bytes, duplicate/nonstring/whitespace event members and guessed defaults are
