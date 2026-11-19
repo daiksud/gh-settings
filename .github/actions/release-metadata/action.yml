@@ -4,6 +4,10 @@ inputs:
   source-sha:
     description: Exact frozen main commit.
     required: true
+  promote-to-v1:
+    description: Explicit initial v0-to-v1 promotion to v1.0.1; false uses normal SemVer.
+    required: false
+    default: 'false'
 outputs:
   version:
     description: Automatically calculated release version.
@@ -28,12 +32,19 @@ runs:
       shell: bash
       env:
         SOURCE_SHA: ${{ inputs.source-sha }}
+        PROMOTE_TO_V1: ${{ inputs.promote-to-v1 }}
       run: |
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid metadata source' >&2; exit 1; }
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'metadata checkout differs from frozen source' >&2; exit 1; }
         metadata="$RUNNER_TEMP/release-metadata"
         [[ ! -e "$metadata" ]]
-        python3 .github/scripts/release-version.py --allow-retry --graduate-to-v1 > "$metadata"
+        args=(--allow-retry)
+        case "$PROMOTE_TO_V1" in
+          false) ;;
+          true) args+=(--graduate-to-v1) ;;
+          *) echo 'promote-to-v1 must be true or false' >&2; exit 1 ;;
+        esac
+        python3 .github/scripts/release-version.py "${args[@]}" > "$metadata"
         [[ "$(wc -l < "$metadata" | tr -d ' ')" == 3 ]] || { echo 'metadata output line count changed' >&2; exit 1; }
         for key in version previous-tag previous-sha; do
           [[ "$(grep -c "^$key=" "$metadata")" == 1 ]] || { echo "metadata output lacks $key" >&2; exit 1; }

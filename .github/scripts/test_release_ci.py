@@ -188,6 +188,19 @@ class ReleaseCITests(unittest.TestCase):
         self.assertEqual(self.output(), "reused=false\n")
         self.assertIn("version mismatch", (Path(self.temp.name) / "summary").read_text())
 
+    def test_normal_ci_products_cannot_be_reused_for_opted_in_promotion(self):
+        archives = {11: archive_for("linux-amd64", "v0.44.0"),
+                    12: archive_for("darwin-arm64", "v0.44.0")}
+        artifacts = [artifact("release-linux-amd64", 11, archives[11]),
+                     artifact("release-darwin-arm64", 12, archives[12])]
+        with (mock.patch.object(ci, "select_ci_run", return_value=run(7)),
+              mock.patch.object(ci, "api_items", return_value=artifacts),
+              mock.patch.object(ci, "fetch_archive", side_effect=lambda _repo, identifier, _token: archives[identifier])):
+            ci.reuse("7", "v1.0.1")
+        self.assertEqual(self.output(), "reused=false\n")
+        self.assertFalse((Path(self.temp.name) / "reused-release").exists())
+        self.assertIn("expected v1.0.1, observed v0.44.0", (Path(self.temp.name) / "summary").read_text())
+
     def test_invalid_binary_manifest_warns_and_falls_back(self):
         artifacts, archives = self.fixture()
         archives[11] = archive_for("linux-amd64", corrupt_binary=True)

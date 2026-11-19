@@ -41,7 +41,7 @@ func readReleaseAction(t *testing.T, name string) (localReleaseAction, string) {
 
 func TestReleaseLocalActionContracts(t *testing.T) {
 	wantInputs := map[string][]string{
-		"release-metadata":   {"source-sha"},
+		"release-metadata":   {"source-sha", "promote-to-v1"},
 		"release-acceptance": {"target", "version", "source-sha"},
 		"release-publish":    {"source-sha", "version", "previous-tag", "previous-sha"},
 		"release-verify":     {"source-sha", "version"},
@@ -72,6 +72,21 @@ func TestReleaseLocalActionContracts(t *testing.T) {
 		if !strings.Contains(metadataSource, matrix) {
 			t.Fatalf("metadata action lost allowlisted matrix %s", matrix)
 		}
+	}
+}
+
+func TestReleaseMetadataPromotionChoice(t *testing.T) {
+	metadata, _ := readReleaseAction(t, "release-metadata")
+	var input struct {
+		Required bool   `yaml:"required"`
+		Default  string `yaml:"default"`
+	}
+	promotionInput := metadata.Inputs["promote-to-v1"]
+	if err := promotionInput.Decode(&input); err != nil || input.Required || input.Default != "false" {
+		t.Fatalf("promotion input must default off: %+v %v", input, err)
+	}
+	if metadata.Runs.Steps[0].Env["PROMOTE_TO_V1"] != "${{ inputs.promote-to-v1 }}" {
+		t.Fatal("metadata must receive the explicit promotion choice as data")
 	}
 }
 

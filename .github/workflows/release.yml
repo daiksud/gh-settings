@@ -2,6 +2,11 @@ name: release
 on:
   workflow_dispatch:
     inputs:
+      promote_to_v1:
+        description: Promote to v1 (initial v0-to-v1 release is v1.0.1)
+        required: false
+        type: boolean
+        default: false
       source_sha:
         description: Optional immutable main commit to require (for reviewed dispatch)
         required: false
@@ -81,6 +86,7 @@ jobs:
         uses: ./.github/actions/release-metadata
         with:
           source-sha: ${{ github.sha }}
+          promote-to-v1: ${{ inputs.promote_to_v1 }}
         env:
           GH_TOKEN: ${{ github.token }}
   reuse:

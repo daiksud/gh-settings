@@ -14,7 +14,7 @@ import (
 
 // Execute the source-controlled composite resolver against an isolated release
 // catalog and Git history. The gh stand-in accepts only the expected read call.
-func TestGraduationUsesOneFrozenMetadataResolver(t *testing.T) {
+func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
 	for _, name := range []string{"ci-push.yml", "release.yml"} {
 		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name))
 		if err != nil {
@@ -40,6 +40,13 @@ func TestGraduationUsesOneFrozenMetadataResolver(t *testing.T) {
 		if checkout.With["ref"] != "${{ github.sha }}" || checkout.With["fetch-depth"] != "0" ||
 			metadata.Uses != "./.github/actions/release-metadata" || metadata.With["source-sha"] != "${{ github.sha }}" || metadata.If != "" || metadata.Continue {
 			t.Fatalf("%s does not resolve metadata from frozen source: %+v %+v", name, checkout, metadata)
+		}
+		wantChoice := ""
+		if name == "release.yml" {
+			wantChoice = "${{ inputs.promote_to_v1 }}"
+		}
+		if metadata.With["promote-to-v1"] != wantChoice {
+			t.Fatalf("%s has unexpected promotion selection: %+v", name, metadata.With)
 		}
 	}
 	fixture := t.TempDir()
@@ -98,9 +105,17 @@ func TestGraduationUsesOneFrozenMetadataResolver(t *testing.T) {
 	}
 	retryRelease := map[string]any{"id": 2, "tag_name": "v0.4.0", "draft": false, "prerelease": false, "published_at": "2026-10-02T00:00:00Z", "body": "<!-- gh-settings-release: " + string(marker) + " -->\nNotes"}
 	for _, tc := range []struct {
-		caller string
-		retry  bool
-	}{{"ci-push", false}, {"release", false}, {"ci-push-retry", true}, {"release-retry", true}} {
+		caller, choice, version string
+		retry, valid            bool
+	}{
+		{"ci-push", "false", "v0.3.1", false, true},
+		{"release-default", "false", "v0.3.1", false, true},
+		{"release-promotion", "true", "v1.0.1", false, true},
+		{"ci-push-retry", "false", "v0.4.0", true, true},
+		{"release-default-retry", "false", "v0.4.0", true, true},
+		{"release-promotion-v0-retry", "true", "", true, false},
+		{"invalid-choice", "yes", "", false, false},
+	} {
 		t.Run(tc.caller, func(t *testing.T) {
 			runnerTemp := t.TempDir()
 			catalogFile := filepath.Join(runnerTemp, "catalog.json")
@@ -118,16 +133,22 @@ func TestGraduationUsesOneFrozenMetadataResolver(t *testing.T) {
 			outputFile := filepath.Join(runnerTemp, "outputs")
 			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", action.Runs.Steps[0].Run)
 			cmd.Dir = fixture
-			cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "GITHUB_REPOSITORY=owner/repo", "SOURCE_SHA="+source, "RUNNER_TEMP="+runnerTemp, "GITHUB_OUTPUT="+outputFile, "CATALOG_FIXTURE="+catalogFile)
+			cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "GITHUB_REPOSITORY=owner/repo", "SOURCE_SHA="+source, "RUNNER_TEMP="+runnerTemp, "GITHUB_OUTPUT="+outputFile, "CATALOG_FIXTURE="+catalogFile, "PROMOTE_TO_V1="+tc.choice)
 			out, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("metadata failed: %v\n%s", err, out)
+			if (err == nil) != tc.valid {
+				t.Fatalf("metadata outcome: %v\n%s", err, out)
+			}
+			if !tc.valid {
+				if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
+					t.Fatal("failed resolution must not publish metadata")
+				}
+				return
 			}
 			content, err := os.ReadFile(outputFile)
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := fmt.Sprintf("version=v1.0.0\nprevious-tag=v0.3.0\nprevious-sha=%s\n", baseline)
+			want := fmt.Sprintf("version=%s\nprevious-tag=v0.3.0\nprevious-sha=%s\n", tc.version, baseline)
 			if tc.retry {
 				want = "version=v0.4.0\nprevious-tag=\nprevious-sha=\n"
 			}

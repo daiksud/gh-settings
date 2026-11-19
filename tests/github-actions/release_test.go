@@ -238,13 +238,15 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 		Inputs map[string]struct {
 			Required bool   `yaml:"required"`
 			Type     string `yaml:"type"`
+			Default  bool   `yaml:"default"`
 		} `yaml:"inputs"`
 	}
 	if err := dispatchNode.Decode(&dispatch); err != nil {
 		t.Fatal(err)
 	}
-	if len(dispatch.Inputs) != 1 || dispatch.Inputs["source_sha"].Required || dispatch.Inputs["source_sha"].Type != "string" {
-		t.Fatal("release must calculate its version and retain only an optional full source SHA")
+	if len(dispatch.Inputs) != 2 || dispatch.Inputs["source_sha"].Required || dispatch.Inputs["source_sha"].Type != "string" ||
+		dispatch.Inputs["promote_to_v1"].Required || dispatch.Inputs["promote_to_v1"].Type != "boolean" || dispatch.Inputs["promote_to_v1"].Default {
+		t.Fatal("release must retain the optional source SHA and default-off promotion boolean")
 	}
 	resolveNode := workflow.Jobs["resolve"]
 	var resolve struct {
