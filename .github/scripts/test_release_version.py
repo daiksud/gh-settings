@@ -136,11 +136,52 @@ class HistoryFixture(unittest.TestCase):
                 self.git("reset", "--hard", self.base)
                 self.commit(message)
                 version, previous, sha = self.calculate(graduate_to_v1=True)
-                self.assertEqual((version, previous, sha), ("v1.0.0", "v0.3.0", self.base))
+                self.assertEqual((version, previous, sha), ("v1.0.1", "v0.3.0", self.base))
         self.git("reset", "--hard", self.base)
         self.commit("chore: empty", empty=True)
         with self.assertRaisesRegex(versioning.ReleaseError, "no substantive changes"):
             self.calculate(graduate_to_v1=True)
+
+    def test_default_and_opt_in_use_the_same_frozen_interval(self):
+        self.commit("feat!: new contract")
+        self.assertEqual(self.calculate(), ("v0.4.0", "v0.3.0", self.base))
+        self.assertEqual(self.calculate(graduate_to_v1=True), ("v1.0.1", "v0.3.0", self.base))
+
+    def test_promotion_never_duplicates_or_downgrades_published_versions(self):
+        self.commit("fix: patch")
+        for published in ("v1.0.1", "v1.2.0", "v2.0.0"):
+            with self.subTest(published=published):
+                self.git("tag", published, self.base)
+                # A later-published v0 maintenance baseline must not reset v1.
+                older = {"id": 2, "tag_name": published, "draft": False,
+                         "prerelease": False, "published_at": "2026-09-30T00:00:00Z"}
+                with self.assertRaisesRegex(versioning.ReleaseError, "advance beyond"):
+                    self.calculate([older], graduate_to_v1=True)
+                self.assertEqual(self.calculate([older])[0], "v0.3.1")
+
+    def test_published_v1_0_1_retains_normal_semver_with_either_choice(self):
+        self.git("tag", "v1.0.1", self.base)
+        self.tag = "v1.0.1"
+        for message, expected in (("fix: patch", "v1.0.2"), ("feat: feature", "v1.1.0"),
+                                  ("feat!: break", "v2.0.0")):
+            for enabled in (False, True):
+                with self.subTest(message=message, enabled=enabled):
+                    self.git("reset", "--hard", self.base)
+                    self.commit(message)
+                    self.assertEqual(self.calculate(graduate_to_v1=enabled)[0], expected)
+
+    def test_promoted_same_source_retry_survives_checkbox_changes(self):
+        sha = self.commit("feat: feature")
+        self.git("tag", "v1.0.1")
+        marker = {"version": "v1.0.1", "commit": sha, "macos_sha256": "a" * 64,
+                  "linux_sha256": "b" * 64, "checksums_sha256": "c" * 64}
+        for draft in (False, True):
+            release = {"id": 2, "tag_name": "v1.0.1", "draft": draft,
+                       "prerelease": False, "published_at": "2026-10-02T00:00:00Z",
+                       "body": "<!-- gh-settings-release: " + json.dumps(marker) + " -->"}
+            for enabled in (False, True):
+                with self.subTest(draft=draft, enabled=enabled):
+                    self.assertEqual(self.calculate([release], True, enabled), ("v1.0.1", "", ""))
 
     def test_graduation_keeps_immutable_retry(self):
         sha = self.commit("feat: feature")
@@ -149,7 +190,10 @@ class HistoryFixture(unittest.TestCase):
                   "linux_sha256": "b" * 64, "checksums_sha256": "c" * 64}
         release = {"id": 2, "tag_name": "v0.4.0", "draft": True, "prerelease": False,
                    "body": "<!-- gh-settings-release: " + json.dumps(marker) + " -->"}
-        self.assertEqual(self.calculate([release], True, True), ("v0.4.0", "", ""))
+        self.assertEqual(self.calculate([release], True, False), ("v0.4.0", "", ""))
+        with self.assertRaisesRegex(versioning.ReleaseError, "cannot promote an existing v0 release"):
+            self.calculate([release], True, True)
+        self.assertEqual(self.git("rev-parse", "v0.4.0"), sha)
         self.git("tag", "v1.0.0")
         marker["version"] = "v1.0.0"
         release["tag_name"] = "v1.0.0"
@@ -199,7 +243,7 @@ class HistoryFixture(unittest.TestCase):
                     output = io.StringIO()
                     with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stdout(output):
                         versioning.main()
-                    self.assertEqual(output.getvalue(), f"version=v1.0.0\nprevious-tag=v0.3.0\nprevious-sha={self.base}\n")
+                    self.assertEqual(output.getvalue(), f"version=v1.0.1\nprevious-tag=v0.3.0\nprevious-sha={self.base}\n")
                 for args in (["--graduate-to-v1", "--graduate-to-v1"], ["--unknown"], ["--allow-retry=yes"]):
                     with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                         versioning.main()
@@ -237,7 +281,7 @@ class ParsingTests(unittest.TestCase):
 
     def test_graduation_component_bounds_and_stable_tiers(self):
         maximum = str(versioning.MAX_COMPONENT)
-        self.assertEqual(versioning.next_version(f"v0.{maximum}.{maximum}", 0, True), "v1.0.0")
+        self.assertEqual(versioning.next_version(f"v0.{maximum}.{maximum}", 0, True), "v1.0.1")
         with self.assertRaises(versioning.ReleaseError):
             versioning.next_version(f"v0.{versioning.MAX_COMPONENT + 1}.0", 2, True)
         for tier, expected in ((0, "v1.2.4"), (1, "v1.3.0"), (2, "v2.0.0")):

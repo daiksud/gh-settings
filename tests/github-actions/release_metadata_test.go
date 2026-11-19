@@ -44,7 +44,7 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 	metadata := findStep(t, job{Steps: resolve.Steps}, "metadata")
 	if metadata.Uses != "./.github/actions/release-metadata" || metadata.Run != "" || metadata.If != "" || metadata.Continue || !reflect.DeepEqual(metadata.Env, map[string]string{
 		"GH_TOKEN": "${{ github.token }}",
-	}) || !reflect.DeepEqual(metadata.With, map[string]string{"source-sha": "${{ github.sha }}"}) {
+	}) || !reflect.DeepEqual(metadata.With, map[string]string{"source-sha": "${{ github.sha }}", "promote-to-v1": "${{ inputs.promote_to_v1 }}"}) {
 		t.Fatal("resolve must delegate validated metadata and matrices from the frozen source without success overrides")
 	}
 	var checkout step

@@ -4,7 +4,7 @@ The [manual release workflow](../../.github/workflows/release.yml) first checks 
 
 ## Automatic version calculation
 
-The standard-library Python [release-version.py](../../.github/scripts/release-version.py) calculates a candidate version from the last published stable release through the fixed source SHA. Main CI and manual release use the same committed metadata Action and calculator invocation. There is **no preparation PR, committed release-version update, version input, or automatic publication on merge**. Branch names do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
+The standard-library Python [release-version.py](../../.github/scripts/release-version.py) calculates a candidate version from the last published stable release through the fixed source SHA. Main CI and manual release use the same committed metadata Action. CI uses normal calculation; manual release can explicitly opt into initial v1 promotion. There is **no preparation PR, committed release-version update, arbitrary version input, or automatic publication on merge**. Branch names do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
 
 | Committed change | Selected increment |
 | --- | --- |
@@ -12,9 +12,26 @@ The standard-library Python [release-version.py](../../.github/scripts/release-v
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
 | Any other substantive commit, including maintenance and reverts | PATCH |
 
-The committed metadata Action selects `--graduate-to-v1`: a validated v0.x baseline with any substantive source change resolves to v1.0.0. Direct calculator invocation without the option retains the earlier v0.x rules, including demoting breaking changes to MINOR. From v1 onward the strongest signal wins once. Empty commits are ignored; every tree change counts, including a release-preparation-named commit. If no substantive change remains, calculation fails. The GitHub release list, stable baseline, complete history, and ancestor relationship must validate; drafts, prereleases, unpublished tags, and code-fenced footer examples do not change the result.
+The release dispatch checkbox **Promote to v1** (`promote_to_v1`) defaults to off.
+Unchecked, normal v0.x calculation demotes breaking changes to MINOR. Checked,
+the shared metadata Action passes `--graduate-to-v1`: a validated v0.x baseline
+with substantive changes selects **v1.0.1**, not v1.0.0. From v1 onward both
+choices retain normal SemVer; for example, a patch after v1.0.1 selects v1.0.2.
+An opted-in new calculation must advance beyond every published stable version;
+an older publication boundary cannot reset or duplicate an existing v1 release.
+An exact immutable v1 retry retains its recorded version with either checkbox
+choice. Unchecked dispatch also retains an exact v0 retry. Checking promotion for
+an existing same-source v0 release stops instead of silently retrying v0 or adding
+a conflicting second stable tag. That promotion needs a new substantive source
+commit; the existing release and tag remain unchanged.
 
-The resolver is read-only. An exact immutable gh-settings release retry takes precedence over graduation and retains its recorded source, tag and version using its embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
+The strongest signal wins once. Empty commits are ignored; every tree change
+counts, including a release-preparation-named commit. If no substantive change
+remains, calculation fails. The release list, stable baseline, complete history
+and ancestor relationship must validate; drafts, prereleases, unpublished tags
+and code-fenced footer examples do not establish the published boundary.
+
+The resolver is read-only. A compatible exact immutable gh-settings release retry retains its recorded source, tag and version using its embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
 
 ## Start a manual release
 
@@ -26,7 +43,19 @@ gh workflow run release.yml --repo daiksud/gh-settings --ref main
 
 Optionally add `-f source_sha=FULL_40_CHARACTER_SHA` to pin the reviewed main commit. Resolution stops if main moved before it starts, if an explicit pin differs, or if the metadata source differs from the checkout. No workflow dispatch from a non-main ref, issue comment, or PR merge publishes a release.
 
-The workflow requires successful main CI when a matching run exists, calculates the version, and freezes the source SHA and published baseline. It verifies the matching run's artifacts or performs all native builds and acceptance checks again. Before publication it rechecks main and the selected CI result; any failed or incomplete CI blocks release. Source changes after resolution do not enter the release. The external release catalog can change between runs on the same SHA, so a different calculated version requires the existing artifact identity checks and validated fallback; artifacts are never relabeled. A main CI candidate labeled v1.0.0 is not a published release.
+Leave **Promote to v1** unchecked for normal calculation. To deliberately select
+the initial v1.0.1 promotion, check it in the Actions dispatch form or add
+`-f promote_to_v1=true` to the command above. After v1, that choice does not reset
+the version or override ordinary SemVer. Dispatch still requires separate
+publication authorization.
+
+The workflow requires successful main CI when a matching run exists, calculates the version, and freezes the source SHA and published baseline. It verifies the matching run's artifacts or performs all native builds and acceptance checks again. Before publication it rechecks main and the selected CI result; any failed or incomplete CI blocks release. Source changes after resolution do not enter the release. The external release catalog can change between runs on the same SHA, so a different calculated version requires the existing artifact identity checks and validated fallback; artifacts are never relabeled. A main CI candidate version is not a published release.
+
+Main CI's default-off products can have a different version from an opted-in
+release. For example, v0.44.0 CI artifacts cannot be published as v1.0.1. The
+existing version/manifest checks reject reuse and require the complete native
+build and acceptance fallback with v1.0.1 embedded throughout. Publish and
+post-publication verification consume only the accepted release-run products.
 
 ## Release assets and validation
 

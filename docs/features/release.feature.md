@@ -14,13 +14,26 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 - Given a published stable baseline and a fixed descendant source
 - When all committed messages in the interval are classified
-- Then the committed shared metadata Action selects `--graduate-to-v1` and any substantive change from a validated `0.x` baseline selects `1.0.0`
-- And without that option a breaking header or footer selects MINOR during `0.x`
+- Then main CI and default-off release dispatch use normal SemVer calculation
+- And a breaking header or footer selects MINOR during `0.x`
 - And from `1.0.0` onward a breaking header or footer selects MAJOR
 - Otherwise `feat`, `perf`, or `DEPRECATED:` selects MINOR
 - Otherwise fixes, reverts, maintenance, and legacy messages select PATCH
 - And later main commits and mutable branch names do not affect that calculation
 - And a revert does not subtract another included commit's signal
+
+#### Scenario: Explicitly promote the initial v1 release
+
+- Given a validated published `0.x` baseline and substantive descendant changes
+- When the maintainer checks the default-off `Promote to v1` dispatch boolean
+- Then the shared metadata Action selects `--graduate-to-v1` and resolves `1.0.1`
+- And an unchecked dispatch retains normal `0.x` calculation
+- And an opted-in new version cannot duplicate or downgrade any published stable version
+- And from `1.x` onward either choice retains the ordinary strongest SemVer increment
+- And an exact immutable v1 retry retains its recorded version regardless of the choice
+- But checked promotion of an existing same-source v0 release fails instead of silently retrying v0 or retagging it
+- And version-mismatched default-off CI artifacts require complete native rebuild and acceptance
+- And no artifact is relabeled or accepted without source, version and digest verification
 
 #### Scenario: Calculate from immutable source without a preparation PR
 
@@ -31,7 +44,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - And empty commits do not create an increment, while all nonempty source changes do
 - But a preparation-named commit with another changed path remains substantive
 - And no substantive changes, invalid history, or malformed metadata fail closed
-- And an exact immutable retry retains its existing source, tag and version before graduation
+- And an exact compatible immutable retry retains its existing source, tag and version
 - And main CI and manual release use the same committed metadata Action
 - And a changed release catalog can change resolution for the same source; artifacts require version and manifest checks
 - And candidate artifacts do not themselves publish a release

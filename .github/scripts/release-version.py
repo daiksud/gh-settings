@@ -138,16 +138,21 @@ def classify(message):
     return kind, scope, breaking, minor
 
 
-def next_version(version, tier, graduate_to_v1=False):
+def version_components(version):
     if not VERSION.fullmatch(version):
         raise ReleaseError("invalid published stable version")
-    numbers = [int(number) for number in version[1:].split(".")]
+    numbers = tuple(int(number) for number in version[1:].split("."))
     if any(number > MAX_COMPONENT for number in numbers):
         raise ReleaseError("version component exceeds supported range")
+    return numbers
+
+
+def next_version(version, tier, graduate_to_v1=False):
+    numbers = list(version_components(version))
     if graduate_to_v1 and numbers[0] == 0:
-        return "v1.0.0"
+        return "v1.0.1"
     if tier == 2 and numbers[0] == 0:
-        tier = 1  # v1.0.0 requires a deliberate project decision.
+        tier = 1  # Initial v1 promotion requires explicit opt-in.
     index = 2 - tier
     if numbers[index] == MAX_COMPONENT:
         raise ReleaseError("version component would overflow")
@@ -166,6 +171,8 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
     if allow_retry:
         version = existing_retry(source, releases)
         if version:
+            if graduate_to_v1 and version_components(version)[0] == 0:
+                raise ReleaseError("cannot promote an existing v0 release at the same source; use a new substantive source commit")
             return version, "", ""
 
     candidates = [release for release in releases if
@@ -203,7 +210,12 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
         tier = max(tier, 2 if breaking else 1 if minor else 0)
     if tier < 0:
         raise ReleaseError("no substantive changes since previous release")
-    return next_version(previous_tag, tier, graduate_to_v1), previous_tag, previous_sha
+    version = next_version(previous_tag, tier, graduate_to_v1)
+    if graduate_to_v1 and any(
+            version_components(version) <= version_components(release["tag_name"])
+            for release in candidates):
+        raise ReleaseError("promotion must advance beyond every published stable version")
+    return version, previous_tag, previous_sha
 
 
 def main():
