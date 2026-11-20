@@ -10,14 +10,15 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-// Decode the operational declaration directly with the adopted package contract.
+// Inspect the one-file future declaration while the operational workflows still
+// consume the unchanged v0.44.1 shape. Production decoding has no legacy alias.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ui, err := workspace.DecodeConfig(data)
+	ui, err := workspace.DecodeConfig(managedModerationCandidate(t, data))
 	if err != nil {
 		t.Fatal(err)
 	}

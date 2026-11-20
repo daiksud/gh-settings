@@ -374,7 +374,10 @@ The Summary shares Actions workflow-permission and contributor-approval, Securit
 ### Persistent pull request limits
 
 The Action accepts the same optional [Pull request limits declaration](settings.md#persistent-pull-request-limits)
-as the CLI, under `repository.settings.interaction_limits.pull_request_limits`.
+as the CLI, under `repository.settings.moderation.interaction_limits.pull_request_limits`.
+This namespace is a current-source contract and is not accepted by the published
+v0.44.1 package. Select a compatible published package before using this shape;
+see the [published package boundary](#published-package-and-consumer-pins).
 Its token must already authorize the administrator-only creation-cap endpoint.
 Detailed plans/Summaries retain the three distinct UI controls and native values;
 status-only reports hide them. Omitted controls, temporary restrictions and

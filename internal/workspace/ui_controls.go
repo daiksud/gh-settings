@@ -12,6 +12,22 @@ import (
 )
 
 func decodeUISettings(node *yaml.Node) (uimodel.RepositorySettings, error) {
+	fields, err := loadMapping(node, "repository.settings")
+	if err != nil {
+		return uimodel.RepositorySettings{}, err
+	}
+	if _, obsolete := fields["interaction_limits"]; obsolete {
+		if moderation, ok := fields["moderation"]; ok {
+			controls, err := loadMapping(&moderation, "repository.settings.moderation")
+			if err != nil {
+				return uimodel.RepositorySettings{}, err
+			}
+			if _, both := controls["interaction_limits"]; both {
+				return uimodel.RepositorySettings{}, fmt.Errorf("repository.settings.interaction_limits and repository.settings.moderation.interaction_limits cannot both be declared")
+			}
+		}
+		return uimodel.RepositorySettings{}, fmt.Errorf("repository.settings.interaction_limits is no longer supported; use repository.settings.moderation.interaction_limits")
+	}
 	var document uiSettingsDocument
 	if err := decodeUIControl(node, reflect.ValueOf(&document).Elem(), "repository.settings"); err != nil {
 		return uimodel.RepositorySettings{}, err

@@ -388,7 +388,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.CopilotMCP = &enabled
 		return nil
 	})
-	observe("repository.settings.interaction_limits.pull_request_limits.exemption_list", read.PullRequestExemptions != nil, func(candidate *settings.Declaration) error {
+	observe(settings.PullRequestExemptionsPath, read.PullRequestExemptions != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.PullRequestExemptions(repo)
 		if err != nil {
 			return err
@@ -404,7 +404,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.PullRequestExemptions = &desired
 		return nil
 	})
-	observe("repository.settings.interaction_limits.pull_request_limits", read.PullRequestLimits != nil, func(candidate *settings.Declaration) error {
+	observe(settings.PullRequestLimitsPath, read.PullRequestLimits != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.PullRequestLimits(repo)
 		if err != nil {
 			return err

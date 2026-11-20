@@ -105,7 +105,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := func(value string) string {
-		return "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    interaction_limits:\n      pull_request_limits:\n        exemption_list: " + value + "\n"
+		return "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    moderation:\n      interaction_limits:\n        pull_request_limits:\n          exemption_list: " + value + "\n"
 	}
 	write := func(value string) {
 		t.Helper()
@@ -157,7 +157,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 	mu.Unlock()
 	deniedApply := run([]string{"apply"}, true)
 	expect("GET")
-	if strings.Contains(deniedApply.stderr.String(), "earlier successful writes remain applied") || !strings.Contains(deniedApply.stderr.String(), "repository.settings.interaction_limits.pull_request_limits.exemption_list") {
+	if strings.Contains(deniedApply.stderr.String(), "earlier successful writes remain applied") || !strings.Contains(deniedApply.stderr.String(), "repository.settings.moderation.interaction_limits.pull_request_limits.exemption_list") {
 		t.Fatal("first read failure claimed prior progress or lost its setting path", deniedApply.stderr.String())
 	}
 	mu.Lock()
