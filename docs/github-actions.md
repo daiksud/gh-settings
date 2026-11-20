@@ -2,6 +2,13 @@
 
 ## Public Action and supported checkout
 
+The same [v1 repository support boundary](settings.md#feature-adoption-scope)
+applies to CLI and Action: already-archived targets are outside ordinary
+`export` → `plan` → `apply` support. Readable results or limited read-only matching
+behavior do not establish supported archived-repository management. The explicit
+[archive/unarchive transition](settings.md#repository-archive-lifecycle) remains
+separately documented.
+
 The pinned `daiksud/gh-settings` package exports, validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout/data preparation, credentials and approval policy; they do not install the CLI or copy Action internals. The [selected Action pin](#published-package-and-consumer-pins) determines which CLI is installed.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and keep `.github/settings.yml` at its root. Export can create the file and its `.github` directory on first use; validate/plan/apply require an existing configuration.

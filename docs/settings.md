@@ -49,6 +49,15 @@ is configurable in that target's GitHub Web UI. Account plan, Copilot subscripti
 feature execution entitlement and Preview status are separate facts; none is a
 blanket exclusion. A writable API-only field does not create a target UI control.
 
+Already-archived repositories are outside v1 support, including the ordinary
+`export` → `plan` → `apply` contract through either CLI or public Action. Use an
+active repository for that workflow. This is a product-scope decision, not a claim
+that GitHub APIs cannot read or operate on archived repositories. Existing
+readable observations, defensive guards and limited read-only matching paths do
+not establish supported management of an already-archived target. The explicit
+[archive/unarchive transition](#repository-archive-lifecycle) is a separate
+contract; its declaration, sequencing and failure behavior are unchanged.
+
 Temporary interaction restrictions are an explicit product exception. They expire
 and automatically restore normal access, so they are outside the managed settings
 scope despite their known repository read/set/remove APIs. gh-settings provides
@@ -178,6 +187,12 @@ The following paths are relative to `repository.settings.general`:
 Omitting a scalar leaves it unmanaged. Explicit false and empty strings remain intent. REST-backed About/General controls use [fresh reconciliation](commands.md#apply-behavior): skip exact matches and independently verify declared state after changed writes. An explicitly disabled Issues/Pull requests feature cannot accompany its creation-permission choice. Likewise, an explicitly disabled merge method cannot accompany its commit-message menu. Omitting the enabling checkbox never implicitly enables it. Export hides choices behind explicitly disabled controls after validating the acquired raw values.
 
 ## Repository archive lifecycle
+
+The [v1 support boundary](#feature-adoption-scope) excludes ordinary settings
+management on already-archived repositories. The explicit archive/unarchive
+transition described here remains separate. The read-only observations and
+matching cases below describe existing defensive implementation behavior, not
+supported `export` → `plan` → `apply` coverage for an already-archived repository.
 
 Use `repository.settings.general.danger_zone.archive_this_repository`. Omission makes no archive-specific request; false explicitly unarchives and true explicitly archives. Ordinary export includes the observed boolean after complete reads; unavailable state retains prior intent with info.
 

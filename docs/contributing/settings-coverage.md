@@ -485,6 +485,7 @@ being confused with the missing implementations above.
 
 | Surface | Policy | UI/API distinction | Source coverage |
 | --- | --- | --- | --- |
+| Already-archived repositories: ordinary export, plan and apply | Excluded from v1 | Product decision [#792](https://github.com/daiksud/gh-settings/issues/792), not API impossibility | Existing defensive observations/guards and limited read-only matching do not establish supported coverage; explicit [archive/unarchive transitions](../settings.md#repository-archive-lifecycle) retain their separate contract |
 | Repository rename, visibility change, transfer and deletion | Excluded | UI/API feasibility does not override this lifecycle/identity decision | Not implemented; archive/unarchive remains separately supported |
 | Temporary interaction restrictions | Excluded | Finite restrictions automatically expire; known read/set/remove APIs do not override the explicit product exception | No declaration, export, plan, apply, renewal or lease-receipt support |
 | Secret values and private keys | Excluded | Secret names/metadata or write endpoints do not supply exportable secret values | No secret-value management; plaintext non-secret variables remain supported |

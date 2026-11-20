@@ -12,6 +12,14 @@ Disabling an existing Environment custom deployment mode is rejected when its ra
 
 ## Scope and status
 
+The v1 CLI and public Action support boundary excludes already-archived
+repositories, including ordinary `export` → `plan` → `apply` use. Successful reads
+or a limited read-only matching apply do not make that workflow supported.
+The [adoption policy](settings.md#feature-adoption-scope) owns this product-scope
+decision; the separately documented [archive/unarchive transition](settings.md#repository-archive-lifecycle)
+retains its existing behavior. Local `validate` checks schema, not remote support
+eligibility.
+
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
