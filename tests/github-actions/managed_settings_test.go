@@ -80,8 +80,10 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
 		t.Fatal("inactive or inapplicable Actions controls must remain unmanaged")
 	}
-	if !desired.Pages.Delete() {
-		t.Fatal("Pages must explicitly retain the observed disabled state")
+	if !desired.Pages.Empty() || desired.OIDCSubject != nil || !desired.Actions.CacheStorageEmpty() ||
+		desired.CopilotInstructions != nil || desired.CopilotMCP != nil || desired.CopilotReviewEffort != nil ||
+		desired.Security.AIScanPullRequests != nil || desired.Security.AIScanRepositories != nil {
+		t.Fatal("new controls requiring additional or unconfirmed App grants must remain deferred")
 	}
 	if desired.Rulesets == nil || len(desired.Rulesets.Values()) != 1 {
 		t.Fatal("manage only the existing main-branch Ruleset")

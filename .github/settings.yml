@@ -1,5 +1,5 @@
-# Supported, applicable settings observed on this repository; no pruning.
-# Environment variable values remain unmanaged and are not published here.
+# Observed settings within the existing self-management credential boundary; no pruning.
+# Private variable payloads and controls needing additional/unconfirmed grants stay omitted.
 version: daiksud/gh-settings@v0
 repository:
   about:
@@ -127,11 +127,6 @@ repository:
         count_draft_pull_requests_toward_the_limit: false
     agents:
       variables: []
-    copilot:
-      code_review:
-        use_custom_instructions: true
-        allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: true
-        review_effort_level: default
     general:
       template_repository: false
       default_branch: main
@@ -210,15 +205,10 @@ repository:
             severity: errors
     actions:
       runners: []
-      oidc:
-        subject_claim:
-          use_default_template: true
-          use_immutable_subject_claim: true
       policies: []
       general:
         cache:
           cache_retention: 7
-          cache_size_eviction_limit: 10
         actions_permissions:
           policy: allow_all_actions_and_reusable_workflows
           require_actions_to_be_pinned_to_a_full_length_commit_sha: true
@@ -230,9 +220,6 @@ repository:
       variables: []
     advanced_security:
       code_security:
-        ai_scan:
-          ai_scan_for_pull_requests: true
-          ai_scan_for_repositories: true
         codeql_analysis:
           default_setup: true
           languages:
@@ -251,19 +238,7 @@ repository:
       secret_protection:
         enabled: true
         push_protection: true
-    pages:
-      build_and_deployment:
-        source: deploy_from_a_branch
-        branch: none
     environments:
-      - deployment_branches_and_tags: no_restriction
-        name: copilot
-        deployment_protection_rules:
-          custom_rules: []
-          wait_timer: 0
-          required_reviewers: []
-          prevent_self_review: false
-          allow_administrators_to_bypass_configured_protection_rules: true
       - deployment_branches_and_tags: selected_branches_and_tags
         deployment_branch_or_tag_rules:
           - ref_type: branch

@@ -18,11 +18,11 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 		t.Fatal("the public declaration must not contain repository or Environment variable payloads")
 	}
 	if declaration.Environments == nil {
-		t.Fatal("both observed repository Environments must be declared")
+		t.Fatal("only the settings credential Environment must be declared")
 	}
 	environments := declaration.Environments.Values()
-	if len(environments) != 2 {
-		t.Fatal("both observed repository Environments must be declared")
+	if len(environments) != 1 {
+		t.Fatal("only the settings credential Environment must be declared")
 	}
 	seenNames := map[string]bool{}
 	for _, p := range environments {
@@ -43,11 +43,6 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 			want := []settings.EnvironmentPattern{{Type: "branch", Name: "main"}}
 			if *p.CanAdminsBypass || p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
 				t.Fatal("settings credential Environment must retain main-only refs without administrator bypass")
-			}
-		case "copilot":
-			if !*p.CanAdminsBypass || p.Reviewers == nil || len(*p.Reviewers) != 0 ||
-				!p.DeploymentBranchPolicyDeclared || (p.DeploymentBranchPolicy != nil && (p.DeploymentBranchPolicy.ProtectedBranches || p.DeploymentBranchPolicy.CustomBranchPolicies)) {
-				t.Fatal("Copilot Environment must retain its observed unprotected policy")
 			}
 		default:
 			t.Fatalf("unexpected Environment %q", p.Name)

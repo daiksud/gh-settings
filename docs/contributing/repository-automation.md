@@ -186,9 +186,9 @@ no apply.
 
 The declaration records supported, applicable settings acquired through the
 published CLI's real read-only export and checked with a fresh local plan.
-It includes all observed Labels, the existing main Ruleset, both existing
-Environments, General, Actions cache/OIDC, Copilot, persistent PR limits,
-Security/CodeQL and disabled Pages. Supported empty inventories are explicit;
+It includes all observed Labels, the existing main Ruleset and credential
+Environment, General, Actions cache retention, persistent PR limits and
+Security/CodeQL. Supported empty inventories are explicit;
 without prune they do not request unlisted deletion. Existing Ruleset, reviewer
 and check-source IDs are retained. No new resource is requested.
 
@@ -196,9 +196,26 @@ Environment variable payloads remain omitted because they are internal data.
 Secrets, private keys, inactive normal-merge message controls, inactive
 selected-Actions controls and private-only fork/sharing controls are not copied
 into desired state. Repository/Agents variable inventories were observed empty;
-no variable values are published. Copilot `default` records the API's observable
-configured-null state, not proof that a hidden override was erased. A matching
-plan is point-in-time evidence, not a lock or proof of effective enforcement.
+no variable values are published. A matching plan is point-in-time evidence,
+not a lock or proof of effective enforcement.
+
+Owner-readable settings are not automatically safe additions to the App-backed
+apply declaration. These newly observed controls remain deferred without changing
+any existing declaration or expanding grants:
+
+| Omitted path | Existing credential boundary |
+| --- | --- |
+| `repository.settings.actions.general.cache.cache_size_eviction_limit` | Needs Actions read even for matching apply |
+| `repository.settings.actions.oidc.subject_claim` | Needs Actions read/write |
+| `repository.settings.advanced_security.code_security.ai_scan` | Needs Code scanning alerts read in addition to Administration write |
+| `repository.settings.copilot.code_review` | Exact App-token grants remain independently unconfirmed |
+| `repository.settings.pages` | Needs Pages read/write; an owner-observed absent site is not App visibility evidence |
+| `repository.settings.environments` entry `copilot` | Additional Environment ownership needs the applicable Actions observation path; retain the existing credential Environment only |
+| `repository.settings.environments[].variables` | Internal payloads are excluded from this public declaration; no variable grant is requested |
+
+CodeQL default setup/configuration is separately documented with Administration
+read/write; it does not use the AI Scan permission path. Empty collection
+snapshots select no objects without pruning.
 
 The current `settings-pr` check validates only; it is not a hosted live plan.
 Local owner-authenticated plan evidence does not establish complete same-issued-
