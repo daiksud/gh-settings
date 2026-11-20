@@ -250,4 +250,3 @@ repository:
     deploy_keys: []
     agents:
       variables: []
-    autolinks: []

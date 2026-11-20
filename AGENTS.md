@@ -6,11 +6,17 @@ Follow [CONTRIBUTING](CONTRIBUTING.md) for development, verification, and docume
 
 The v1.0.0 target is **personally owned public repositories**. Eligible settings
 are controls configurable in that target's GitHub Web UI. Account plan and
-Preview status are not exclusion criteria; distinguish configuration availability
+Preview status are not blanket exclusion criteria; distinguish configuration availability
 from execution entitlement, subscriptions and billing. An API-only field does
 not establish a target UI control. Implementation requires the applicable
 complete official API observation and update path; an unconfirmed contract is
 not proof that no API exists.
+
+Autolink references are an explicit v1 exclusion under the confirmed Free-plan
+scope: the official UI guide lists paid-plan availability, and this repository
+has no observed sidebar entry. This is not API absence; preserve the existing
+v0 implementation, schema and export behavior. See the
+[Autolinks contract](docs/settings.md#autolink-references).
 
 Follow the [feature adoption policy](docs/settings.md#feature-adoption-scope)
 and [coverage ledger](docs/contributing/settings-coverage.md). Remaining classic
