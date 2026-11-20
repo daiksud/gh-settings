@@ -198,6 +198,12 @@ implementation and automatic export acquisition remain; an API-observed empty
 collection does not establish Free-plan UI entitlement. Removing the declaration
 does not delete live references or request pruning.
 
+The classic `repository.settings.branch_protection_rules` declaration is also
+omitted under the [v1 Rulesets-only decision](../settings.md#classic-branch-protection).
+The complete existing Rulesets declaration is retained. Classic v0 implementation
+and export behavior remain; this omission neither migrates nor deletes live
+classic protection and does not authorize an apply or prune.
+
 Environment variable payloads remain omitted because they are internal data.
 Secrets, private keys, inactive normal-merge message controls, inactive
 selected-Actions controls and private-only fork/sharing controls are not copied

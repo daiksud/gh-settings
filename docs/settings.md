@@ -65,6 +65,13 @@ lists Pro, Team and Enterprise availability, without Free. The existing v0
 implemented. API availability does not establish plan entitlement, and this
 specific exclusion does not reclassify other setting families.
 
+Classic branch protection is outside v1 support by product choice. Use
+[Rulesets](#rulesets), the only supported branch-protection mechanism in v1.
+This is not a claim of API absence or plan unavailability. Existing v0 classic
+implementation, accepted schema and export/reconciliation contracts remain.
+The scope decision does not migrate, replace or remove live protection; omitting
+a classic declaration leaves those rules unmanaged.
+
 Temporary interaction restrictions are an explicit product exception. They expire
 and automatically restore normal access, so they are outside the managed settings
 scope despite their known repository read/set/remove APIs. gh-settings provides
@@ -82,8 +89,9 @@ and the limits of fixture and live evidence.
 Personal-repository collaborators and invitations are supported through the
 [identity and invitation contract](#personal-collaborators). Existing Environment
 protection App selection follows the [custom protection contract](#custom-protection-apps).
-Remaining classic protection controls and additional configurable custom rules
-remain adopted future work when supported by the target UI and applicable APIs. Organization-owned repositories and organization
+Additional configurable custom Ruleset rules remain adopted future work when
+supported by the target UI and applicable APIs. Classic controls are outside
+v1 scope, including unimplemented controls. Organization-owned repositories and organization
 settings, repository rename/visibility/transfer/deletion, authoring GitHub feature
 configuration files and secret values are excluded. This file-authoring boundary
 does not exclude gh-settings' own declaration file. Existing App selection does
@@ -169,6 +177,10 @@ make no deletion; failed DELETE/absence verification can have uncertain effects.
 Earlier verified writes survive later failure. No retry or rollback occurs.
 
 ## Supported fields
+
+This section describes the accepted current v0 schema. Existing classic branch
+protection keys remain valid; acceptance does not include that family in
+[supported v1 scope](#feature-adoption-scope).
 
 `repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `branch_protection_rules`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
@@ -1567,6 +1579,9 @@ An export followed by validate/plan roundtrips exact supported acquired values, 
 
 ## Rulesets
 
+Rulesets are the only supported branch-protection mechanism in v1; classic
+branch protection is [outside v1 scope](#classic-branch-protection).
+
 `repository.settings.rulesets` selects whole repository-owned branch or tag Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Without prune, unlisted objects are not deleted and omission/`[]` selects nothing. With `--prune rulesets`, present lists own retention as described below. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
 
 ```yaml
@@ -1889,6 +1904,11 @@ No fresh authenticated form, live write or rendered-link behavior was verified.
 See the [behavior specification](features/autolinks.feature.md).
 
 ## Classic branch protection
+
+**Outside supported v1 scope by product choice.** Use [Rulesets](#rulesets) for
+v1 branch protection. The existing v0 implementation, accepted YAML and export
+behavior remain; the contract below describes that implementation. This decision
+does not migrate or remove existing live rules.
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
 and six independent checkboxes, conditional fork syncing, and complete PR-review,
@@ -2395,7 +2415,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Remaining classic branch-protection controls are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring, secret values and finite temporary interaction restrictions are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Classic branch protection is outside v1 support by product choice; its existing partial v0 implementation remains documented above, while remaining classic controls are unimplemented and outside v1 scope. Other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring, secret values and finite temporary interaction restrictions are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 
