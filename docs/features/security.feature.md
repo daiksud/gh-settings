@@ -23,7 +23,7 @@ Current source uses the exact marker `version: daiksud/gh-settings@v0`. Optional
 | `secret_protection.push_protection` | #345 | Repository push protection, not user-level protection |
 | `private_vulnerability_reporting` | #347 | Public repositories only |
 
-Release immutability belongs separately at `repository.settings.general.releases.immutable_release`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
+Release immutability belongs separately at `repository.settings.general.releases.enable_release_immutability`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
 
 Omitted groups/keys are unmanaged; empty mappings manage nothing. False disables, true enables, and null/wrong types/duplicate/unknown keys fail before remote work. Navigation-category wrappers, scalar Secret Protection, flat push protection and API-shaped aliases are not accepted. The two fields within Secret Protection remain independently optional; declaring the child never populates `enabled`. Empty mappings do not disable all. Product-wide Code Security and Advanced Security API concepts below are excluded, not accepted YAML or CLI families. Dependabot uses the two independent controls above; paused state is not a declaration.
 

@@ -10,14 +10,15 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-// Decode the actual operational declaration with the current-source codec.
+// Project only the known published-package key boundary in tests.
+// The operational file stays readable by its unchanged v0.45.0 consumers.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ui, err := workspace.DecodeConfig(data)
+	ui, err := workspace.DecodeConfig(managedImmutabilityCandidate(t, data))
 	if err != nil {
 		t.Fatal(err)
 	}

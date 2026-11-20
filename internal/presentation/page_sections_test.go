@@ -11,7 +11,7 @@ func TestPageSectionPathsMatchPublicControls(t *testing.T) {
 		"security.secret_scanning":                      "repository.settings.advanced_security.secret_protection.enabled",
 		"security.secret_scanning_push_protection":      "repository.settings.advanced_security.secret_protection.push_protection",
 		"security.private_vulnerability_reporting":      "repository.settings.advanced_security.private_vulnerability_reporting",
-		"security.immutable_releases":                   "repository.settings.general.releases.immutable_release",
+		"security.immutable_releases":                   "repository.settings.general.releases.enable_release_immutability",
 		"actions.default_workflow_permissions":          "repository.settings.actions.general.workflow_permissions.default_permissions",
 		"actions.can_approve_pull_request_reviews":      "repository.settings.actions.general.workflow_permissions.allow_github_actions_to_create_and_approve_pull_requests",
 		"actions.sha_pinning_required":                  "repository.settings.actions.general.actions_permissions.require_actions_to_be_pinned_to_a_full_length_commit_sha",

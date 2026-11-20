@@ -255,7 +255,7 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		case app.SecretScanningRead, app.PrivateReportingRead, app.PrivateReportingUpdate:
 			path = "repository.settings.advanced_security"
 		case app.ImmutableReleasesRead, app.ImmutableReleasesUpdate:
-			path = "repository.settings.general.releases.immutable_release"
+			path = "repository.settings.general.releases.enable_release_immutability"
 		case app.PagesRead, app.PagesUpdate, app.PagesCreate:
 			path = "repository.settings.pages"
 		case app.ArchiveRead, app.ArchiveUnarchive, app.ArchiveUpdate:

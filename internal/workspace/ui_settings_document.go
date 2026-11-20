@@ -34,7 +34,7 @@ type uiGeneralDocument struct {
 	DangerZone         uimodel.DangerZone
 }
 
-type uiReleasesDocument struct{ ImmutableRelease *bool }
+type uiReleasesDocument struct{ EnableReleaseImmutability *bool }
 
 type uiActionsDocument struct {
 	Runners   *[]uimodel.RunnerLabels
@@ -96,7 +96,7 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 			Commits: general.Commits, DangerZone: general.DangerZone,
 		}
 		if general.Releases != nil {
-			result.General.Releases = &uimodel.SecurityGeneralReleases{EnableReleaseImmutability: general.Releases.ImmutableRelease}
+			result.General.Releases = &uimodel.SecurityGeneralReleases{EnableReleaseImmutability: general.Releases.EnableReleaseImmutability}
 		}
 	}
 	if document.Actions != nil {
@@ -153,7 +153,7 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 			Commits: general.Commits, DangerZone: general.DangerZone,
 		}
 		if general.Releases != nil {
-			result.General.Releases = &uiReleasesDocument{ImmutableRelease: general.Releases.EnableReleaseImmutability}
+			result.General.Releases = &uiReleasesDocument{EnableReleaseImmutability: general.Releases.EnableReleaseImmutability}
 		}
 	}
 	if model.Actions != nil {

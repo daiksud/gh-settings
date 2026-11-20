@@ -374,6 +374,28 @@ plans do not prove the operating App's permissions; the hosted PR job still
 validates only. Package adoption does not dispatch the manual apply workflow or
 authorize additional settings, credentials, permissions or live mutations.
 
+### Release immutability format and operational package
+
+Current source uses
+`repository.settings.general.releases.enable_release_immutability`, matching the
+UI label. The former `immutable_release` name is rejected, without an alias or
+migration. The unchanged operational YAML deliberately keeps the former name:
+both existing callers select v0.45.0, which rejects the canonical name. Source
+validation of that file fails at this known boundary; `settings-pr` validates it
+with the actual pinned published package.
+
+A compatible immutable release and separately reviewed adoption must precede the
+operational rename. Change only the key at its existing position; preserve its
+true value and every other value, ID, comment, list and omission. Validate with
+the selected published package and compare a fresh read-only plan. No release,
+live apply, permission change or workflow repin to development main is implied.
+
+The [test-only projection](../../tests/github-actions/managed_immutability_test.go)
+guards the v0.45.0 pin and obsolete-key rejection, renames only this control and
+proves byte-identical reversal plus unchanged observed intent. Remove it when a
+compatible package and canonical operational file are adopted. Product decoding
+has no fallback; local owner-authenticated plans are not operating-App evidence.
+
 ### Required-check verification
 
 The desired Ruleset requires `screening`, `prlint`, and `settings-pr`,

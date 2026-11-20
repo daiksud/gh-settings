@@ -29,7 +29,7 @@ var failureResources = []string{
 	"repository.settings.advanced_security.code_security.codeql_analysis.default_setup",
 	"repository.settings.advanced_security.dependabot",
 	"repository.settings.general.danger_zone.archive_this_repository",
-	"repository.settings.general.releases.immutable_release",
+	"repository.settings.general.releases.enable_release_immutability",
 	"repository.settings.advanced_security.private_vulnerability_reporting",
 	"repository.settings.advanced_security",
 	"repository.settings.actions.general", "repository.settings.environments",
