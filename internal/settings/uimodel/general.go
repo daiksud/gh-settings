@@ -32,7 +32,7 @@ type PullRequests struct {
 	AllowMergeCommits, AllowSquashMerging, AllowRebaseMerging *bool
 	AlwaysSuggestUpdatingPullRequestBranches                  *bool
 	AllowAutoMerge, AutomaticallyDeleteHeadBranches           *bool
-	MergeCommit, SquashMerge                                  CommitMessage
+	MergeCommits, SquashMerging                               CommitMessage
 }
 
 // CommitMessageChoice uses the displayed menu wording in snake_case.

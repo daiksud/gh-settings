@@ -8,8 +8,8 @@ import (
 )
 
 func TestRepositoryObservationRetainsCommitMenuSidecars(t *testing.T) {
-	squash := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", RawTitle: "RAW_SQUASH_TITLE", RawMessage: "RAW_SQUASH_MESSAGE", Fallback: uimodel.DefaultMessage}
-	merge := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commit.default_commit_message", RawTitle: "RAW_MERGE_TITLE", RawMessage: "RAW_MERGE_MESSAGE", Fallback: uimodel.DefaultMessage}
+	squash := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", RawTitle: "RAW_SQUASH_TITLE", RawMessage: "RAW_SQUASH_MESSAGE", Fallback: uimodel.DefaultMessage}
+	merge := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commits.default_commit_message", RawTitle: "RAW_MERGE_TITLE", RawMessage: "RAW_MERGE_MESSAGE", Fallback: uimodel.DefaultMessage}
 	source := MergeMethodsState{AllowMergeCommit: true, AllowSquashMerge: true, MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE", SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", SquashCommitNormalization: squash, MergeCommitNormalization: merge}
 	observed := NewRepositoryObservation(&RepositoryState{DefaultBranch: "main"}, &source, &PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(SponsorshipsState{Enabled: false})
 	source.SquashCommitNormalization.RawTitle = "changed source"
@@ -44,7 +44,7 @@ func TestRepositoryObservationWithoutCommitMenuProvenance(t *testing.T) {
 			t.Fatal("ordinary or unacquired group acquired provenance", got)
 		}
 	}
-	empty := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", Fallback: uimodel.DefaultMessage}
+	empty := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", Fallback: uimodel.DefaultMessage}
 	observed := NewRepositoryObservation(nil, &MergeMethodsState{SquashCommitNormalization: empty}, nil)
 	if got := observed.CommitMessageNormalizations(); len(got) != 1 || got[0] != empty {
 		t.Fatal("acquired empty raw pair was dropped", got)

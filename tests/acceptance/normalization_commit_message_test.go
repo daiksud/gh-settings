@@ -51,8 +51,8 @@ func TestCommitMessageNormalizationExportDiagnostic(t *testing.T) {
 		t.Fatal(err)
 	}
 	diagnostic := withoutExportInfo(result.stderr.String())
-	wantDiagnostic := "Warning: repository.settings.general.pull_requests.squash_merge.default_commit_message: observed title \"COMMIT_OR_PR_TITLE\" and message \"BLANK\" are outside UI choices; using \"default_message\" (projection only).\n" +
-		"Warning: repository.settings.general.pull_requests.merge_commit.default_commit_message: observed title \"MERGE_MESSAGE\" and message \"BLANK\" are outside UI choices; using \"default_message\" (projection only).\n"
+	wantDiagnostic := "Warning: repository.settings.general.pull_requests.squash_merging.default_commit_message: observed title \"COMMIT_OR_PR_TITLE\" and message \"BLANK\" are outside UI choices; using \"default_message\" (projection only).\n" +
+		"Warning: repository.settings.general.pull_requests.merge_commits.default_commit_message: observed title \"MERGE_MESSAGE\" and message \"BLANK\" are outside UI choices; using \"default_message\" (projection only).\n"
 	if result.runErr != nil || result.stdout.Len() != 0 || diagnostic != wantDiagnostic {
 		t.Fatalf("export failed to report both raw pairs: err=%v stdout=%q stderr=%q want=%q", result.runErr, result.stdout.String(), diagnostic, wantDiagnostic)
 	}
@@ -66,12 +66,12 @@ func TestCommitMessageNormalizationExportDiagnostic(t *testing.T) {
 }
 
 func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
-	for _, menu := range []string{"squash_merge", "merge_commit"} {
+	for _, menu := range []string{"squash_merging", "merge_commits"} {
 		t.Run(menu, func(t *testing.T) {
 			binary := acceptanceBinary(t)
 			titleField, messageField, prefix := "squashMergeCommitTitle", "squashMergeCommitMessage", "squash_merge_commit_"
 			fallbackTitle, fallbackMessage := "COMMIT_OR_PR_TITLE", "COMMIT_MESSAGES"
-			if menu == "merge_commit" {
+			if menu == "merge_commits" {
 				titleField, messageField, prefix = "mergeCommitTitle", "mergeCommitMessage", "merge_commit_"
 				fallbackTitle, fallbackMessage = "MERGE_MESSAGE", "PR_TITLE"
 			}
@@ -208,7 +208,7 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 					Fallback   string
 				}
 			}
-			if json.Unmarshal(raw["commit_messages"], &decisions) != nil || saved.Outcome != "changed" || saved.Managed != 2 || len(saved.Changes) != 0 || len(decisions) != 1 || decisions[0].Menu != menu || decisions[0].After != "pull_request_title" || decisions[0].Normalization.Path != path || decisions[0].Normalization.RawTitle != "FUTURE_TITLE" || decisions[0].Normalization.RawMessage != "FUTURE_MESSAGE" || decisions[0].Normalization.Fallback != "default_message" {
+			if json.Unmarshal(raw["commit_messages"], &decisions) != nil || saved.Outcome != "changed" || saved.Managed != 2 || len(saved.Changes) != 0 || len(decisions) != 1 || decisions[0].Menu != map[string]string{"merge_commits": "merge_commit", "squash_merging": "squash_merge"}[menu] || decisions[0].After != "pull_request_title" || decisions[0].Normalization.Path != path || decisions[0].Normalization.RawTitle != "FUTURE_TITLE" || decisions[0].Normalization.RawMessage != "FUTURE_MESSAGE" || decisions[0].Normalization.Fallback != "default_message" {
 				t.Fatal("private report lost paired ownership", string(data))
 			}
 			output, diagnostic, status = run("action", "summary", report, summary)

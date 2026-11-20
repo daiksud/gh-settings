@@ -29,11 +29,11 @@ func TestUICommitMessageMenus(t *testing.T) {
 			var observed settings.RepositoryDeclaration
 			want := map[string]any{}
 			if test.method == "merge" {
-				ui.PullRequests.MergeCommit.DefaultCommitMessage = &choice
+				ui.PullRequests.MergeCommits.DefaultCommitMessage = &choice
 				observed.MergeCommitTitle, observed.MergeCommitMessage = &test.title, &test.message
 				want = map[string]any{"merge_commit_title": test.title, "merge_commit_message": test.message}
 			} else {
-				ui.PullRequests.SquashMerge.DefaultCommitMessage = &choice
+				ui.PullRequests.SquashMerging.DefaultCommitMessage = &choice
 				observed.SquashMergeCommitTitle, observed.SquashMergeCommitMessage = &test.title, &test.message
 				want = map[string]any{"squash_merge_commit_title": test.title, "squash_merge_commit_message": test.message}
 			}
@@ -64,10 +64,10 @@ func TestUICommitMessageMenus(t *testing.T) {
 
 func TestUICommitMessageFailures(t *testing.T) {
 	for _, ui := range []uimodel.General{
-		{PullRequests: uimodel.PullRequests{MergeCommit: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("PR_BODY"))}}},
-		{PullRequests: uimodel.PullRequests{MergeCommit: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("pull_request_title_and_commit_details"))}}},
-		{PullRequests: uimodel.PullRequests{AllowMergeCommits: pointer(false), MergeCommit: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("default_message"))}}},
-		{PullRequests: uimodel.PullRequests{AllowSquashMerging: pointer(false), SquashMerge: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("default_message"))}}},
+		{PullRequests: uimodel.PullRequests{MergeCommits: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("PR_BODY"))}}},
+		{PullRequests: uimodel.PullRequests{MergeCommits: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("pull_request_title_and_commit_details"))}}},
+		{PullRequests: uimodel.PullRequests{AllowMergeCommits: pointer(false), MergeCommits: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("default_message"))}}},
+		{PullRequests: uimodel.PullRequests{AllowSquashMerging: pointer(false), SquashMerging: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("default_message"))}}},
 	} {
 		if _, err := GeneralDeclaration(ui); err == nil {
 			t.Fatal("invalid menu intent accepted")

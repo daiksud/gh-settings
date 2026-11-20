@@ -16,7 +16,7 @@ repository:
                     languages:
                         - github_actions
                         - go
-                    query_suite: extended
+                    query_suites: extended
                     runner:
                         type: labeled_runner
                         label: scan-pool
@@ -36,7 +36,7 @@ repository:
 	if err != nil || string(encoded) != input {
 		t.Fatal(string(encoded), err)
 	}
-	for _, bad := range []string{"languages: []", "languages: [go, go]", "languages: [actions]", "query_suite: unknown", "runner: {type: standard_github_runner, label: ''}", "runner: {type: labeled_runner}", "threat_model: remote", "threat_model: remote_and_local", "threat_model: null", "threat_model: false", "threat_model: []", "threat_model: {}", "threat_model: unknown", "threat_model: ''", "default_setup: false, threat_model: remote_sources", "default_setup: false, query_suite: extended"} {
+	for _, bad := range []string{"languages: []", "languages: [go, go]", "languages: [actions]", "query_suites: unknown", "runner: {type: standard_github_runner, label: ''}", "runner: {type: labeled_runner}", "threat_model: remote", "threat_model: remote_and_local", "threat_model: null", "threat_model: false", "threat_model: []", "threat_model: {}", "threat_model: unknown", "threat_model: ''", "default_setup: false, threat_model: remote_sources", "default_setup: false, query_suites: extended"} {
 		ui, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {advanced_security: {code_security: {codeql_analysis: {" + bad + "}}}}}\n"))
 		if err == nil {
 			_, err = github.DeclarationFromUI(ui)
@@ -45,7 +45,7 @@ repository:
 			t.Fatal(bad)
 		}
 	}
-	if !strings.Contains(input, "query_suite: extended") {
+	if !strings.Contains(input, "query_suites: extended") {
 		t.Fatal("fixture")
 	}
 }

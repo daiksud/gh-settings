@@ -23,8 +23,8 @@ func TestNormalizedCommitMenuReportRetainsOnePairedDecision(t *testing.T) {
 		menu                        settings.CommitMessageMenu
 		path, title, message, field string
 	}{
-		{settings.SquashCommitMenu, "repository.settings.general.pull_requests.squash_merge.default_commit_message", "COMMIT_OR_PR_TITLE", "BLANK", "repository.squash_merge_commit_title"},
-		{settings.MergeCommitMenu, "repository.settings.general.pull_requests.merge_commit.default_commit_message", "MERGE_MESSAGE", "BLANK", "repository.merge_commit_title"},
+		{settings.SquashCommitMenu, "repository.settings.general.pull_requests.squash_merging.default_commit_message", "COMMIT_OR_PR_TITLE", "BLANK", "repository.squash_merge_commit_title"},
+		{settings.MergeCommitMenu, "repository.settings.general.pull_requests.merge_commits.default_commit_message", "MERGE_MESSAGE", "BLANK", "repository.merge_commit_title"},
 	} {
 		normalization := settings.CommitMessageNormalization{Path: test.path, RawTitle: test.title, RawMessage: test.message, Fallback: uimodel.DefaultMessage}
 		decision, err := settings.NewNormalizedCommitMessageChange(test.menu, normalization, uimodel.DefaultMessage)
@@ -92,8 +92,8 @@ func TestNormalizedCommitMenuPresentationShowsOneSafeWarning(t *testing.T) {
 		menu               settings.CommitMessageMenu
 		path, nativePrefix string
 	}{
-		{settings.SquashCommitMenu, "repository.settings.general.pull_requests.squash_merge.default_commit_message", "repository.squash_merge_commit_"},
-		{settings.MergeCommitMenu, "repository.settings.general.pull_requests.merge_commit.default_commit_message", "repository.merge_commit_"},
+		{settings.SquashCommitMenu, "repository.settings.general.pull_requests.squash_merging.default_commit_message", "repository.squash_merge_commit_"},
+		{settings.MergeCommitMenu, "repository.settings.general.pull_requests.merge_commits.default_commit_message", "repository.merge_commit_"},
 	} {
 		for _, desired := range []uimodel.CommitMessageChoice{uimodel.DefaultMessage, uimodel.PullRequestTitle} {
 			normalization := settings.CommitMessageNormalization{Path: test.path, RawTitle: rawTitle, RawMessage: rawMessage, Fallback: uimodel.DefaultMessage}

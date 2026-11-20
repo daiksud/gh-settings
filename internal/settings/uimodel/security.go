@@ -29,7 +29,7 @@ type CodeQLRunner struct {
 type CodeQLAnalysis struct {
 	DefaultSetup *bool
 	Languages    *[]string
-	QuerySuite   *string
+	QuerySuites  *string
 	Runner       *CodeQLRunner
 	ThreatModel  *string
 }

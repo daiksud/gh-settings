@@ -10,7 +10,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-// Project only the known published-package key boundary in tests.
+// Project only the known published-package key boundaries in tests.
 // The operational file stays readable by its unchanged v0.45.0 consumers.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
@@ -18,7 +18,7 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ui, err := workspace.DecodeConfig(managedImmutabilityCandidate(t, data))
+	ui, err := workspace.DecodeConfig(managedPublishedCandidate(t, data))
 	if err != nil {
 		t.Fatal(err)
 	}

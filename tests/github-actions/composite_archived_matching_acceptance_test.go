@@ -89,7 +89,7 @@ repository:
         issue_permissions: {creation_allowed_by: all_users}
       pull_requests:
         allow_merge_commits: true
-        merge_commit: {default_commit_message: pull_request_title_and_description}
+        merge_commits: {default_commit_message: pull_request_title_and_description}
       danger_zone: {archive_this_repository: true}
 `
 			}

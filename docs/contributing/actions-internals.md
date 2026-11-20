@@ -264,3 +264,8 @@ fail reconstruction. Detailed deletion plans show irreversible whole-object Secr
 loss; timestamps, raw SSL and private evidence never enter reports. The family counts
 once across creation, updates and deletion. Status-only hides identities and values;
 failure reports retain only bounded resource/progress information.
+
+The native CodeQL report field `query_suite` renders at the public YAML path
+`codeql_analysis.query_suites`; its value remains one scalar. Native merge/squash
+menu identifiers and title/message fields are unchanged; their UI paths use
+`merge_commits.default_commit_message` and `squash_merging.default_commit_message`.

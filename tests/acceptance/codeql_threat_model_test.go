@@ -188,7 +188,7 @@ func TestCodeQLThreatModelProcess(t *testing.T) {
 	_, info = run(false, "export")
 	expect("GET")
 	output := readFile()
-	if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "threat_model:") || strings.Contains(output, "query_suite:") || strings.Contains(output, "runner:") || strings.Contains(output, "languages:") || !strings.Contains(info, "codeql_analysis") {
+	if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "threat_model:") || strings.Contains(output, "query_suites:") || strings.Contains(output, "runner:") || strings.Contains(output, "languages:") || !strings.Contains(info, "codeql_analysis") {
 		t.Fatal(output, info)
 	}
 	write("remote_sources", ", default_setup: true")

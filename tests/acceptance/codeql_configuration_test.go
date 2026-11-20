@@ -102,7 +102,7 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	run("export")
 	run("validate")
 	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if !strings.Contains(string(data), "query_suite: default") || !strings.Contains(string(data), "default_setup: true") || !strings.Contains(string(data), "threat_model: remote_and_local_sources") {
+	if !strings.Contains(string(data), "query_suites: default") || !strings.Contains(string(data), "default_setup: true") || !strings.Contains(string(data), "threat_model: remote_and_local_sources") {
 		t.Fatal(string(data))
 	}
 	// Invalid declarations fail before any remote acquisition or write.
@@ -124,12 +124,12 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 			t.Fatal("invalid declaration contacted API")
 		}
 	}
-	input := repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {languages: [github_actions, go], query_suite: extended, runner: {type: labeled_runner, label: scan-pool}}}}}\n")
+	input := repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {languages: [github_actions, go], query_suites: extended, runner: {type: labeled_runner, label: scan-pool}}}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
 	plan := run("plan")
-	if !strings.Contains(plan, "codeql_analysis.languages:") || !strings.Contains(plan, "codeql_analysis.runner:") {
+	if !strings.Contains(plan, "codeql_analysis.languages:") || !strings.Contains(plan, "codeql_analysis.runner:") || !strings.Contains(plan, "codeql_analysis.query_suites:") || strings.Contains(plan, "codeql_analysis.query_suite:") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "codeql-configuration.json")
