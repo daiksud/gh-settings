@@ -8,16 +8,21 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-const operationalAction = "daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2"
+const operationalAction = "daiksud/gh-settings@2079ede46bcb3369d9575c1941ac88e4a37c081d"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
 	declaration := readManagedDeclaration(t)
+	if len(declaration.EnvironmentVariables) != 0 ||
+		(declaration.Variables != nil && declaration.Variables.Len() != 0) ||
+		(declaration.AgentsVariables != nil && declaration.AgentsVariables.Len() != 0) {
+		t.Fatal("the public declaration must not contain repository or Environment variable payloads")
+	}
 	if declaration.Environments == nil {
-		t.Fatal("only the settings credential Environment must be declared")
+		t.Fatal("both observed repository Environments must be declared")
 	}
 	environments := declaration.Environments.Values()
-	if len(environments) != 1 {
-		t.Fatal("only the settings credential Environment must be declared")
+	if len(environments) != 2 {
+		t.Fatal("both observed repository Environments must be declared")
 	}
 	seenNames := map[string]bool{}
 	for _, p := range environments {
@@ -38,6 +43,11 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 			want := []settings.EnvironmentPattern{{Type: "branch", Name: "main"}}
 			if *p.CanAdminsBypass || p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
 				t.Fatal("settings credential Environment must retain main-only refs without administrator bypass")
+			}
+		case "copilot":
+			if !*p.CanAdminsBypass || p.Reviewers == nil || len(*p.Reviewers) != 0 ||
+				!p.DeploymentBranchPolicyDeclared || (p.DeploymentBranchPolicy != nil && (p.DeploymentBranchPolicy.ProtectedBranches || p.DeploymentBranchPolicy.CustomBranchPolicies)) {
+				t.Fatal("Copilot Environment must retain its observed unprotected policy")
 			}
 		default:
 			t.Fatalf("unexpected Environment %q", p.Name)

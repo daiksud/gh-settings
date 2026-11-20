@@ -178,26 +178,35 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The settings workflows pin the immutable v0.43.0 package at
-`998576e7326d1075406b84e4988cf728108772f2`. The operational declaration is
-validated directly with the current codec, including explicit Code Quality
-protection. Team-review and additional-approval YAML controls are omitted from
-this operational declaration. The pinned package preserves its observed additional-approval value
-when updating an existing PR rule. Current source supports the additional-approval
-control and declares true when it is omitted within a selected PR group; see the
-[ownership contract](../settings.md#pr-review-and-required-check-parameters).
+The two settings callers select the immutable v0.44.1 package at
+`2079ede46bcb3369d9575c1941ac88e4a37c081d` so the operational codec matches the
+expanded declaration. Their events, credential sources, Environment and token
+permission requests are unchanged; pin adoption grants no access and dispatches
+no apply.
 
-Actions and Agents repository variables are supported by that package under
-`settings.actions.variables` and `settings.agents.variables`, but neither family
-is declared here. The apply caller retains only its existing Administration and
-Issues token requests. Copilot code-review custom instructions and Review effort
-level are supported by the package, but no Copilot setting is declared here.
-Persistent pull request limits, including the selected Exemption list, and the
-Copilot MCP tools toggle are supported by the package, but none are declared here.
-Actions event/actor restriction policies and workflow targeting are supported by the package; no policy is
-declared here. Environment variables are also supported by the package, but none
-are declared here. Pinning this package grants no new permissions and does not
-dispatch settings-apply.
+The declaration records supported, applicable settings acquired through the
+published CLI's real read-only export and checked with a fresh local plan.
+It includes all observed Labels, the existing main Ruleset, both existing
+Environments, General, Actions cache/OIDC, Copilot, persistent PR limits,
+Security/CodeQL and disabled Pages. Supported empty inventories are explicit;
+without prune they do not request unlisted deletion. Existing Ruleset, reviewer
+and check-source IDs are retained. No new resource is requested.
+
+Environment variable payloads remain omitted because they are internal data.
+Secrets, private keys, inactive normal-merge message controls, inactive
+selected-Actions controls and private-only fork/sharing controls are not copied
+into desired state. Repository/Agents variable inventories were observed empty;
+no variable values are published. Copilot `default` records the API's observable
+configured-null state, not proof that a hidden override was erased. A matching
+plan is point-in-time evidence, not a lock or proof of effective enforcement.
+
+The current `settings-pr` check validates only; it is not a hosted live plan.
+Local owner-authenticated plan evidence does not establish complete same-issued-
+App-token grants or live reads for the expanded declaration. The existing manual
+apply retains Administration/Issues token requests, which are not universal
+permissions for every managed family. No token or grant is expanded here; any
+future manual apply needs its own complete authorized observation and scope
+assessment. The separate evidence limits in #381 remain deferred.
 
 ## Active settings workflows
 

@@ -1,22 +1,50 @@
+# Supported, applicable settings observed on this repository; no pruning.
+# Environment variable values remain unmanaged and are not published here.
 version: daiksud/gh-settings@v0
 repository:
-  # Omitted fields remain unmanaged.
   about:
-    description: "Manage GitHub repository settings as code"
+    description: Manage GitHub repository settings as code
     website: ""
     topics:
       - github-cli
       - settings-as-code
-  # Unlisted labels remain unmanaged and are never deleted.
   labels:
     - id: 12636240708
       name: accessibility
       color: '#f143ab'
       description: Barrier affecting people with disabilities
+    - id: 12791426851
+      name: BREAKING CHANGE
+      color: '#b60205'
+      description: Backward-incompatible user-visible behavior or public interface
     - id: 12928058534
       name: bug
       color: '#d73a4a'
       description: Something isn't working
+    - id: 12791426886
+      name: build
+      color: '#a8aeb4'
+      description: Build, packaging, release tooling, or dependency management
+    - id: 12791426923
+      name: chore
+      color: '#ededed'
+      description: Maintenance not covered by a more specific change type
+    - id: 12791426962
+      name: ci
+      color: '#cfd3d7'
+      description: CI checks and repository development automation
+    - id: 13007831637
+      name: dependencies
+      color: '#0366d6'
+      description: Pull requests that update a dependency file
+    - id: 12791427001
+      name: DEPRECATED
+      color: '#fbca04'
+      description: Public feature or behavior marked for future removal
+    - id: 12791427042
+      name: docs
+      color: '#c4b5e0'
+      description: Documentation or contributor and reviewer guidance
     - id: 12928058575
       name: documentation
       color: '#0075ca'
@@ -29,6 +57,22 @@ repository:
       name: enhancement
       color: '#a2eeef'
       description: New feature or request
+    - id: 12791427084
+      name: feat
+      color: '#0e8a16'
+      description: New user-facing capability or behavior
+    - id: 12791427113
+      name: fix
+      color: '#0052cc'
+      description: Correction to user-observable product behavior
+    - id: 13007831653
+      name: github_actions
+      color: '#000000'
+      description: Pull requests that update GitHub Actions code
+    - id: 13007832158
+      name: go
+      color: '#16e2e2'
+      description: Pull requests that update go code
     - id: 12636240788
       name: good first issue
       color: '#7057ff'
@@ -41,18 +85,58 @@ repository:
       name: invalid
       color: '#e4e669'
       description: This doesn't seem right
+    - id: 12791427162
+      name: perf
+      color: '#7fd18a'
+      description: Runtime performance improvement experienced by product users
     - id: 12636240818
       name: question
       color: '#d876e3'
       description: Further information is requested
+    - id: 12791427206
+      name: refactor
+      color: '#8ec9cc'
+      description: Implementation restructuring without user-observable behavior changes
+    - id: 12791427291
+      name: revert
+      color: '#79b8ff'
+      description: Reverts a previous change; assess resulting user impact
+    - id: 12791427403
+      name: style
+      color: '#b5dcde'
+      description: Formatting changes without behavior changes
+    - id: 12791427479
+      name: test
+      color: '#d8ecec'
+      description: Test-only additions or corrections
     - id: 12636240834
       name: wontfix
       color: '#ffffff'
       description: This will not be worked on
   settings:
+    webhooks: []
+    deploy_keys: []
+    autolinks: []
+    branch_protection_rules: []
+    collaborators: []
+    interaction_limits:
+      pull_request_limits:
+        exemption_list: []
+        limit_open_pull_requests_from_users_without_write_access: false
+        maximum_open_pull_requests_per_user: 1
+        count_draft_pull_requests_toward_the_limit: false
+    agents:
+      variables: []
+    copilot:
+      code_review:
+        use_custom_instructions: true
+        allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: true
+        review_effort_level: default
     general:
       template_repository: false
       default_branch: main
+      releases:
+        immutable_release: true
       features:
         wikis: false
         issues: true
@@ -73,86 +157,122 @@ repository:
         automatically_delete_head_branches: true
         squash_merge:
           default_commit_message: pull_request_title_and_description
-        # Normal merges are disabled; their retained message remains unmanaged.
       commits:
         require_contributors_to_sign_off_on_web_based_commits: false
       danger_zone:
         archive_this_repository: false
-    # Existing values only. Inactive selected-action controls
-    # remain omitted; this public target does not adopt private policy values.
-    actions:
-      general:
-        actions_permissions:
-          policy: allow_all_actions_and_reusable_workflows
-          require_actions_to_be_pinned_to_a_full_length_commit_sha: true
-        workflow_permissions:
-          default_permissions: read_repository_contents_and_packages_permissions
-          allow_github_actions_to_create_and_approve_pull_requests: true
-        check_workflow_run_status_artifact_and_log_retention: 90
-        approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors
-    advanced_security:
-      private_vulnerability_reporting: true
-      secret_protection:
-        enabled: true
-        push_protection: true
-    # Manage only the settings credential Environment. Unlisted names stay
-    # unmanaged; API Environment/pattern IDs are not declarative identities.
-    environments:
-      - name: gh-settings
-        deployment_protection_rules:
-          wait_timer: 0
-          prevent_self_review: false
-          required_reviewers:
-            - person: 155234749 # daiksud
-          allow_administrators_to_bypass_configured_protection_rules: false
-        deployment_branches_and_tags: selected_branches_and_tags
-        deployment_branch_or_tag_rules:
-          - ref_type: branch
-            name_pattern: main
-    # Preserve the existing ID-owned main Ruleset and its check-source App IDs.
-    # Protected main and the main-only Environment require their own approvals.
     rulesets:
       - id: 24911852
         ruleset_name: default
         enforcement_status: active
         target_branches:
           include_default_branch: true
+          include_all_branches: false
           include_by_pattern: []
           exclude_by_pattern: []
-        # Retain the existing GitHub policy; this does not authorize bypass use.
         bypass_list:
           - role: repository_admin
             bypass_mode: for_pull_requests_only
         rules:
+          restrict_creations: false
           restrict_deletions: true
           block_force_pushes: true
           require_linear_history: true
           require_signed_commits: false
-          require_code_scanning_results:
-            code_scanning_tools:
-              - tool_name: CodeQL
-                alerts: errors
-                security_alerts: high_or_higher
-          require_code_quality_results:
-            severity: errors
           require_a_pull_request_before_merging:
+            require_an_additional_approval_for_unattributed_copilot_pull_requests: true
             required_approvals: 1
+            allowed_merge_methods:
+              - squash
             dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: true
             require_review_from_code_owners: true
             require_approval_of_the_most_recent_reviewable_push: false
             require_conversation_resolution_before_merging: true
-            allowed_merge_methods: [squash]
           require_status_checks_to_pass:
+            required_status_checks:
+              - check: prlint
+                source:
+                  app: 15368
+              - check: screening
+                source:
+                  app: 15368
+              - check: settings-pr
+                source:
+                  app: 15368
             require_branches_to_be_up_to_date_before_merging: true
             do_not_require_status_checks_on_creation: false
-            required_status_checks:
-              - check: screening
-                source: {app: 15368}
-              - check: prlint
-                source: {app: 15368}
-              - check: settings-pr
-                source: {app: 15368}
-  # Unsupported examples only; never active desired state:
-  # collaborators: []  # Unsupported: collaborator/team access management.
-  # secrets: {}        # Unsupported: repository or Environment secrets.
-  # variables: {}      # Unsupported here: use settings.actions.variables for repository variables.
+          require_code_scanning_results:
+            code_scanning_tools:
+              - tool_name: CodeQL
+                security_alerts: high_or_higher
+                alerts: errors
+          require_code_quality_results:
+            severity: errors
+    actions:
+      runners: []
+      oidc:
+        subject_claim:
+          use_default_template: true
+          use_immutable_subject_claim: true
+      policies: []
+      general:
+        cache:
+          cache_retention: 7
+          cache_size_eviction_limit: 10
+        actions_permissions:
+          policy: allow_all_actions_and_reusable_workflows
+          require_actions_to_be_pinned_to_a_full_length_commit_sha: true
+        check_workflow_run_status_artifact_and_log_retention: 90
+        approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors
+        workflow_permissions:
+          default_permissions: read_repository_contents_and_packages_permissions
+          allow_github_actions_to_create_and_approve_pull_requests: true
+      variables: []
+    advanced_security:
+      code_security:
+        ai_scan:
+          ai_scan_for_pull_requests: true
+          ai_scan_for_repositories: true
+        codeql_analysis:
+          default_setup: true
+          languages:
+            - github_actions
+            - go
+            - javascript_typescript
+            - python
+          query_suite: extended
+          runner:
+            type: standard_github_runner
+          threat_model: remote_sources
+      dependabot:
+        alerts: true
+        security_updates: true
+      private_vulnerability_reporting: true
+      secret_protection:
+        enabled: true
+        push_protection: true
+    pages:
+      build_and_deployment:
+        source: deploy_from_a_branch
+        branch: none
+    environments:
+      - deployment_branches_and_tags: no_restriction
+        name: copilot
+        deployment_protection_rules:
+          custom_rules: []
+          wait_timer: 0
+          required_reviewers: []
+          prevent_self_review: false
+          allow_administrators_to_bypass_configured_protection_rules: true
+      - deployment_branches_and_tags: selected_branches_and_tags
+        deployment_branch_or_tag_rules:
+          - ref_type: branch
+            name_pattern: main
+        name: gh-settings
+        deployment_protection_rules:
+          custom_rules: []
+          wait_timer: 0
+          required_reviewers:
+            - person: 155234749
+          prevent_self_review: false
+          allow_administrators_to_bypass_configured_protection_rules: false
