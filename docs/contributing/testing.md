@@ -62,10 +62,10 @@ v1 completion requirement, and organization-only features are outside this pass.
 
 Before claiming released CLI/Action parity, check the selected immutable package,
 its installed CLI and the [consumer pins](../github-actions.md#published-package-and-consumer-pins),
-not only source metadata. In particular, source Action export does not make export
-available in the examples' v0.43.0 pin. Do not mark final-candidate or publication
-checks complete until those specific artifacts have actually been selected and
-verified. The [evidence categories](#release-and-publication-evidence) explain what
+not only source metadata. The examples select the published v0.44.0 package with
+Action export support; that selection alone does not verify live export or prune.
+Do not mark final-candidate or publication checks complete until those specific
+artifacts have actually been selected and verified. The [evidence categories](#release-and-publication-evidence) explain what
 each check can establish.
 
 ## Internal UI repository preparation
