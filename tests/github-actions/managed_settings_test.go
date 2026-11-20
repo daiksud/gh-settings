@@ -77,8 +77,13 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
 	}
-	if !desired.Pages.Empty() || !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
-		t.Fatal("unadopted, unsupported or inactive resources must remain unmanaged")
+	if !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
+		t.Fatal("inactive or inapplicable Actions controls must remain unmanaged")
+	}
+	if !desired.Pages.Empty() || desired.OIDCSubject != nil || !desired.Actions.CacheStorageEmpty() ||
+		desired.CopilotInstructions != nil || desired.CopilotMCP != nil || desired.CopilotReviewEffort != nil ||
+		desired.Security.AIScanPullRequests != nil || desired.Security.AIScanRepositories != nil {
+		t.Fatal("new controls requiring additional or unconfirmed App grants must remain deferred")
 	}
 	if desired.Rulesets == nil || len(desired.Rulesets.Values()) != 1 {
 		t.Fatal("manage only the existing main-branch Ruleset")

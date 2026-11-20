@@ -8,10 +8,15 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-const operationalAction = "daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2"
+const operationalAction = "daiksud/gh-settings@2079ede46bcb3369d9575c1941ac88e4a37c081d"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
 	declaration := readManagedDeclaration(t)
+	if len(declaration.EnvironmentVariables) != 0 ||
+		(declaration.Variables != nil && declaration.Variables.Len() != 0) ||
+		(declaration.AgentsVariables != nil && declaration.AgentsVariables.Len() != 0) {
+		t.Fatal("the public declaration must not contain repository or Environment variable payloads")
+	}
 	if declaration.Environments == nil {
 		t.Fatal("only the settings credential Environment must be declared")
 	}
