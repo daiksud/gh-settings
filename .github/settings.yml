@@ -146,8 +146,8 @@ repository:
     collaborators: []
     interaction_limits:
       pull_request_limits:
-        exemption_list: []
         limit_open_pull_requests_from_users_without_write_access: false
+        exemption_list: []
         maximum_open_pull_requests_per_user: 1
         count_draft_pull_requests_toward_the_limit: false
     rulesets:
