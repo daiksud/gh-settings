@@ -58,6 +58,13 @@ not establish supported management of an already-archived target. The explicit
 [archive/unarchive transition](#repository-archive-lifecycle) is a separate
 contract; its declaration, sequencing and failure behavior are unchanged.
 
+Autolink references are outside v1 support under the confirmed Free-plan scope.
+The [official UI guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources)
+lists Pro, Team and Enterprise availability, without Free. The existing v0
+[Autolinks configuration and command contract](#autolink-references) remains
+implemented. API availability does not establish plan entitlement, and this
+specific exclusion does not reclassify other setting families.
+
 Temporary interaction restrictions are an explicit product exception. They expire
 and automatically restore normal access, so they are outside the managed settings
 scope despite their known repository read/set/remove APIs. gh-settings provides
@@ -1789,6 +1796,10 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 
 ## Autolink references
 
+**Outside supported v1 scope.** The existing v0 implementation and accepted YAML
+remain available subject to GitHub prerequisites; this section documents their
+current behavior, not v1 support. See the [scope decision](#feature-adoption-scope).
+
 `repository.settings.autolinks` manages the documented **Autolink references**
 controls: Reference prefix, Target URL and reference identifier format.
 
@@ -1867,9 +1878,9 @@ format; status-only plans hide them. HTTP debug payloads and upstream error bodi
 are suppressed. A mixed create/delete plan counts this family once.
 
 The [UI guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources)
-documents the controls and Pro availability; plan names do not exclude the
-personal-public target. The current account's missing sidebar entry does not
-establish global unavailability. The
+documents the controls and paid-plan prerequisites. Free is not listed, so
+Autolinks are outside supported v1 scope. The current repository's missing sidebar
+entry is bounded UI evidence, not proof of global unavailability or API absence. The
 [Autolinks REST API](https://docs.github.com/en/rest/repos/autolinks)
 supports App installation tokens with Administration read for acquisition and
 write for creation/deletion. This implementation uses list-all, individual GET,

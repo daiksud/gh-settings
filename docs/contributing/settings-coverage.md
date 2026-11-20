@@ -16,7 +16,8 @@ sources:
 This contributor reference records coverage evidence for the [v1 goal][v1-goal],
 under the [feature adoption policy](../settings.md#feature-adoption-scope).
 The target is a personally owned public repository. Account-plan names and
-Preview status do not exclude a configurable target UI control. Organization
+Preview status do not otherwise exclude a configurable target UI control.
+Autolinks have the explicit [Free-plan v1 exclusion](../settings.md#autolink-references). Organization
 settings and API-only fields do not enlarge the target UI surface.
 
 The inventory was initially checked against source commit
@@ -86,7 +87,8 @@ Actions Policies were visible; Policy insights was observational rather than a
 settings form. The sidebar also exposed Secrets and variables entries for Actions,
 Agents, Codespaces and Dependabot. Actions/Agents exposed Variables separately;
 Codespaces/Dependabot showed secrets only. Autolinks was not observed in this sidebar;
-its row retains official-document evidence only. This pass is broader than the
+its row distinguishes the official paid-plan UI prerequisites, the v1 exclusion
+and the retained v0 implementation. This pass is broader than the
 older mappings but is not an exhaustive survey of every conditional form.
 
 ### Personal-public test repository observations
@@ -437,7 +439,7 @@ must not be erased merely because part of the resource cannot be managed.
 | Repository webhooks: SSL verification | Eligible | Personal-public new webhook form showed Enable selected and Disable available, 2026-11-14; no submission | [Repository webhook config API][webhook-config-update] reads and updates `insecure_ssl`; `0` verifies and `1` disables verification | [Implemented](../settings.md#webhook-configuration-and-creation): optional boolean, export, selected config update and creation; fixtures do not prove live TLS or Secret equality |
 | Repository webhook Secret values | Excluded | Policy excludes secret values | Read representations do not prove secret presence/equality | Never retained in model, exported, compared or replayed |
 | Deploy keys: title, public key and read/write grant | Eligible | Add deploy key observed, 2026-11-13; [documented UI controls](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) | Read/create/delete: [deploy-key REST][deploy-keys-api]; no update endpoint | Implemented: [canonical public-key identity, guarded creation and explicit pruning](../settings.md#deploy-keys); immutable replacements are separate applies; private keys excluded |
-| Autolink references | Eligible | [Documented repository UI](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources); no fresh authenticated form observed | Read/create/delete: [Autolinks REST][autolinks-api]; no documented in-place update | Implemented: [immutable ID binding, verified creation and explicit prune](../settings.md#autolink-references); replacement requires separate deletion and creation; no live write or rendered-link claim |
+| Autolink references | Excluded from v1 under the confirmed Free-plan scope | [Official UI guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources) lists Pro/Team/Enterprise, not Free; no entry in this repository's authenticated sidebar on 2026-11-20, not a global UI-absence claim | Read/create/delete: [Autolinks REST][autolinks-api]; no documented in-place update. API availability does not establish plan entitlement | Existing v0 [immutable ID binding, verified creation and explicit prune](../settings.md#autolink-references) remain implemented; schema/export behavior retained; no live write or rendered-link claim |
 | Existing GitHub App repository integration configuration | Eligible only for configurable repository controls | Installed-App inventory observed, 2026-11-13; no additional repository setting established | Partial: installation inventory is not proof of complete configurable repository state or App-credential mutation support | Not implemented; App installation/authorization excluded |
 | Email notifications | Eligible if target UI is configurable | Target control inventory unconfirmed | Unconfirmed repository settings read/update contract | Not implemented |
 | Codespaces prebuild configuration | Eligible | Setup, schedule and advanced fields inspected unsaved 2026-11-14; `main` configuration selector offered only Default Codespaces Configuration; other branches uninspected; [documented personal-repository controls][prebuild-ui] | Investigated-unconfirmed complete settings contract in the fixed API recheck; workspace execution, prebuild provenance and file editing are distinct | Not implemented; no prebuild was created or workflow executed |
@@ -487,6 +489,7 @@ being confused with the missing implementations above.
 | --- | --- | --- | --- |
 | Already-archived repositories: ordinary export, plan and apply | Excluded from v1 | Product decision [#792](https://github.com/daiksud/gh-settings/issues/792), not API impossibility | Existing defensive observations/guards and limited read-only matching do not establish supported coverage; explicit [archive/unarchive transitions](../settings.md#repository-archive-lifecycle) retain their separate contract |
 | Repository rename, visibility change, transfer and deletion | Excluded | UI/API feasibility does not override this lifecycle/identity decision | Not implemented; archive/unarchive remains separately supported |
+| Autolink references | Excluded from v1 | Confirmed Free-plan scope; [official UI prerequisites](../settings.md#autolink-references) omit Free, independently of the known REST APIs | Existing v0 implementation/schema/export remain; omitted from this repository's self-management declaration |
 | Temporary interaction restrictions | Excluded | Finite restrictions automatically expire; known read/set/remove APIs do not override the explicit product exception | No declaration, export, plan, apply, renewal or lease-receipt support |
 | Secret values and private keys | Excluded | Secret names/metadata or write endpoints do not supply exportable secret values | No secret-value management; plaintext non-secret variables remain supported |
 | Feature configuration-file authoring | Excluded | UI editors and Contents APIs can create files, but that is a separate product boundary | No Dependabot/CodeQL/Actions workflow, funding, issue-template or instruction-file authoring; gh-settings' own YAML is not excluded |

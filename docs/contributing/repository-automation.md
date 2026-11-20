@@ -192,6 +192,12 @@ Security/CodeQL. Supported empty inventories are explicit;
 without prune they do not request unlisted deletion. Existing Ruleset, reviewer
 and check-source IDs are retained. No new resource is requested.
 
+Autolinks are omitted from this repository's declaration under the explicit
+[Free-plan v1 scope decision](../settings.md#autolink-references). The existing v0
+implementation and automatic export acquisition remain; an API-observed empty
+collection does not establish Free-plan UI entitlement. Removing the declaration
+does not delete live references or request pruning.
+
 Environment variable payloads remain omitted because they are internal data.
 Secrets, private keys, inactive normal-merge message controls, inactive
 selected-Actions controls and private-only fork/sharing controls are not copied
