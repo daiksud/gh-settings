@@ -15,7 +15,7 @@ sources:
 
 ## Status and scope
 
-Current source accepts optional `repository.settings.general.pull_requests.squash_merge.default_commit_message`. It selects one UI menu item; it does not merge a PR, edit PR contents or implicitly enable a merge method. The [configuration reference](../settings.md#squash-commit-defaults) owns adoption and presence semantics.[^ui-inventory]
+Current source accepts optional `repository.settings.general.pull_requests.squash_merge.default_commit_message`. It selects one UI menu item; it does not merge a PR, edit PR contents or implicitly enable a merge method. The [configuration reference](../settings/general.md#squash-commit-defaults) owns adoption and presence semantics.[^ui-inventory]
 
 ## API contract
 

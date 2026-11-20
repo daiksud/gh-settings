@@ -1,6 +1,6 @@
 # Deploy keys
 
-The [configuration contract](../settings.md#deploy-keys) owns the UI mapping,
+The [configuration contract](../settings/deploy-keys.md#deploy-keys) owns the UI mapping,
 permissions, public-key syntax, immutable lifecycle and pruning boundaries.
 
 ```gherkin

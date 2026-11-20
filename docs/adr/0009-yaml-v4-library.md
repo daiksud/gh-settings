@@ -31,7 +31,7 @@ The library choice follows the YAML organization's upstream direction. This sele
 
 Release-candidate APIs and behavior may change, and defects may require adaptation. The limited reading/writing scope is a reason to accept that risk, not evidence that serious bugs are absent. No stability or absence-of-critical-bugs guarantee is made.
 
-The choice does not change the [five-field settings schema](../settings.md), [declared-field ownership](0002-managed-fields.md), or [strict validation policy](0004-strict-validation.md). Null handling and future composition across update endpoints remain unresolved. Implementation must preserve omitted fields rather than inject defaults; choosing a parser does not settle additional configuration semantics.
+The choice does not change the [five-field settings schema](../settings/README.md), [declared-field ownership](0002-managed-fields.md), or [strict validation policy](0004-strict-validation.md). Null handling and future composition across update endpoints remain unresolved. Implementation must preserve omitted fields rather than inject defaults; choosing a parser does not settle additional configuration semantics.
 
 This ADR adds no implementation, module files, or installed dependencies. Go and GitHub API library choices remain separate decisions in [ADR 0007](0007-go-implementation.md) and [ADR 0008](0008-official-go-gh-library.md).
 

@@ -1,6 +1,6 @@
 # Classic branch-protection patterns and independent controls
 
-The [configuration contract](../settings.md#classic-branch-protection) owns public
+The [configuration contract](../settings/legacy-classic-protection.md#classic-branch-protection) owns public
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
 Ordinary reconciliation manages conversation resolution, signed commits, linear
 history, branch locking, conditional fork syncing, administrator enforcement, the Allow deletions checkbox

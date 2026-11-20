@@ -16,7 +16,7 @@ All existing and future product specifications assume required caller permission
 
 ## Decision
 
-Use the current UI paths and values in the [configuration reference](../settings.md#pages-configuration). Omitted Pages and empty mappings remain unmanaged. A complete explicit branch Source/Branch/folder declaration or explicit GitHub Actions Source creates when absent and reconciles when present. Incomplete creation intent fails before writing; partial existing-site ownership is preserved. Real branch/folder intent remains an atomic tuple.
+Use the current UI paths and values in the [configuration reference](../settings/pages.md#pages-configuration). Omitted Pages and empty mappings remain unmanaged. A complete explicit branch Source/Branch/folder declaration or explicit GitHub Actions Source creates when absent and reconciles when present. Incomplete creation intent fails before writing; partial existing-site ownership is preserved. Real branch/folder intent remains an atomic tuple.
 
 Reserve exact lowercase `branch: none` with explicit `source: deploy_from_a_branch` for deletion. Reject folder, domain or HTTPS intent alongside it. Other branch casing is literal. The user accepts the collision with a real branch of the reserved spelling. Do not introduce aliases, enabled/state controls or implicit deletion through null/omission.
 

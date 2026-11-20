@@ -303,7 +303,7 @@ Given a complete active Selected pattern with an unsupported string type, export
 
 If distinct raw identities collide after projection, emit scoped warnings and info, retaining the prior Environment declaration while other families continue. If a later type is missing/null or acquisition fails, emit info without partial normalization warnings and retain prior family intent. Patterns under effective No restriction remain latent; only applicable mode diagnostics and effective mode are exported. None of these paths writes repository settings.
 
-Test mapping: [owned export](../../internal/app/normalization_environment_ref_type_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_ref_type_test.go). The [Environment ref-type policy](../settings.md#environment-ref-type-observation-normalization) owns reconciliation and raw verification.
+Test mapping: [owned export](../../internal/app/normalization_environment_ref_type_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_ref_type_test.go). The [Environment ref-type policy](../settings/pages.md#environment-ref-type-observation-normalization) owns reconciliation and raw verification.
 
 ### Rule: Export bypass modes without inventing actors
 
@@ -317,7 +317,7 @@ Test mapping: [export scope/order/ownership](../../internal/app/normalization_ru
 
 A complete unique nonempty string list containing an unsupported method exports the full Merge, Squash, Rebase default with the exact raw list in an ID/name-bound warning. Original raw order is retained; canonical companion fields and absent PR rules remain intact. Callback mutations cannot change the exported policy or retained observation. Warnings follow name order, then enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), bypass actors.
 
-Missing/null/empty/duplicate/malformed lists or incomplete acquisition emit info and retain prior family intent without partial projection warnings. Ordinary export attempts Rulesets; pure readers never warn or write. [Export tests](../../internal/app/normalization_ruleset_merge_methods_export_test.go) and [executable commands](../../tests/acceptance/normalization_ruleset_merge_methods_test.go) cover scope, typed provenance, literal UI output and destination preservation. The [Allowed merge methods policy](../settings.md#ruleset-allowed-merge-methods-observation-normalization) owns reconciliation and strict confirmation.
+Missing/null/empty/duplicate/malformed lists or incomplete acquisition emit info and retain prior family intent without partial projection warnings. Ordinary export attempts Rulesets; pure readers never warn or write. [Export tests](../../internal/app/normalization_ruleset_merge_methods_export_test.go) and [executable commands](../../tests/acceptance/normalization_ruleset_merge_methods_test.go) cover scope, typed provenance, literal UI output and destination preservation. The [Allowed merge methods policy](../settings/rulesets.md#ruleset-allowed-merge-methods-observation-normalization) owns reconciliation and strict confirmation.
 
 ## Rule: Export scanning Alerts with exact tool identity
 

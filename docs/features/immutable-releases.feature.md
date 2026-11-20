@@ -4,7 +4,7 @@ title: Repository immutable release policy
 description: Declare the General Releases UI toggle while preserving explicit 404 and owner-enforcement semantics.
 ---
 
-The [configuration reference](../settings.md#immutable-release-policy) owns the
+The [configuration reference](../settings/general.md#immutable-release-policy) owns the
 public contract. This specification covers #348's repository policy only; the
 release publisher and individual releases/tags/assets are outside ownership.
 

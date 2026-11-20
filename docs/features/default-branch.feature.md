@@ -6,7 +6,7 @@ description: Select an existing default branch through the current UI declaratio
 
 ## Status
 
-supported and implemented in current source. The [settings reference](../settings.md#default-branch) owns usage and adoption guidance.
+supported and implemented in current source. The [settings reference](../settings/general.md#default-branch) owns usage and adoption guidance.
 
 ## Behavior
 

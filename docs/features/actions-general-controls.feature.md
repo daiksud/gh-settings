@@ -3,7 +3,7 @@ type: Feature
 title: Actions cache limits
 ---
 
-The [configuration reference](../settings.md#actions-cache-policy) owns YAML semantics and billing cautions; the [command reference](../commands.md#export-behavior) owns explicit export selection. These are three independent controls, not additions to the meaning of `--actions` or `--retention`.
+The [configuration reference](../settings/actions.md#actions-cache-policy) owns YAML semantics and billing cautions; the [command reference](../commands.md#export-behavior) owns explicit export selection. These are three independent controls, not additions to the meaning of `--actions` or `--retention`.
 
 ## Declaration and acquisition
 

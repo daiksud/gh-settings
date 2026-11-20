@@ -11,7 +11,7 @@ sources:
 
 ## Preparation boundary
 
-This Actions mapping was prepared for [#484](https://github.com/daiksud/gh-settings/issues/484) and composed by [#479](https://github.com/daiksud/gh-settings/issues/479). The current page/section structure follows [#541](https://github.com/daiksud/gh-settings/issues/541); the [public reference](../settings.md#actions-execution-policy) owns accepted choices. Native internal reports remain separate from UI intent; there is no compatibility or migration layer.
+This Actions mapping was prepared for [#484](https://github.com/daiksud/gh-settings/issues/484) and composed by [#479](https://github.com/daiksud/gh-settings/issues/479). The current page/section structure follows [#541](https://github.com/daiksud/gh-settings/issues/541); the [public reference](../settings/actions.md#actions-execution-policy) owns accepted choices. Native internal reports remain separate from UI intent; there is no compatibility or migration layer.
 
 The [internal UI model](../../internal/settings/uimodel/actions.go) has typed control choices without transport enums or serialization tags. The [public document](../../internal/workspace/ui_settings_document.go) groups these independent controls for the single YAML codec. [Declaration conversion](../../internal/github/ui_actions.go) supplies existing validated adapter inputs. Observation helpers consume acquired values directly, retaining raw latent policy and retention caps outside the UI model. They never call declaration normalization. Overlay helpers preserve unrelated incoming UI fields; they copy newly acquired values rather than claiming a deep copy of the whole incoming tree.
 
@@ -35,7 +35,7 @@ The UI prefix `A` below means `repository.settings.actions.general`. Labels and 
 | Workflow permissions | `workflow_permissions.default_permissions` | Workflow `default_workflow_permissions` |
 | Allow GitHub Actions to create and approve pull requests | `workflow_permissions.allow_github_actions_to_create_and_approve_pull_requests` | Workflow `can_approve_pull_request_reviews` |
 
-Runners and other unadopted controls remain outside this family. Cache limits are adopted independently; see the [public contract](../settings.md#actions-cache-policy). The existing endpoint clients retain their narrow acquisition scopes; observation conversion does not expand API access or follow `selected_actions_url`.
+Runners and other unadopted controls remain outside this family. Cache limits are adopted independently; see the [public contract](../settings/actions.md#actions-cache-policy). The existing endpoint clients retain their narrow acquisition scopes; observation conversion does not expand API access or follow `selected_actions_url`.
 
 ## Finite choices
 
@@ -61,7 +61,7 @@ The last two labels display the actual owner in GitHub. The selected radio revea
 
 API tokens are not accepted as UI choices. Complete out-of-UI execution policy, workflow permission and public-fork approval strings now use their defined fallbacks with raw provenance and warnings under #480; unsupported identities and incomplete/malformed observations remain errors. Named observation-default candidates are `allow_all_actions_and_reusable_workflows`, `read_repository_contents_and_packages_permissions` and `require_approval_for_first_time_contributors`. The official settings guide identifies first-time contributors as the default public-fork approval policy.[^actions-settings] All three fallbacks are active. Execution projection preserves acquired enabled/SHA booleans: only enabled unknown policy displays the fallback and warns; disabled unknown policy remains known Disable with latent raw evidence. Disable/SHA-only writes preserve that raw policy; enabling explicitly owns a canonical policy. Exact fresh raw verification precedes success. Public-fork observations retain exact raw strings in their opaque observation; raw equality governs no-op and fresh write verification. None supplies defaults for omitted declarations, missing responses or denied acquisition. There is no invented retention default.
 
-Cache limits are independent integer controls, with complete acquired values rather than defaults. Private sharing and fork workflow controls are [excluded](../settings.md#excluded-private-actions-controls). See the [process specification](../features/actions-general-controls.feature.md) for endpoint isolation and failure boundaries.
+Cache limits are independent integer controls, with complete acquired values rather than defaults. Private sharing and fork workflow controls are [excluded](../settings/actions.md#excluded-private-actions-controls). See the [process specification](../features/actions-general-controls.feature.md) for endpoint isolation and failure boundaries.
 
 ## Presence, hidden values and applicability
 

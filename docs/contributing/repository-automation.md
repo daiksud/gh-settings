@@ -36,7 +36,7 @@ configuration when diagnosing a blocked apply; see
 For supported resources whose contract treats an entry without an ID as
 create-only, the normal main apply can perform that initial creation.
 Confirmed creation IDs appear in the apply logs. GitHub Actions disables
-[configuration ID writeback](../settings.md#apply-id-writeback), and the
+[configuration ID writeback](../settings/labels.md#apply-id-writeback), and the
 workflow does not commit or push IDs back to the declaration.
 
 Read back the created objects, confirm their IDs, and adopt those IDs in a
@@ -193,13 +193,13 @@ without prune they do not request unlisted deletion. Existing Ruleset, reviewer
 and check-source IDs are retained. No new resource is requested.
 
 Autolinks are omitted from this repository's declaration under the explicit
-[Free-plan v1 scope decision](../settings.md#autolink-references). The existing v0
+[Free-plan v1 scope decision](../settings/legacy-autolinks.md#autolink-references). The existing v0
 implementation and automatic export acquisition remain; an API-observed empty
 collection does not establish Free-plan UI entitlement. Removing the declaration
 does not delete live references or request pruning.
 
 The classic `repository.settings.branch_protection_rules` declaration is also
-omitted under the [v1 Rulesets-only decision](../settings.md#classic-branch-protection).
+omitted under the [v1 Rulesets-only decision](../settings/legacy-classic-protection.md#classic-branch-protection).
 The complete existing Rulesets declaration is retained. Classic v0 implementation
 and export behavior remain; this omission neither migrates nor deletes live
 classic protection and does not authorize an apply or prune.

@@ -2,11 +2,11 @@
 
 Manage a GitHub repository's settings as code, using a GitHub CLI extension or a [GitHub Action](docs/github-actions.md). Keep the intended values in `.github/settings.yml`, review differences with `plan`, and send declared values with `apply`.
 
-The v1 target is UI-aligned settings management for **personally owned public repositories**, through both the CLI and public Action. **Already-archived repositories are outside v1 support**, including the ordinary `export` → `plan` → `apply` workflow. The separately documented [archive/unarchive transition](docs/settings.md#repository-archive-lifecycle) retains its own contract. [Autolink references](docs/settings.md#autolink-references) are outside v1 support under the confirmed Free-plan scope; the existing v0 implementation remains available subject to GitHub prerequisites. [Classic branch protection](docs/settings.md#classic-branch-protection) is also outside v1 by product choice; [Rulesets](docs/settings.md#rulesets) are the only supported branch-protection mechanism in v1. Existing v0 classic support and live protections are preserved. Account plan and Preview status do not otherwise exclude a configurable target UI control. Current support is incomplete: see the [adoption policy](docs/settings.md#feature-adoption-scope) and [coverage ledger](docs/contributing/settings-coverage.md) for implemented settings, remaining work and API limitations.
+The v1 target is UI-aligned settings management for **personally owned public repositories**, through both the CLI and public Action. **Already-archived repositories are outside v1 support**, including the ordinary `export` → `plan` → `apply` workflow. The separately documented [archive/unarchive transition](docs/settings/general.md#repository-archive-lifecycle) retains its own contract. [Autolink references](docs/settings/legacy-autolinks.md#autolink-references) are outside v1 support under the confirmed Free-plan scope; the existing v0 implementation remains available subject to GitHub prerequisites. [Classic branch protection](docs/settings/legacy-classic-protection.md#classic-branch-protection) is also outside v1 by product choice; [Rulesets](docs/settings/rulesets.md#rulesets) are the only supported branch-protection mechanism in v1. Existing v0 classic support and live protections are preserved. Account plan and Preview status do not otherwise exclude a configurable target UI control. Current support is incomplete: see the [adoption policy](docs/settings/scope.md#feature-adoption-scope) and [coverage ledger](docs/contributing/settings-coverage.md) for implemented settings, remaining work and API limitations.
 
 The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
 
-The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets ordinarily own only listed objects; explicit [prune scopes](docs/settings.md#collection-pruning), including Environments, personal collaborators, Autolinks and standalone `all`, add bounded unlisted deletion. Existing Environment updates preserve omitted built-in controls; creation omissions remain API-controlled.
+The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets ordinarily own only listed objects; explicit [prune scopes](docs/settings/pruning.md#collection-pruning), including Environments, personal collaborators, Autolinks and standalone `all`, add bounded unlisted deletion. Existing Environment updates preserve omitted built-in controls; creation omissions remain API-controlled.
 
 ## Install
 
@@ -48,11 +48,11 @@ repository:
       features: {issues: true}
 ```
 
-Current source requires the exact `version` string above and uses UI wording in snake_case. Omission, false, empty strings and empty lists retain distinct meanings; `about.topics: []` clears the topic set. Old envelopes and API-shaped aliases are rejected without migration. See the [configuration reference](docs/settings.md) for every supported path and ownership rule.
+Current source requires the exact `version` string above and uses UI wording in snake_case. Omission, false, empty strings and empty lists retain distinct meanings; `about.topics: []` clears the topic set. Old envelopes and API-shaped aliases are rejected without migration. See the [configuration reference](docs/settings/README.md) for every supported path and ownership rule.
 
 The pinned v0.44.0 package below supports this YAML. The [package boundary](docs/github-actions.md#published-package-and-consumer-pins) explains how an Action pin selects its CLI release.
 
-Labels and repository Rulesets select existing objects by numeric ID. Only listed objects are managed; an omitted object or empty list does not delete it. Entries without IDs are create-only. Updating a listed Ruleset can change branch protection, reviews and checks; read the [Labels](docs/settings.md#labels) and [Rulesets](docs/settings.md#rulesets) contracts before applying.
+Labels and repository Rulesets select existing objects by numeric ID. Only listed objects are managed; an omitted object or empty list does not delete it. Entries without IDs are create-only. Updating a listed Ruleset can change branch protection, reviews and checks; read the [Labels](docs/settings/labels.md#labels) and [Rulesets](docs/settings/rulesets.md#rulesets) contracts before applying.
 
 ### 3. Validate and review differences
 
@@ -112,6 +112,7 @@ Before enabling apply, follow the [approval and required-check guidance](docs/gi
 | --- | --- |
 | Find a guide or reference | [Documentation index](docs/README.md) |
 | Understand commands, targeting, output, and failures | [Command reference](docs/commands.md) |
-| Write `.github/settings.yml` | [Configuration reference](docs/settings.md) |
+| Write `.github/settings.yml` | [Settings reference by category](docs/settings/README.md) |
+| Select GitHub App grants for declared settings | [Permission matrix](docs/settings/permissions.md) |
 | Automate export, validation, review, and apply | [GitHub Actions guide](docs/github-actions.md) |
 | Change the code, tests, or documentation | [Contributing](CONTRIBUTING.md) |

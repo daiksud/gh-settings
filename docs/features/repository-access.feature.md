@@ -1,6 +1,6 @@
 # Personal collaborator identities and invitations
 
-The [configuration contract](../settings.md#personal-collaborators) owns the
+The [configuration contract](../settings/collaborators.md#personal-collaborators) owns the
 public schema and lifecycle. This feature covers personally owned public
 repositories, including explicit prune removal and invitation cancellation.
 Organization roles, teams and recipient acceptance remain unsupported. Email-only roundtrip remains an explicit
@@ -142,5 +142,5 @@ Prune owners: [model](../../internal/settings/collaborator_prune_test.go),
 [supplied CLI](../../tests/acceptance/collaborator_prune_test.go), and
 [actual supplied-product Action](../../tests/github-actions/composite_collaborator_prune_acceptance_test.go).
 These fixture checks do not establish live installation grants or asynchronous
-GitHub removal side effects. The [configuration contract](../settings.md#collaborator-pruning)
+GitHub removal side effects. The [configuration contract](../settings/collaborators.md#collaborator-pruning)
 owns management-path and residual-race limits.

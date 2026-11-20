@@ -99,7 +99,7 @@ Sequence Pages after ordinary resource updates and before final archive; explici
 
 ## Lifecycle
 
-The [public lifecycle contract](../settings.md#pages-configuration) owns exact syntax, omission, casing and compatibility effects. No independent enabled/state or visibility setting is accepted. Complete explicit branch-source intent creates if absent; explicit workflow Source creates Actions mode. Existing partial declarations remain valid only for applicable present state. No branch, workflow or source defaults are guessed for creation.
+The [public lifecycle contract](../settings/pages.md#pages-configuration) owns exact syntax, omission, casing and compatibility effects. No independent enabled/state or visibility setting is accepted. Complete explicit branch-source intent creates if absent; explicit workflow Source creates Actions mode. Existing partial declarations remain valid only for applicable present state. No branch, workflow or source defaults are guessed for creation.
 
 GET 404 is acquired absence under required permissions. A complete matching GET 200 is presence. 401/403, redirects, transport failures, other statuses and malformed/incomplete successes remain errors. An unacquired observation never means absent. An empty declaration makes no Pages request. Normalization provenance never substitutes for exact creation/update verification.
 

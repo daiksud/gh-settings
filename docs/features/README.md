@@ -2,7 +2,7 @@
 
 These files describe observable behavior and its Go test mappings. They are
 contributor references; no BDD runner executes them. The [configuration
-reference](../settings.md), [CLI reference](../commands.md), and [Action
+reference](../settings/README.md), [CLI reference](../commands.md), and [Action
 guide](../github-actions.md) own user-facing behavior.
 
 | Specification | Responsibility |

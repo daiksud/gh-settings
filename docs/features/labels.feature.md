@@ -6,7 +6,7 @@ description: Create ID-less labels and reconcile whole supported ID-selected obj
 
 ## Feature: Manage repository labels
 
-Current source uses `repository.labels` with ID-selected ownership. The [settings reference](../settings.md#labels) owns the current UI schema and published-package boundary; there is no legacy migration.
+Current source uses `repository.labels` with ID-selected ownership. The [settings reference](../settings/labels.md#labels) owns the current UI schema and published-package boundary; there is no legacy migration.
 
 ### Rule: Select objects and prune only when explicitly requested
 

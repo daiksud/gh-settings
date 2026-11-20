@@ -10,7 +10,7 @@ sources:
 
 ## Status
 
-The public YAML key and enum spelling decision is superseded by [Issue #479](https://github.com/daiksud/gh-settings/issues/479). The [current configuration reference](../settings.md) defines UI-oriented names and choices; API conversion remains internal. Declared-field ownership remains a separate decision. The original adoption status follows for historical context.
+The public YAML key and enum spelling decision is superseded by [Issue #479](https://github.com/daiksud/gh-settings/issues/479). The [current configuration reference](../settings/README.md) defines UI-oriented names and choices; API conversion remains internal. Declared-field ownership remains a separate decision. The original adoption status follows for historical context.
 
 Accepted for field keys and types. The YAML root-placement consequence below was superseded by [ADR 0020](0020-group-settings-by-resource.md). The current-source [PR access extension](../features/pull-request-access.feature.md) explicitly maps its two YAML fields to GraphQL inputs and defines mixed REST/GraphQL write ordering; the five-field historical scope below remains unchanged.
 
@@ -24,7 +24,7 @@ YAML keys and data structures follow the corresponding GitHub update API request
 
 ## Consequences
 
-For the current five-field scope, supported fields appear at the YAML root, matching the repository update request body object; there is no additional `repository` wrapper. See the [settings contract](../settings.md#configuration-semantics) for the proposed configuration example.
+For the current five-field scope, supported fields appear at the YAML root, matching the repository update request body object; there is no additional `repository` wrapper. See the [settings contract](../settings/configuration.md#configuration-semantics) for the proposed configuration example.
 
 Schema alignment does not mean supporting every API parameter. Only `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki` are in the current design. Read-only response metadata is excluded.
 

@@ -4,7 +4,7 @@ title: Named Environment policies and variables
 description: Manage name-selected UI policies, typed patterns and explicit non-sensitive variables with separate ownership.
 ---
 
-Status: implements named policies (#352), custom deployment branch/tag patterns (#353), typed administrator-bypass management, selected non-sensitive variables, and existing custom protection App selection. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
+Status: implements named policies (#352), custom deployment branch/tag patterns (#353), typed administrator-bypass management, selected non-sensitive variables, and existing custom protection App selection. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings/environments.md#environments).
 
 Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
 
@@ -133,7 +133,7 @@ checks to the parent ID, rejecting detected replacement before the family write
 and before/after DELETE. Only explicitly declared Environment policy creation can
 precede variables for an absent parent. Unexpected candidates after that creation
 are rejected instead of deleting them. This variable scope adds no parent deletion
-or secret ownership; parent deletion requires the separate `environments` scope. See [variable pruning](../settings.md#variable-pruning) and
+or secret ownership; parent deletion requires the separate `environments` scope. See [variable pruning](../settings/actions.md#variable-pruning) and
 `internal/github/variable_prune_test.go`, `internal/app/variable_prune_test.go`,
 `tests/acceptance/prune_variables_test.go` for bounded fixture evidence.
 

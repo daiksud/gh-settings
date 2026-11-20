@@ -17,9 +17,9 @@ sources:
 
 ## Preparation boundary
 
-The mapping originally prepared for [Issue #482](https://github.com/daiksud/gh-settings/issues/482) is now consumed by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public reference](../settings.md) defines accepted paths. [#480](https://github.com/daiksud/gh-settings/issues/480) still owns out-of-UI normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns complete UI reporting. There is no legacy codec, alias or migration.
+The mapping originally prepared for [Issue #482](https://github.com/daiksud/gh-settings/issues/482) is now consumed by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public reference](../settings/README.md) defines accepted paths. [#480](https://github.com/daiksud/gh-settings/issues/480) still owns out-of-UI normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns complete UI reporting. There is no legacy codec, alias or migration.
 
-The [UI model](../../internal/settings/uimodel/) contains display terminology without transport enums or serialization tags. The `ui_*.go` files in [the GitHub adapter](../../internal/github/) translate it to and from the existing validated adapter inputs. These are internal family conversion boundaries, not an alternate public format or compatibility API.
+The [UI model](../../internal/settings/uimodel) contains display terminology without transport enums or serialization tags. The `ui_*.go` files in [the GitHub adapter](../../internal/github) translate it to and from the existing validated adapter inputs. These are internal family conversion boundaries, not an alternate public format or compatibility API.
 
 ## UI inventory and paths
 

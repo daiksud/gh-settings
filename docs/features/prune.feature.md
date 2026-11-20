@@ -85,7 +85,7 @@ rotation and never enters reports, Summary or snapshot debug logs. Inactive
 patterns are inaccessible under the custom-mode prerequisite; parent deletion
 permits this documented limit without fabricating an empty acquired latent list.
 The final name-addressed check/delete race remains. See the
-[permission and ownership contract](../settings.md#environment-pruning).
+[permission and ownership contract](../settings/pruning.md#environment-pruning).
 
 Plan counts one Environment collection even for explicit [] with prune, shows
 complete supported before-policy and absent after-policy, and rejects normalization
@@ -155,7 +155,7 @@ owns its retained-user union, invitation dependency, operator and progress cases
 
 ## Classic branch-protection deletion
 
-The [classic pruning contract](../settings.md#classic-branch-protection-pruning)
+The [classic pruning contract](../settings/legacy-classic-protection.md#classic-branch-protection-pruning)
 adds whole-rule deletion independently of partial supported-control updates. Present
 lists retain numeric IDs and successful creations; omission stays unmanaged.
 Complete private candidate snapshots precede any write. Recheck only the frozen
@@ -186,7 +186,7 @@ the candidate artifact gate includes it. All mutations are isolated fixtures.
 
 ## Keep deploy key deletion candidates fixed
 
-[Deploy key pruning](../settings.md#deploy-key-pruning) retains selected IDs and
+[Deploy key pruning](../settings/deploy-keys.md#deploy-key-pruning) retains selected IDs and
 acquires complete private snapshots before any mutation. Each DELETE checks the
 exact target, full inventory and candidate detail; its 204 is followed by complete
 absence verification. Only this execution's verified creations/deletions and own
@@ -195,4 +195,4 @@ further work. Same material cannot be replaced implicitly in one apply.
 
 ## Autolink pruning
 
-The `autolinks` scope and standalone `all` use the [Autolinks contract](../settings.md#autolink-references). Omitted collections remain unmanaged; present empty lists prune every acquired reference. Global preflight freezes all candidates and validates complete declared intent before any write. Expected inventory includes only verified own creations and excludes verified own deletions; only successful own unarchive changes the archive expectation. Complete inventory and individual candidate checks reject drift before DELETE, and empty 204 plus complete inventory absence verify each removal. Creation and required ID recording precede deletion. An immutable replacement needs explicit deletion followed by later creation; a current candidate cannot be silently adopted by prefix.
+The `autolinks` scope and standalone `all` use the [Autolinks contract](../settings/legacy-autolinks.md#autolink-references). Omitted collections remain unmanaged; present empty lists prune every acquired reference. Global preflight freezes all candidates and validates complete declared intent before any write. Expected inventory includes only verified own creations and excludes verified own deletions; only successful own unarchive changes the archive expectation. Complete inventory and individual candidate checks reject drift before DELETE, and empty 204 plus complete inventory absence verify each removal. Creation and required ID recording precede deletion. An immutable replacement needs explicit deletion followed by later creation; a current candidate cannot be silently adopted by prefix.

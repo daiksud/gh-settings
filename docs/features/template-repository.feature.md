@@ -6,7 +6,7 @@ description: Manage the Template repository UI checkbox without generating repos
 
 ## Status
 
-supported and implemented in current source. The [settings reference](../settings.md#template-repository) owns usage and package-adoption guidance.
+supported and implemented in current source. The [settings reference](../settings/general.md#template-repository) owns usage and package-adoption guidance.
 
 ## Behavior
 

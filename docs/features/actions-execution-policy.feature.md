@@ -4,7 +4,7 @@ title: Actions execution policy
 description: Select UI execution permission choices with complete reads and staged API writes.
 ---
 
-Status: implemented in current source, supported. The [configuration contract](../settings.md#actions-execution-policy) is authoritative for users; this specification records scenarios and test mappings.
+Status: implemented in current source, supported. The [configuration contract](../settings/actions.md#actions-execution-policy) is authoritative for users; this specification records scenarios and test mappings.
 
 Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
 
@@ -17,7 +17,7 @@ Ordinary `export` now follows the [automatic readable-settings contract](readabl
 
 Test mapping: [Actions UI codec](../../internal/workspace/ui_actions_test.go), [literal page/section schema](../../internal/workspace/ui_page_sections_test.go), [TestActionsPatternsAreExactSequences](../../internal/settings/actions_policy_test.go), [TestActionsInvalidDeclarationsNeverContactAPI](../../tests/acceptance/actions_policy_test.go).
 
-Public `actions_permissions.policy` accepts `allow_all_actions_and_reusable_workflows`, `disable_actions`, `allow_owner_actions_and_reusable_workflows` or `allow_owner_and_select_non_owner_actions_and_reusable_workflows`. SHA pinning is the independent `require_actions_to_be_pinned_to_a_full_length_commit_sha` checkbox in the same section. Complete typed unknown execution policies follow the [visible/latent normalization contract](../settings.md#execution-policy-observation-normalization); desired unknown choices still fail.
+Public `actions_permissions.policy` accepts `allow_all_actions_and_reusable_workflows`, `disable_actions`, `allow_owner_actions_and_reusable_workflows` or `allow_owner_and_select_non_owner_actions_and_reusable_workflows`. SHA pinning is the independent `require_actions_to_be_pinned_to_a_full_length_commit_sha` checkbox in the same section. Complete typed unknown execution policies follow the [visible/latent normalization contract](../settings/general.md#execution-policy-observation-normalization); desired unknown choices still fail.
 
 ## Rule: Export only complete observable policy
 

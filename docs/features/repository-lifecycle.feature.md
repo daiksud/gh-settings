@@ -8,7 +8,7 @@ description: Define archival sequencing and the boundary for deferred identity a
 
 Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
 
-The [v1 support policy](../settings.md#feature-adoption-scope) excludes
+The [v1 support policy](../settings/scope.md#feature-adoption-scope) excludes
 already-archived targets from the ordinary CLI/Action `export` → `plan` → `apply`
 contract. This is a product decision rather than an API impossibility claim.
 The explicit archive/unarchive transition retains its separate contract from

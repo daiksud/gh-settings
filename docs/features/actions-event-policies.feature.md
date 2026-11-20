@@ -8,7 +8,7 @@ description: Manage listed event/actor policies and workflow targets by ID witho
 
 Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
 
-The [configuration reference](../settings.md#actions-event-policies) owns the
+The [configuration reference](../settings/actions.md#actions-event-policies) owns the
 public schema, supported 36-event vocabulary, permissions and recovery semantics.
 The [command reference](../commands.md#actions-event-policy-commands) owns export
 selection; the [Action guide](../github-actions.md#actions-event-policies) owns
