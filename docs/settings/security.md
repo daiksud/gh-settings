@@ -48,7 +48,7 @@ The optional controls below belong under `repository.settings.advanced_security.
 
 ```yaml
 languages: [github_actions, go, python]
-query_suite: extended
+query_suites: extended
 threat_model: remote_sources
 runner:
   type: labeled_runner
@@ -58,9 +58,17 @@ runner:
 | Control | Accepted values and ownership |
 | --- | --- |
 | `languages` | A nonempty unique set: `github_actions`, `c_cpp`, `csharp`, `go`, `java_kotlin`, `javascript_typescript`, `python`, `ruby`, `swift`. Order is immaterial; export/report order is canonical. Unsupported or undetected selections may be refused by GitHub. |
-| `query_suite` | `default` or `extended` |
+| `query_suites` | One scalar: `default` or `extended`; never a list. Maps to REST `query_suite`. |
 | `threat_model` | `remote_sources` or `remote_and_local_sources`; maps exactly to API `remote` or `remote_and_local`. Raw API spellings are not YAML choices. |
 | `runner` | Owns the type/label pair. `type: standard_github_runner` forbids `label` and explicitly clears an old label through API null. `type: labeled_runner` requires a nonblank `label`; it can select an existing labeled GitHub or self-hosted runner. No runner/label/capacity is created. |
+
+The [initial setup guide](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/configure-code-scanning/configure-code-scanning) uses “Query suites”, while the
+[existing-configuration editing guide](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#customizing-your-existing-configuration-of-default-setup) uses “Query suite”.
+This contract follows the initial-setup spelling `query_suites`, still one scalar.
+The former `query_suite` YAML key is rejected, including when both names are
+present. The REST field and native report identity remain `query_suite`.
+Published v0.45.0 uses the former YAML spelling; see the
+[operational package boundary](../contributing/repository-automation.md#plural-ui-keys-and-operational-package).
 
 GitHub documents local sources as [public preview](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#including-local-sources-of-tainted-data-in-default-setup), currently supported for Java/Kotlin and C#. A repository's supported choices and source languages remain GitHub-controlled; gh-settings does not enable languages or infer UI availability from the selected analysis-language list. A complete read requires exactly the API `remote` or `remote_and_local` value. Missing, null, mistyped or unknown values fail acquisition without a fallback to remote-only scanning.
 

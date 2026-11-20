@@ -84,7 +84,7 @@ func TestNormalizedCommitComparisonRejectsInconsistentProvenance(t *testing.T) {
 }
 
 func normalizedCommitComparisonState() MergeMethodsState {
-	return MergeMethodsState{AllowMergeCommit: true, AllowSquashMerge: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE", SquashCommitNormalization: CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}, MergeCommitNormalization: CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commit.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}}
+	return MergeMethodsState{AllowMergeCommit: true, AllowSquashMerge: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE", SquashCommitNormalization: CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}, MergeCommitNormalization: CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commits.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}}
 }
 
 func commitComparisonIntent(menu CommitMessageMenu, choice string) RepositoryDeclaration {

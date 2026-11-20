@@ -48,8 +48,8 @@ UI paths use the exact UI wording converted to snake_case. In this table `A` mea
 | Pull Requests / Always suggest updating pull request branches | `G.pull_requests.always_suggest_updating_pull_request_branches` | GraphQL `allowUpdateBranch` / REST `allow_update_branch` |
 | Pull Requests / Allow auto-merge | `G.pull_requests.allow_auto_merge` | GraphQL `autoMergeAllowed` / REST `allow_auto_merge` |
 | Pull Requests / Automatically delete head branches | `G.pull_requests.automatically_delete_head_branches` | GraphQL `deleteBranchOnMerge` / REST `delete_branch_on_merge` |
-| Merge commits / Default commit message | `G.pull_requests.merge_commit.default_commit_message` | GraphQL `mergeCommitTitle` + `mergeCommitMessage` / REST `merge_commit_title` + `merge_commit_message` |
-| Squash merging / Default commit message | `G.pull_requests.squash_merge.default_commit_message` | GraphQL `squashMergeCommitTitle` + `squashMergeCommitMessage` / REST `squash_merge_commit_title` + `squash_merge_commit_message` |
+| Merge commits / Default commit message | `G.pull_requests.merge_commits.default_commit_message` | GraphQL `mergeCommitTitle` + `mergeCommitMessage` / REST `merge_commit_title` + `merge_commit_message` |
+| Squash merging / Default commit message | `G.pull_requests.squash_merging.default_commit_message` | GraphQL `squashMergeCommitTitle` + `squashMergeCommitMessage` / REST `squash_merge_commit_title` + `squash_merge_commit_message` |
 | Commits / Require contributors to sign off on web-based commits | `G.commits.require_contributors_to_sign_off_on_web_based_commits` | REST `web_commit_signoff_required` |
 | Danger Zone / Archive this repository | `G.danger_zone.archive_this_repository` | REST `archived`; retain existing identity/preflight/readback lifecycle sequencing |
 | Labels / Name | `repository.labels[].name` | API `name` on read/create, `new_name` on update |

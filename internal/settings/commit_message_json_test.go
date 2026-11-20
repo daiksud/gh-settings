@@ -10,7 +10,7 @@ import (
 func TestCommitMessageNormalizationJSONRequiresAcquiredStrings(t *testing.T) {
 	for _, member := range []string{"path", "raw_title", "raw_message", "fallback"} {
 		for _, invalid := range []any{nil, false, float64(1), []any{}, map[string]any{}} {
-			fields := map[string]any{"path": "repository.settings.general.pull_requests.squash_merge.default_commit_message", "raw_title": "", "raw_message": "", "fallback": "default_message"}
+			fields := map[string]any{"path": "repository.settings.general.pull_requests.squash_merging.default_commit_message", "raw_title": "", "raw_message": "", "fallback": "default_message"}
 			fields[member] = invalid
 			data, _ := json.Marshal(fields)
 			before := CommitMessageNormalization{Path: "unchanged", RawTitle: "unchanged title", RawMessage: "unchanged message", Fallback: uimodel.DefaultMessage}
@@ -19,7 +19,7 @@ func TestCommitMessageNormalizationJSONRequiresAcquiredStrings(t *testing.T) {
 				t.Fatalf("invalid metadata accepted or partially assigned: %s %+v %v", data, got, err)
 			}
 		}
-		fields := map[string]any{"path": "repository.settings.general.pull_requests.squash_merge.default_commit_message", "raw_title": "", "raw_message": "", "fallback": "default_message"}
+		fields := map[string]any{"path": "repository.settings.general.pull_requests.squash_merging.default_commit_message", "raw_title": "", "raw_message": "", "fallback": "default_message"}
 		delete(fields, member)
 		data, _ := json.Marshal(fields)
 		var got CommitMessageNormalization
@@ -27,7 +27,7 @@ func TestCommitMessageNormalizationJSONRequiresAcquiredStrings(t *testing.T) {
 			t.Fatalf("missing metadata member became acquired empty: %s", data)
 		}
 	}
-	for _, data := range []string{`null`, `[]`, `{"path":"repository.settings.general.pull_requests.squash_merge.default_commit_message","raw_title":"","raw_message":"","fallback":"default_message","unknown_member":"value"}`} {
+	for _, data := range []string{`null`, `[]`, `{"path":"repository.settings.general.pull_requests.squash_merging.default_commit_message","raw_title":"","raw_message":"","fallback":"default_message","unknown_member":"value"}`} {
 		var got CommitMessageNormalization
 		if err := json.Unmarshal([]byte(data), &got); err == nil {
 			t.Fatal("unsupported metadata shape accepted", data)
@@ -36,7 +36,7 @@ func TestCommitMessageNormalizationJSONRequiresAcquiredStrings(t *testing.T) {
 }
 
 func TestCommitMessageNormalizationJSONRetainsExplicitEmptyPair(t *testing.T) {
-	want := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", RawTitle: "", RawMessage: "", Fallback: uimodel.DefaultMessage}
+	want := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", RawTitle: "", RawMessage: "", Fallback: uimodel.DefaultMessage}
 	data, err := json.Marshal(want)
 	if err != nil {
 		t.Fatal(err)

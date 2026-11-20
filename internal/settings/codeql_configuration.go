@@ -53,7 +53,7 @@ func (d CodeQLConfigurationDeclaration) Validate() error {
 		}
 	}
 	if d.QuerySuite != nil && *d.QuerySuite != "default" && *d.QuerySuite != "extended" {
-		return fmt.Errorf("CodeQL query_suite must be default or extended")
+		return fmt.Errorf("CodeQL query_suites must be default or extended")
 	}
 	if d.ThreatModel != nil && *d.ThreatModel != "remote_sources" && *d.ThreatModel != "remote_and_local_sources" {
 		return fmt.Errorf("CodeQL threat_model must be remote_sources or remote_and_local_sources")

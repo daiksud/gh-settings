@@ -33,7 +33,7 @@ The following paths are relative to `repository.settings.general`:
 | `features.issue_permissions.creation_allowed_by`, `features.pull_request_permissions.creation_allowed_by` | `all_users` or `collaborators_only` |
 | `pull_requests.allow_merge_commits`, `pull_requests.allow_squash_merging`, `pull_requests.allow_rebase_merging` | boolean |
 | `pull_requests.always_suggest_updating_pull_request_branches`, `pull_requests.allow_auto_merge`, `pull_requests.automatically_delete_head_branches` | boolean |
-| `pull_requests.merge_commit.default_commit_message`, `pull_requests.squash_merge.default_commit_message` | UI menu choice below |
+| `pull_requests.merge_commits.default_commit_message`, `pull_requests.squash_merging.default_commit_message` | UI menu choice below |
 | `commits.require_contributors_to_sign_off_on_web_based_commits` | boolean |
 | `danger_zone.archive_this_repository` | boolean; automatic export |
 | `releases.enable_release_immutability` | boolean; automatic export |

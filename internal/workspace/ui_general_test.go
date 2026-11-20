@@ -29,9 +29,9 @@ repository:
                 always_suggest_updating_pull_request_branches: false
                 allow_auto_merge: false
                 automatically_delete_head_branches: false
-                merge_commit:
+                merge_commits:
                     default_commit_message: pull_request_title_and_description
-                squash_merge:
+                squash_merging:
                     default_commit_message: pull_request_title_and_commit_details
             commits:
                 require_contributors_to_sign_off_on_web_based_commits: false
@@ -48,7 +48,7 @@ func TestUIConfigGeneralRoundTrip(t *testing.T) {
 		t.Fatal("General settings were omitted")
 	}
 	g := got.Settings.General
-	if g.TemplateRepository == nil || *g.TemplateRepository || g.Features.Wikis == nil || *g.Features.Wikis || g.PullRequests.AllowAutoMerge == nil || *g.PullRequests.AllowAutoMerge || g.PullRequests.MergeCommit.DefaultCommitMessage == nil || *g.PullRequests.MergeCommit.DefaultCommitMessage != "pull_request_title_and_description" {
+	if g.TemplateRepository == nil || *g.TemplateRepository || g.Features.Wikis == nil || *g.Features.Wikis || g.PullRequests.AllowAutoMerge == nil || *g.PullRequests.AllowAutoMerge || g.PullRequests.MergeCommits.DefaultCommitMessage == nil || *g.PullRequests.MergeCommits.DefaultCommitMessage != "pull_request_title_and_description" {
 		t.Fatalf("lost nested General intent: %#v", g)
 	}
 	encoded, err := EncodeConfig(got)
@@ -74,7 +74,7 @@ func TestUIConfigGeneralRejectsUnknownAndWrongTypes(t *testing.T) {
 		"allow_merge_commit: true", "future: true", "features: {has_issues: false}",
 		"features: {issues: 'false'}", "features: {issues: yes}",
 		"features: {issues: null}", "features: null", "default_branch: 3",
-		"pull_requests: {merge_commit: {default_commit_message: false}}",
+		"pull_requests: {merge_commits: {default_commit_message: false}}",
 		"pull_requests: {allow_auto_merge: [false]}",
 	} {
 		t.Run(fields, func(t *testing.T) {

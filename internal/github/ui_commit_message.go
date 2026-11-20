@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
+	"strings"
 )
 
 func declareCommitMessage(choice *uimodel.CommitMessageChoice, allowed *bool, menu settings.CommitMessageMenu) (*string, *string, error) {
@@ -11,12 +12,12 @@ func declareCommitMessage(choice *uimodel.CommitMessageChoice, allowed *bool, me
 		return nil, nil, nil
 	}
 	if allowed != nil && !*allowed {
-		return nil, nil, fmt.Errorf("general.pull_requests.%s.default_commit_message requires the merge method to be enabled", menu)
+		return nil, nil, fmt.Errorf("%s requires the merge method to be enabled", strings.TrimPrefix(menu.Path(), "repository.settings."))
 	}
 	if pair, ok := settings.CommitMessagePairForChoice(menu, *choice); ok {
 		return &pair.Title, &pair.Message, nil
 	}
-	return nil, nil, fmt.Errorf("unsupported general.pull_requests.%s.default_commit_message %q", menu, *choice)
+	return nil, nil, fmt.Errorf("unsupported %s %q", strings.TrimPrefix(menu.Path(), "repository.settings."), *choice)
 }
 
 func observeCommitMessage(title, message *string, menu settings.CommitMessageMenu) (*uimodel.CommitMessageChoice, error) {

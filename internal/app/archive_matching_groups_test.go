@@ -67,7 +67,7 @@ func TestArchivedMixedGroupsRequireCompleteMatchingEvidence(t *testing.T) {
 						if !ok {
 							t.Fatal("fixture choice")
 						}
-						merge.MergeCommitNormalization = settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commit.default_commit_message", RawTitle: "FUTURE", RawMessage: "FUTURE", Fallback: fallback}
+						merge.MergeCommitNormalization = settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commits.default_commit_message", RawTitle: "FUTURE", RawMessage: "FUTURE", Fallback: fallback}
 					}
 					return settings.NewRepositoryObservation(&settings.RepositoryState{Description: value, HasIssues: true}, merge, nil), nil
 				},

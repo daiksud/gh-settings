@@ -95,8 +95,8 @@ func TestExportCommitMenuWarningsRetainVisibleRawSidecars(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			source := settings.MergeMethodsState{AllowSquashMerge: test.squash, AllowMergeCommit: test.merge, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}
 			if test.normalized {
-				source.SquashCommitNormalization = settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: "default_message"}
-				source.MergeCommitNormalization = settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commit.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: "default_message"}
+				source.SquashCommitNormalization = settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: "default_message"}
+				source.MergeCommitNormalization = settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commits.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: "default_message"}
 			}
 			observed := settings.NewRepositoryObservation(&settings.RepositoryState{DefaultBranch: "main"}, &source, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(settings.SponsorshipsState{Enabled: false})
 			cause := errors.New("acquisition failed")
@@ -145,10 +145,10 @@ func TestExportCommitMenuWarningsRetainVisibleRawSidecars(t *testing.T) {
 							return err
 						}
 						pulls := ui.Settings.General.PullRequests
-						if (pulls.SquashMerge.DefaultCommitMessage != nil) != test.squash || (pulls.MergeCommit.DefaultCommitMessage != nil) != test.merge {
+						if (pulls.SquashMerging.DefaultCommitMessage != nil) != test.squash || (pulls.MergeCommits.DefaultCommitMessage != nil) != test.merge {
 							t.Fatal("hidden menu became an exported choice", ui)
 						}
-						if test.squash && *pulls.SquashMerge.DefaultCommitMessage != "default_message" || test.merge && *pulls.MergeCommit.DefaultCommitMessage != "default_message" {
+						if test.squash && *pulls.SquashMerging.DefaultCommitMessage != "default_message" || test.merge && *pulls.MergeCommits.DefaultCommitMessage != "default_message" {
 							t.Fatal("effective export choice lost", ui)
 						}
 						saved = true
@@ -189,7 +189,7 @@ func TestPlanRetainsNormalizedCommitMenuDecisions(t *testing.T) {
 		{settings.SquashCommitMenu, "COMMIT_OR_PR_TITLE", "COMMIT_MESSAGES", []string{"repository.squash_merge_commit_title", "repository.squash_merge_commit_message"}},
 		{settings.MergeCommitMenu, "MERGE_MESSAGE", "PR_TITLE", []string{"repository.merge_commit_title", "repository.merge_commit_message"}},
 	} {
-		state := settings.MergeMethodsState{AllowMergeCommit: true, AllowSquashMerge: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE", SquashCommitNormalization: settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: "default_message"}, MergeCommitNormalization: settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commit.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: "default_message"}}
+		state := settings.MergeMethodsState{AllowMergeCommit: true, AllowSquashMerge: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE", SquashCommitNormalization: settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: "default_message"}, MergeCommitNormalization: settings.CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commits.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: "default_message"}}
 		var desired settings.Declaration
 		if test.menu == settings.SquashCommitMenu {
 			desired.Repository.SquashMergeCommitTitle, desired.Repository.SquashMergeCommitMessage = &test.title, &test.message

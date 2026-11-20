@@ -391,10 +391,30 @@ the selected published package and compare a fresh read-only plan. No release,
 live apply, permission change or workflow repin to development main is implied.
 
 The [test-only projection](../../tests/github-actions/managed_immutability_test.go)
-guards the v0.45.0 pin and obsolete-key rejection, renames only this control and
-proves byte-identical reversal plus unchanged observed intent. Remove it when a
+guards the v0.45.0 pin and obsolete-key rejection, projects only unpublished UI
+key renames and proves byte-identical reversal plus unchanged observed intent. Remove it when a
 compatible package and canonical operational file are adopted. Product decoding
 has no fallback; local owner-authenticated plans are not operating-App evidence.
+
+### Plural UI keys and operational package
+
+Current source uses `general.pull_requests.merge_commits` and
+`general.pull_requests.squash_merging`, each retaining `default_commit_message`.
+CodeQL default configuration uses `query_suites`, still a single `default` or
+`extended` scalar. Former `merge_commit`, `squash_merge` and YAML `query_suite`
+keys are rejected, including old/new names together. REST and native report
+fields are unchanged. There is no product alias or migration.
+
+The operational file and both caller pins remain unchanged at v0.45.0. That
+package accepts the old spellings, so its declared `squash_merge` and
+`query_suite` remain until a compatible immutable release is separately adopted.
+Merge-commit defaults remain omitted while disabled; no new intent is invented.
+The pin-limited test projection handles those two declared keys together with
+the release-immutability key from PR #873. Byte-identical reversal and native policy checks
+prove the fixture did not add/change values, lists, IDs, comments or omissions.
+Remove the projection with the eventual compatible adoption; it is not a runtime
+fallback. Verify each package's accepted format and read-only plan separately.
+No release, live apply/prune, permissions or protections are changed by this work.
 
 ### Required-check verification
 

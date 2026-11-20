@@ -28,7 +28,7 @@ func TestSquashObservationNormalizationRetainsTypedPair(t *testing.T) {
 		wantPair := settings.CommitMessagePair{Title: test.title, Message: test.message}
 		if test.fallback {
 			wantPair = settings.CommitMessagePair{Title: "COMMIT_OR_PR_TITLE", Message: "COMMIT_MESSAGES"}
-			if result.Normalization.Path != "repository.settings.general.pull_requests.squash_merge.default_commit_message" || result.Normalization.RawTitle != test.title || result.Normalization.RawMessage != test.message || result.Normalization.Fallback != "default_message" {
+			if result.Normalization.Path != "repository.settings.general.pull_requests.squash_merging.default_commit_message" || result.Normalization.RawTitle != test.title || result.Normalization.RawMessage != test.message || result.Normalization.Fallback != "default_message" {
 				t.Fatal("raw pair was lost or collapsed", result.Normalization)
 			}
 		} else if result.Normalization != (settings.CommitMessageNormalization{}) {
@@ -74,7 +74,7 @@ func TestMergeObservationNormalizationRetainsTypedPair(t *testing.T) {
 		wantPair := settings.CommitMessagePair{Title: test.title, Message: test.message}
 		if test.fallback {
 			wantPair = settings.CommitMessagePair{Title: "MERGE_MESSAGE", Message: "PR_TITLE"}
-			if result.Normalization.Path != "repository.settings.general.pull_requests.merge_commit.default_commit_message" || result.Normalization.RawTitle != test.title || result.Normalization.RawMessage != test.message || result.Normalization.Fallback != "default_message" {
+			if result.Normalization.Path != "repository.settings.general.pull_requests.merge_commits.default_commit_message" || result.Normalization.RawTitle != test.title || result.Normalization.RawMessage != test.message || result.Normalization.Fallback != "default_message" {
 				t.Fatal("merge raw pair was lost or used squash fallback", result.Normalization)
 			}
 		} else if result.Normalization != (settings.CommitMessageNormalization{}) {

@@ -8,7 +8,7 @@ import (
 
 func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 	for _, input := range []string{"pull_request_title", "pull_request_title_and_description"} {
-		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {merge_commit: {default_commit_message: "+input+"}}}}}", true)
+		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {merge_commits: {default_commit_message: "+input+"}}}}}", true)
 		calls := 0
 		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
@@ -28,7 +28,7 @@ func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 			t.Fatalf("apply=%+v err=%v", result, err)
 		}
 	}
-	for _, input := range []string{"merge_commit_message: BLANK", "merge_commit: {default_commit_message: null}", "merge_commit: {default_commit_message: ''}"} {
+	for _, input := range []string{"merge_commit_message: BLANK", "merge_commits: {default_commit_message: null}", "merge_commits: {default_commit_message: ''}"} {
 		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {"+input+"}}}}", false)
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached target/read")

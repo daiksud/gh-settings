@@ -257,7 +257,7 @@ Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/work
 
 ## CodeQL default configuration controls
 
-- Optional `languages`, `query_suite`, `runner` (owned type/label pair) and `threat_model` live under `repository.settings.advanced_security.code_security.codeql_analysis`. Omission preserves each control. Language sets are nonempty/unique and compare without order. All choices and runner-label requirements are strict.
+- Optional `languages`, `query_suites`, `runner` (owned type/label pair) and `threat_model` live under `repository.settings.advanced_security.code_security.codeql_analysis`. Omission preserves each control. Language sets are nonempty/unique and compare without order. All choices and runner-label requirements are strict.
 - Configuration requires complete personally owned public, already-configured default setup observations. Explicit disable plus configuration fails local validation. Declaring true does not auto-enable the prerequisite when configuring; configuration runs first and fails safely if not acquired. No advanced workflow files or runner capacity are created.
 - Ordinary export observes CodeQL state and details from one GET. Confirmed not-configured exports false and removes incompatible details with info; unknown state retains prior intent. Configured state exports true and readable details.
 - Apply fresh-reads, skips matching configuration, sends only declared members in one PATCH, and compares all four controls on independent readback, including omitted companions. Standard runner owns clearing the old label with null. Pending/unknown effects fail without retry/rollback; asynchronous validation/analysis and Actions consumption can occur, and scan completion is never claimed.

@@ -12,8 +12,8 @@ func TestNormalizedCommitMenuDecisionOwnsBothNativeFields(t *testing.T) {
 		path, rawTitle, rawMessage string
 		titleField, messageField   string
 	}{
-		{SquashCommitMenu, "repository.settings.general.pull_requests.squash_merge.default_commit_message", "COMMIT_OR_PR_TITLE", "BLANK", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message"},
-		{MergeCommitMenu, "repository.settings.general.pull_requests.merge_commit.default_commit_message", "MERGE_MESSAGE", "BLANK", "repository.merge_commit_title", "repository.merge_commit_message"},
+		{SquashCommitMenu, "repository.settings.general.pull_requests.squash_merging.default_commit_message", "COMMIT_OR_PR_TITLE", "BLANK", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message"},
+		{MergeCommitMenu, "repository.settings.general.pull_requests.merge_commits.default_commit_message", "MERGE_MESSAGE", "BLANK", "repository.merge_commit_title", "repository.merge_commit_message"},
 	} {
 		for _, desired := range []uimodel.CommitMessageChoice{uimodel.DefaultMessage, uimodel.PullRequestTitle} {
 			normalization := CommitMessageNormalization{Path: test.path, RawTitle: test.rawTitle, RawMessage: test.rawMessage, Fallback: uimodel.DefaultMessage}
@@ -36,14 +36,14 @@ func TestNormalizedCommitMenuDecisionOwnsBothNativeFields(t *testing.T) {
 			}
 		}
 	}
-	empty := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", Fallback: uimodel.DefaultMessage}
+	empty := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", Fallback: uimodel.DefaultMessage}
 	if decision, err := NewNormalizedCommitMessageChange(SquashCommitMenu, empty, uimodel.DefaultMessage); err != nil || decision.Normalization() != empty {
 		t.Fatal("acquired empty pair treated as missing", decision, err)
 	}
 }
 
 func TestNormalizedCommitMenuDecisionRejectsForgedProvenance(t *testing.T) {
-	valid := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merge.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}
+	valid := CommitMessageNormalization{Path: "repository.settings.general.pull_requests.squash_merging.default_commit_message", RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}
 	for _, test := range []struct {
 		menu          CommitMessageMenu
 		normalization CommitMessageNormalization
@@ -57,7 +57,7 @@ func TestNormalizedCommitMenuDecisionRejectsForgedProvenance(t *testing.T) {
 		{SquashCommitMenu, CommitMessageNormalization{Path: valid.Path, RawTitle: "COMMIT_OR_PR_TITLE", RawMessage: "COMMIT_MESSAGES", Fallback: valid.Fallback}, uimodel.DefaultMessage},
 		{SquashCommitMenu, CommitMessageNormalization{Path: valid.Path, RawTitle: "PR_TITLE", RawMessage: "BLANK", Fallback: valid.Fallback}, uimodel.DefaultMessage},
 		{SquashCommitMenu, valid, uimodel.CommitMessageChoice("FUTURE_CHOICE")},
-		{MergeCommitMenu, CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commit.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}, uimodel.PullRequestTitleAndCommitDetails},
+		{MergeCommitMenu, CommitMessageNormalization{Path: "repository.settings.general.pull_requests.merge_commits.default_commit_message", RawTitle: "MERGE_MESSAGE", RawMessage: "BLANK", Fallback: uimodel.DefaultMessage}, uimodel.PullRequestTitleAndCommitDetails},
 	} {
 		if decision, err := NewNormalizedCommitMessageChange(test.menu, test.normalization, test.desired); err == nil {
 			t.Fatalf("forged normalized menu accepted: %+v %+v", test, decision)

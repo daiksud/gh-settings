@@ -11,8 +11,10 @@ const (
 
 func (menu CommitMessageMenu) Path() string {
 	switch menu {
-	case MergeCommitMenu, SquashCommitMenu:
-		return "repository.settings.general.pull_requests." + string(menu) + ".default_commit_message"
+	case MergeCommitMenu:
+		return "repository.settings.general.pull_requests.merge_commits.default_commit_message"
+	case SquashCommitMenu:
+		return "repository.settings.general.pull_requests.squash_merging.default_commit_message"
 	default:
 		return ""
 	}

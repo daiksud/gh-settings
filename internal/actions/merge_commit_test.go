@@ -33,7 +33,7 @@ func TestMergeCommitReportAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html.UnescapeString(rendered), `repository.settings.general.pull_requests.merge_commit.default_commit_message: "default_message" → "pull_request_title"`) {
+	if !strings.Contains(html.UnescapeString(rendered), `repository.settings.general.pull_requests.merge_commits.default_commit_message: "default_message" → "pull_request_title"`) {
 		t.Fatalf("summary=%s", rendered)
 	}
 	for _, field := range []string{"repository.merge_commit_title", "repository.merge_commit_message"} {

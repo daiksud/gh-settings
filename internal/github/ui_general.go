@@ -31,11 +31,11 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 		Archived:                 copyUIValue(general.DangerZone.ArchiveThisRepository),
 	}
 	var err error
-	result.MergeCommitTitle, result.MergeCommitMessage, err = declareCommitMessage(general.PullRequests.MergeCommit.DefaultCommitMessage, general.PullRequests.AllowMergeCommits, settings.MergeCommitMenu)
+	result.MergeCommitTitle, result.MergeCommitMessage, err = declareCommitMessage(general.PullRequests.MergeCommits.DefaultCommitMessage, general.PullRequests.AllowMergeCommits, settings.MergeCommitMenu)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
-	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage, err = declareCommitMessage(general.PullRequests.SquashMerge.DefaultCommitMessage, general.PullRequests.AllowSquashMerging, settings.SquashCommitMenu)
+	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage, err = declareCommitMessage(general.PullRequests.SquashMerging.DefaultCommitMessage, general.PullRequests.AllowSquashMerging, settings.SquashCommitMenu)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
@@ -81,11 +81,11 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 		DangerZone: uimodel.DangerZone{ArchiveThisRepository: copyUIValue(state.Archived)},
 	}
 	var err error
-	result.PullRequests.MergeCommit.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, settings.MergeCommitMenu)
+	result.PullRequests.MergeCommits.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, settings.MergeCommitMenu)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
-	result.PullRequests.SquashMerge.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, settings.SquashCommitMenu)
+	result.PullRequests.SquashMerging.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, settings.SquashCommitMenu)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
@@ -104,10 +104,10 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 		result.Features.PullRequestPermissions.CreationAllowedBy = nil
 	}
 	if state.AllowMergeCommit != nil && !*state.AllowMergeCommit {
-		result.PullRequests.MergeCommit.DefaultCommitMessage = nil
+		result.PullRequests.MergeCommits.DefaultCommitMessage = nil
 	}
 	if state.AllowSquashMerge != nil && !*state.AllowSquashMerge {
-		result.PullRequests.SquashMerge.DefaultCommitMessage = nil
+		result.PullRequests.SquashMerging.DefaultCommitMessage = nil
 	}
 	return PreparedGeneral{General: result, NativeConditionalValues: GeneralConditionalValues{
 		IssueCreationPolicy: copyUIValue(state.IssueCreationPolicy), PullRequestCreationPolicy: copyUIValue(state.PullRequestCreationPolicy),

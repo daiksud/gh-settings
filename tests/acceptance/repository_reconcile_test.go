@@ -213,9 +213,9 @@ repository:
         automatically_delete_head_branches: true
         allow_auto_merge: false
         always_suggest_updating_pull_request_branches: true
-        squash_merge:
+        squash_merging:
           default_commit_message: default_message
-        merge_commit:
+        merge_commits:
           default_commit_message: pull_request_title_and_description
 `
 	if err := writeSettingsFile(fixture.work, input); err != nil {

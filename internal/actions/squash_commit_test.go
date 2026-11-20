@@ -33,7 +33,7 @@ func TestSquashCommitReportAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html.UnescapeString(rendered), `repository.settings.general.pull_requests.squash_merge.default_commit_message: "default_message" → "pull_request_title"`) {
+	if !strings.Contains(html.UnescapeString(rendered), `repository.settings.general.pull_requests.squash_merging.default_commit_message: "default_message" → "pull_request_title"`) {
 		t.Fatalf("summary=%s", rendered)
 	}
 	for _, field := range []string{"repository.squash_merge_commit_title", "repository.squash_merge_commit_message"} {

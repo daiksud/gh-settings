@@ -18,5 +18,9 @@ func CodeQLConfigurationLine(c settings.CodeQLConfigurationChange) string {
 		return strings.TrimSuffix(out.String(), "\n")
 	}
 	before, after := encode(b), encode(a)
-	return fmt.Sprintf("%s.%s: %s → %s", settings.CodeQLConfigurationPath, c.Field(), before, after)
+	field := c.Field()
+	if field == "query_suite" {
+		field = "query_suites"
+	}
+	return fmt.Sprintf("%s.%s: %s → %s", settings.CodeQLConfigurationPath, field, before, after)
 }

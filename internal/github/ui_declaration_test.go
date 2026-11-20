@@ -18,7 +18,7 @@ func TestDeclarationFromUIAboutAndGeneral(t *testing.T) {
 		Settings: &uimodel.RepositorySettings{General: &uimodel.General{
 			TemplateRepository: &no, DefaultBranch: &branch,
 			Features:     uimodel.Features{Issues: &yes},
-			PullRequests: uimodel.PullRequests{AllowMergeCommits: &yes, MergeCommit: uimodel.CommitMessage{DefaultCommitMessage: &choice}},
+			PullRequests: uimodel.PullRequests{AllowMergeCommits: &yes, MergeCommits: uimodel.CommitMessage{DefaultCommitMessage: &choice}},
 		}},
 	}
 	title, message := "PR_TITLE", "BLANK"
@@ -48,7 +48,7 @@ func TestDeclarationFromUIRejectsInvalidChoiceAndDependencies(t *testing.T) {
 	creation := uimodel.AllUsers
 	no := false
 	for _, general := range []uimodel.General{
-		{PullRequests: uimodel.PullRequests{MergeCommit: uimodel.CommitMessage{DefaultCommitMessage: &apiChoice}}},
+		{PullRequests: uimodel.PullRequests{MergeCommits: uimodel.CommitMessage{DefaultCommitMessage: &apiChoice}}},
 		{Features: uimodel.Features{Issues: &no, IssuePermissions: uimodel.CreationPermissions{CreationAllowedBy: &creation}}},
 	} {
 		got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &validAbout}, Settings: &uimodel.RepositorySettings{General: &general}})

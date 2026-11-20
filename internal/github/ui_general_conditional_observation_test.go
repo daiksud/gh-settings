@@ -14,10 +14,10 @@ func TestUIGeneralConditionalObservationVisibilityAndRaw(t *testing.T) {
 			t.Fatal(err)
 		}
 		hidden := gate != nil && !*gate
-		if (view.Features.IssuePermissions.CreationAllowedBy == nil) != hidden || (view.Features.PullRequestPermissions.CreationAllowedBy == nil) != hidden || (view.PullRequests.MergeCommit.DefaultCommitMessage == nil) != hidden || (view.PullRequests.SquashMerge.DefaultCommitMessage == nil) != hidden {
+		if (view.Features.IssuePermissions.CreationAllowedBy == nil) != hidden || (view.Features.PullRequestPermissions.CreationAllowedBy == nil) != hidden || (view.PullRequests.MergeCommits.DefaultCommitMessage == nil) != hidden || (view.PullRequests.SquashMerging.DefaultCommitMessage == nil) != hidden {
 			t.Fatal("conditional visibility incorrect", view)
 		}
-		if !hidden && (string(*view.Features.IssuePermissions.CreationAllowedBy) != "all_users" || string(*view.Features.PullRequestPermissions.CreationAllowedBy) != "collaborators_only" || string(*view.PullRequests.MergeCommit.DefaultCommitMessage) != "pull_request_title_and_description" || string(*view.PullRequests.SquashMerge.DefaultCommitMessage) != "pull_request_title") {
+		if !hidden && (string(*view.Features.IssuePermissions.CreationAllowedBy) != "all_users" || string(*view.Features.PullRequestPermissions.CreationAllowedBy) != "collaborators_only" || string(*view.PullRequests.MergeCommits.DefaultCommitMessage) != "pull_request_title_and_description" || string(*view.PullRequests.SquashMerging.DefaultCommitMessage) != "pull_request_title") {
 			t.Fatal(view)
 		}
 		raw := view.NativeConditionalValues
@@ -34,7 +34,7 @@ func TestUIGeneralConditionalObservationVisibilityAndRaw(t *testing.T) {
 	}
 
 	mixed, err := GeneralObservation(settings.RepositoryDeclaration{HasIssues: pointer(false), HasPullRequests: pointer(true), AllowMergeCommit: pointer(false), AllowSquashMerge: pointer(true), IssueCreationPolicy: pointer("ALL"), PullRequestCreationPolicy: pointer("COLLABORATORS_ONLY"), MergeCommitTitle: pointer("PR_TITLE"), MergeCommitMessage: pointer("PR_BODY"), SquashMergeCommitTitle: pointer("PR_TITLE"), SquashMergeCommitMessage: pointer("BLANK")})
-	if err != nil || mixed.Features.IssuePermissions.CreationAllowedBy != nil || mixed.Features.PullRequestPermissions.CreationAllowedBy == nil || mixed.PullRequests.MergeCommit.DefaultCommitMessage != nil || mixed.PullRequests.SquashMerge.DefaultCommitMessage == nil {
+	if err != nil || mixed.Features.IssuePermissions.CreationAllowedBy != nil || mixed.Features.PullRequestPermissions.CreationAllowedBy == nil || mixed.PullRequests.MergeCommits.DefaultCommitMessage != nil || mixed.PullRequests.SquashMerging.DefaultCommitMessage == nil {
 		t.Fatal("independent conditional gates crossed", mixed, err)
 	}
 	empty, err := GeneralObservation(settings.RepositoryDeclaration{})
