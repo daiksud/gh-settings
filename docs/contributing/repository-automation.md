@@ -178,8 +178,8 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The two settings callers select the immutable v0.44.1 package at
-`2079ede46bcb3369d9575c1941ac88e4a37c081d` so the operational codec matches the
+The two settings callers select the immutable v0.45.0 package at
+`b074b1de2e7cbc7f623cc0e31bcab71d681d166d` so the operational codec matches the
 expanded declaration. Their events, credential sources, Environment and token
 permission requests are unchanged; pin adoption grants no access and dispatches
 no apply.
@@ -358,30 +358,21 @@ do not configure live Environment, token, ruleset, or review settings.
 
 ### Moderation format and operational package
 
-Current source accepts and exports
-`repository.settings.moderation.interaction_limits`. Its direct predecessor is
-rejected without an alias, including when both paths are present. The tracked
-self-management YAML deliberately retains `repository.settings.interaction_limits`
-because both protected workflows consume the immutable v0.44.1 package, which
-rejects the new group. Source validation of that unchanged operational file
-therefore fails at the known format boundary; `settings-pr` validates it with the
-actual pinned published package. Neither workflow is repinned to development main.
+The operational declaration and both settings workflows now use the published
+v0.45.0 package and canonical
+`repository.settings.moderation.interaction_limits` namespace. The adoption wraps
+only the previous Interaction limits mapping in `moderation`, in its existing
+sidebar position after Collaborators. Values, lists, IDs, comments and all other
+settings remain unchanged. The former direct key is rejected without an alias;
+v0.44.1 does not accept the canonical group.
 
-A future, separately reviewed adoption must select a compatible immutable
-published package first. The configuration change is limited to wrapping the
-existing Interaction limits mapping in `moderation`, at the same sidebar position
-after Collaborators. Keep every value, list, ID, comment and other mapping intact.
-Validate with the adopted package and compare a fresh read-only plan before
-merging; this is not authorization to publish or apply settings. There is no
-automatic file migration or legacy input path in the product.
-
-The [operational migration fixture](../../tests/github-actions/managed_moderation_test.go)
-projects that one-file candidate only in tests, while explicitly guarding the
-existing package pin and rejection of the original by current source. It checks
-unchanged cap/list ownership and all sibling semantics. Remove this temporary
-projection when the compatible package and canonical operational file are adopted.
-Local released-old-file and candidate-canonical-file plans are distinct from
-App-authenticated hosted evidence; the hosted PR job still validates only.
+The temporary test-only migration projection is removed. Operational fixtures
+now decode the actual tracked YAML directly and retain the independently observed
+cap/list policy checks. Validate with the selected published package and compare
+a fresh read-only plan before merging any further adoption. Local owner-authenticated
+plans do not prove the operating App's permissions; the hosted PR job still
+validates only. Package adoption does not dispatch the manual apply workflow or
+authorize additional settings, credentials, permissions or live mutations.
 
 ### Required-check verification
 
