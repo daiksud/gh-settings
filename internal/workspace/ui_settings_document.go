@@ -6,21 +6,23 @@ import "github.com/daiksud/gh-settings/internal/settings/uimodel"
 // remain independent of YAML grouping; they are never decoded as a second format.
 // Every scalar pointer preserves omission independently from explicit false/zero.
 type uiSettingsDocument struct {
-	Webhooks              *[]uimodel.Webhook
-	DeployKeys            *[]uimodel.DeployKey
-	Autolinks             *[]uimodel.Autolink
-	BranchProtectionRules *[]uimodel.BranchProtectionRule
-	Collaborators         *[]uimodel.Collaborator
-	InteractionLimits     *uimodel.InteractionLimits
-	Agents                *uimodel.AgentsSettings
-	Copilot               *uimodel.CopilotSettings
 	General               *uiGeneralDocument
+	Collaborators         *[]uimodel.Collaborator
+	Moderation            *uiModerationDocument
 	Rulesets              *[]uimodel.Ruleset
+	BranchProtectionRules *[]uimodel.BranchProtectionRule
 	Actions               *uiActionsDocument
-	AdvancedSecurity      *uiAdvancedSecurityDocument
-	Pages                 *uimodel.Pages
+	Webhooks              *[]uimodel.Webhook
+	Copilot               *uimodel.CopilotSettings
 	Environments          *[]uimodel.Environment
+	Pages                 *uimodel.Pages
+	AdvancedSecurity      *uiAdvancedSecurityDocument
+	DeployKeys            *[]uimodel.DeployKey
+	Agents                *uimodel.AgentsSettings
+	Autolinks             *[]uimodel.Autolink
 }
+
+type uiModerationDocument struct{ InteractionLimits *uimodel.InteractionLimits }
 
 type uiGeneralDocument struct {
 	TemplateRepository *bool
@@ -81,8 +83,11 @@ type uiSecretProtectionDocument struct {
 }
 
 func (document uiSettingsDocument) model() uimodel.RepositorySettings {
-	result := uimodel.RepositorySettings{Webhooks: document.Webhooks, DeployKeys: document.DeployKeys, Collaborators: document.Collaborators, InteractionLimits: document.InteractionLimits, Agents: document.Agents, Copilot: document.Copilot,
+	result := uimodel.RepositorySettings{Webhooks: document.Webhooks, DeployKeys: document.DeployKeys, Collaborators: document.Collaborators, Agents: document.Agents, Copilot: document.Copilot,
 		Autolinks: document.Autolinks, BranchProtectionRules: document.BranchProtectionRules, Rulesets: document.Rulesets, Pages: document.Pages, Environments: document.Environments,
+	}
+	if document.Moderation != nil {
+		result.InteractionLimits = document.Moderation.InteractionLimits
 	}
 	if general := document.General; general != nil {
 		result.General = &uimodel.General{
@@ -137,7 +142,10 @@ func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 }
 
 func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDocument {
-	result := uiSettingsDocument{Webhooks: model.Webhooks, DeployKeys: model.DeployKeys, Autolinks: model.Autolinks, Collaborators: model.Collaborators, BranchProtectionRules: model.BranchProtectionRules, InteractionLimits: model.InteractionLimits, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
+	result := uiSettingsDocument{Webhooks: model.Webhooks, DeployKeys: model.DeployKeys, Autolinks: model.Autolinks, Collaborators: model.Collaborators, BranchProtectionRules: model.BranchProtectionRules, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
+	if model.InteractionLimits != nil {
+		result.Moderation = &uiModerationDocument{InteractionLimits: model.InteractionLimits}
+	}
 	if general := model.General; general != nil {
 		result.General = &uiGeneralDocument{
 			TemplateRepository: general.TemplateRepository, DefaultBranch: general.DefaultBranch,

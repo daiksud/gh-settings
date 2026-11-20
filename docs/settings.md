@@ -182,9 +182,9 @@ This section describes the accepted current v0 schema. Existing classic branch
 protection keys remain valid; acceptance does not include that family in
 [supported v1 scope](#feature-adoption-scope).
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `branch_protection_rules`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `branch_protection_rules`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `moderation.interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
-The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
+The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are generally omitted; Moderation is an explicit configuration group containing Interaction limits. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
 Under `repository.about`, `description` and `website` are strings, including `''`; `topics` is a direct string array. These translate to repository REST fields and the Topics endpoint. Nullable observed repository strings become empty strings through the existing reader; YAML null does not request that behavior.[^github-update-repository][^github-repository-openapi]
 
@@ -2485,23 +2485,30 @@ Acquisition failures make no Environment write. Later failures retain earlier or
 
 ## Persistent pull request limits
 
-Settings → Interaction limits → Pull request limits maps to:
+Settings → Moderation → Interaction limits → Pull request limits maps to:
 
 ```yaml
 repository:
   settings:
-    interaction_limits:
-      pull_request_limits:
-        limit_open_pull_requests_from_users_without_write_access: true
-        maximum_open_pull_requests_per_user: 2
-        count_draft_pull_requests_toward_the_limit: true
+    moderation:
+      interaction_limits:
+        pull_request_limits:
+          limit_open_pull_requests_from_users_without_write_access: true
+          maximum_open_pull_requests_per_user: 2
+          count_draft_pull_requests_toward_the_limit: true
 ```
 
 The enable and draft controls are optional booleans. The maximum is an optional
 integer from 1 through 1000. Omission leaves that control unmanaged, including
 latent maximum/draft values while disabled. Empty groups manage nothing. Null,
 quoted booleans/integers, fractions and API-shaped aliases are rejected.
-Moderation is a navigation category, not a configuration group.
+Moderation is the canonical configuration group. The former direct `repository.settings.interaction_limits` path is rejected, including declarations containing both paths. No input alias or automatic rewrite is provided.
+
+The published v0.44.1 package does not accept this current-source namespace.
+Use a compatible published CLI/Action before adopting it. This repository keeps
+its working operational declaration for that pinned package until publication
+and adoption can be reviewed separately; see the
+[operational format boundary](contributing/repository-automation.md#moderation-format-and-operational-package).
 
 Plan selects the cap endpoint only when a cap control is declared. Apply
 acquires fresh complete cap state, skips
@@ -2535,16 +2542,17 @@ readback does not establish enforcement against external actors. See the
 
 ### Pull request limit Exemption list
 
-`repository.settings.interaction_limits.pull_request_limits.exemption_list`
+`repository.settings.moderation.interaction_limits.pull_request_limits.exemption_list`
 manages the complete selected list of trusted User logins, independently of the
 three cap controls:
 
 ```yaml
 repository:
   settings:
-    interaction_limits:
-      pull_request_limits:
-        exemption_list: [trusted-user, another-user]
+    moderation:
+      interaction_limits:
+        pull_request_limits:
+          exemption_list: [trusted-user, another-user]
 ```
 
 Omission leaves the list unmanaged and makes no list request. An explicit list

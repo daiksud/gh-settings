@@ -7,9 +7,9 @@ import (
 )
 
 func TestPullRequestLimitsYAML(t *testing.T) {
-	prefix := "version: daiksud/gh-settings@v0\nrepository: {settings: {interaction_limits: {pull_request_limits: "
+	prefix := "version: daiksud/gh-settings@v0\nrepository: {settings: {moderation: {interaction_limits: {pull_request_limits: "
 	for _, body := range []string{`{limit_open_pull_requests_from_users_without_write_access: false}`, `{maximum_open_pull_requests_per_user: 1}`, `{maximum_open_pull_requests_per_user: 1000}`, `{count_draft_pull_requests_toward_the_limit: false}`, `{}`} {
-		ui, err := DecodeConfig([]byte(prefix + body + "}}}\n"))
+		ui, err := DecodeConfig([]byte(prefix + body + "}}}}\n"))
 		if err != nil {
 			t.Fatal(body, err)
 		}
@@ -26,7 +26,7 @@ func TestPullRequestLimitsYAML(t *testing.T) {
 		}
 	}
 	for _, body := range []string{`null`, `false`, `{enabled: false}`, `{max_open_pull_requests: 2}`, `{maximum_open_pull_requests_per_user: 0}`, `{maximum_open_pull_requests_per_user: 1001}`, `{maximum_open_pull_requests_per_user: '1'}`, `{maximum_open_pull_requests_per_user: 1.5}`, `{count_draft_pull_requests_toward_the_limit: null}`, `{limit_open_pull_requests_from_users_without_write_access: 'false'}`} {
-		ui, err := DecodeConfig([]byte(prefix + body + "}}}\n"))
+		ui, err := DecodeConfig([]byte(prefix + body + "}}}}\n"))
 		if err == nil {
 			_, err = github.DeclarationFromUI(ui)
 		}

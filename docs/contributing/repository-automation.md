@@ -356,6 +356,33 @@ referenced Actions, and the tests themselves under the
 [apply-path guidance](../github-actions.md#protect-the-apply-path). Source tests
 do not configure live Environment, token, ruleset, or review settings.
 
+### Moderation format and operational package
+
+Current source accepts and exports
+`repository.settings.moderation.interaction_limits`. Its direct predecessor is
+rejected without an alias, including when both paths are present. The tracked
+self-management YAML deliberately retains `repository.settings.interaction_limits`
+because both protected workflows consume the immutable v0.44.1 package, which
+rejects the new group. Source validation of that unchanged operational file
+therefore fails at the known format boundary; `settings-pr` validates it with the
+actual pinned published package. Neither workflow is repinned to development main.
+
+A future, separately reviewed adoption must select a compatible immutable
+published package first. The configuration change is limited to wrapping the
+existing Interaction limits mapping in `moderation`, at the same sidebar position
+after Collaborators. Keep every value, list, ID, comment and other mapping intact.
+Validate with the adopted package and compare a fresh read-only plan before
+merging; this is not authorization to publish or apply settings. There is no
+automatic file migration or legacy input path in the product.
+
+The [operational migration fixture](../../tests/github-actions/managed_moderation_test.go)
+projects that one-file candidate only in tests, while explicitly guarding the
+existing package pin and rejection of the original by current source. It checks
+unchanged cap/list ownership and all sibling semantics. Remove this temporary
+projection when the compatible package and canonical operational file are adopted.
+Local released-old-file and candidate-canonical-file plans are distinct from
+App-authenticated hosted evidence; the hosted PR job still validates only.
+
 ### Required-check verification
 
 The desired Ruleset requires `screening`, `prlint`, and `settings-pr`,

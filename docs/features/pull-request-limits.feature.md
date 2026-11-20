@@ -7,6 +7,13 @@ UI paths, values, scope, permissions, export and confirmation semantics.
 
 ## Scenarios and owning tests
 
+- The canonical YAML and reported control paths are under
+  `repository.settings.moderation.interaction_limits.pull_request_limits`.
+  Export places Moderation after Collaborators and preserves independent cap/list
+  ownership. The obsolete direct path and declarations containing both paths
+  fail before API requests or rewriting a configuration. Empty Moderation groups
+  manage nothing (`internal/workspace/ui_moderation_test.go`,
+  `tests/acceptance/pull_request_limits_test.go`).
 - Omitted groups manage nothing; explicit false and integer boundaries survive
   strict YAML round trips. Null, wrong types, API aliases and invalid ranges
   fail before remote work (`internal/workspace/ui_pull_request_limits_test.go`).

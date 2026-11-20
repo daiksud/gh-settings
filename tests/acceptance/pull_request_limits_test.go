@@ -18,7 +18,7 @@ import (
 func TestPullRequestLimitsProcess(t *testing.T) {
 	binary := acceptanceBinary(t)
 	const endpoint = "/repos/owner/current/interaction-limits/pulls/creation-cap"
-	const prefix = "repository.settings.interaction_limits.pull_request_limits."
+	const prefix = "repository.settings.moderation.interaction_limits.pull_request_limits."
 	const enabledField = "limit_open_pull_requests_from_users_without_write_access"
 	const maximumField = "maximum_open_pull_requests_per_user"
 	const draftsField = "count_draft_pull_requests_toward_the_limit"
@@ -121,7 +121,7 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	declaration := func(fields string) string {
-		return "version: daiksud/gh-settings@v0\nrepository: {settings: {interaction_limits: {pull_request_limits: {" + fields + "}}}}\n"
+		return "version: daiksud/gh-settings@v0\nrepository: {settings: {moderation: {interaction_limits: {pull_request_limits: {" + fields + "}}}}}\n"
 	}
 	write := func(input string) {
 		t.Helper()
@@ -158,6 +158,33 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	}
 	mu.Unlock()
 	expect()
+	// Obsolete and conflicting paths fail before any API read or local rewrite.
+	for _, body := range []string{
+		"interaction_limits: {pull_request_limits: {maximum_open_pull_requests_per_user: 2}}",
+		"interaction_limits: {}, moderation: {interaction_limits: {pull_request_limits: {maximum_open_pull_requests_per_user: 2}}}",
+	} {
+		invalid := "version: daiksud/gh-settings@v0\nrepository: {settings: {" + body + "}}\n"
+		write(invalid)
+		for _, command := range []string{"validate", "plan", "apply", "export"} {
+			diagnostic := run([]string{command}, "", true)
+			wantDiagnostic := "repository.settings.interaction_limits"
+			if command == "export" {
+				wantDiagnostic = "existing .github/settings.yml is invalid"
+			}
+			if !strings.Contains(diagnostic, wantDiagnostic) {
+				t.Fatal(diagnostic)
+			}
+			mu.Lock()
+			if len(all) != 0 {
+				t.Error("obsolete config contacted API", all)
+			}
+			mu.Unlock()
+			if err := checkSettingsUnchanged(fixture.work, invalid); err != nil {
+				t.Fatal(err)
+			}
+			expect()
+		}
+	}
 	for _, fields := range []string{enabledField + ": null", maximumField + ": 0", maximumField + ": 1001", draftsField + ": 'false'"} {
 		write(declaration(fields))
 		run([]string{"validate"}, "", true)
@@ -262,6 +289,9 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(exported), "        moderation:\n            interaction_limits:\n") {
+		t.Fatal("noncanonical export", string(exported))
 	}
 	for _, item := range []string{enabledField + ": false", maximumField + ": 40", draftsField + ": false"} {
 		if !strings.Contains(string(exported), item) {

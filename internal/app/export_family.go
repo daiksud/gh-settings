@@ -53,9 +53,9 @@ func exportAcquiredFamily(path string, d settings.Declaration) (settings.Declara
 		family.CopilotMCP = d.CopilotMCP
 	case "repository.settings.copilot.code_review.review_effort_level":
 		family.CopilotReviewEffort = d.CopilotReviewEffort
-	case "repository.settings.interaction_limits.pull_request_limits.exemption_list":
+	case settings.PullRequestExemptionsPath:
 		family.PullRequestExemptions = d.PullRequestExemptions
-	case "repository.settings.interaction_limits.pull_request_limits":
+	case settings.PullRequestLimitsPath:
 		family.PullRequestLimits = d.PullRequestLimits
 	case "repository.settings.general.danger_zone.archive_this_repository":
 		family.Repository.Archived = d.Repository.Archived

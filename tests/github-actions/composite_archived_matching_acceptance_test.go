@@ -56,8 +56,9 @@ repository:
   labels: [{id: 7, name: bug, color: '#112233'}]
   settings:
     general: {features: {issues: true}, danger_zone: {archive_this_repository: true}}
-    interaction_limits:
-      pull_request_limits: {limit_open_pull_requests_from_users_without_write_access: true, exemption_list: []}
+    moderation:
+      interaction_limits:
+        pull_request_limits: {limit_open_pull_requests_from_users_without_write_access: true, exemption_list: []}
     copilot: {code_review: {review_effort_level: ` + effort + `}}
     actions:
       general:

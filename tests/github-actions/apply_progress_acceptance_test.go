@@ -24,7 +24,7 @@ func TestBuiltCompositeApplyProgressDiagnostic(t *testing.T) {
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
 			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
-			f.write(filepath.Join(f.caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\nrepository: {settings: {interaction_limits: {pull_request_limits: {exemption_list: [alice]}}}}\n")
+			f.write(filepath.Join(f.caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\nrepository: {settings: {moderation: {interaction_limits: {pull_request_limits: {exemption_list: [alice]}}}}}\n")
 			dir, err := os.MkdirTemp("/tmp", "ghs-progress-")
 			if err != nil {
 				t.Fatal(err)
@@ -92,7 +92,7 @@ func TestBuiltCompositeApplyProgressDiagnostic(t *testing.T) {
 				t.Fatal(result)
 			}
 			gotProgress := strings.Contains(result.log, "earlier successful writes remain applied")
-			if gotProgress != (scenario == "confirmed-removal-before-failure") || !strings.Contains(result.log, "repository.settings.interaction_limits.pull_request_limits.exemption_list") {
+			if gotProgress != (scenario == "confirmed-removal-before-failure") || !strings.Contains(result.log, "repository.settings.moderation.interaction_limits.pull_request_limits.exemption_list") {
 				t.Fatal(result)
 			}
 			if strings.Contains(result.log, "write effects may already have applied") != (scenario == "confirmed-removal-before-failure") {

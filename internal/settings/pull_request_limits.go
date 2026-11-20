@@ -4,7 +4,7 @@ import "fmt"
 
 const PullRequestLimitsFieldCount = 3
 
-const PullRequestLimitsPath = "repository.settings.interaction_limits.pull_request_limits"
+const PullRequestLimitsPath = "repository.settings.moderation.interaction_limits.pull_request_limits"
 const PullRequestLimitEnabledPath = PullRequestLimitsPath + ".limit_open_pull_requests_from_users_without_write_access"
 const PullRequestLimitMaximumPath = PullRequestLimitsPath + ".maximum_open_pull_requests_per_user"
 const PullRequestLimitDraftsPath = PullRequestLimitsPath + ".count_draft_pull_requests_toward_the_limit"
