@@ -114,19 +114,6 @@ repository:
       color: '#ffffff'
       description: This will not be worked on
   settings:
-    webhooks: []
-    deploy_keys: []
-    autolinks: []
-    branch_protection_rules: []
-    collaborators: []
-    interaction_limits:
-      pull_request_limits:
-        exemption_list: []
-        limit_open_pull_requests_from_users_without_write_access: false
-        maximum_open_pull_requests_per_user: 1
-        count_draft_pull_requests_toward_the_limit: false
-    agents:
-      variables: []
     general:
       template_repository: false
       default_branch: main
@@ -135,55 +122,63 @@ repository:
       features:
         wikis: false
         issues: true
+        issue_permissions:
+          creation_allowed_by: all_users
         sponsorships: false
         discussions: false
         projects: false
         pull_requests: true
-        issue_permissions:
-          creation_allowed_by: all_users
         pull_request_permissions:
           creation_allowed_by: all_users
       pull_requests:
         allow_merge_commits: false
         allow_squash_merging: true
+        squash_merge:
+          default_commit_message: pull_request_title_and_description
         allow_rebase_merging: false
         always_suggest_updating_pull_request_branches: true
         allow_auto_merge: true
         automatically_delete_head_branches: true
-        squash_merge:
-          default_commit_message: pull_request_title_and_description
       commits:
         require_contributors_to_sign_off_on_web_based_commits: false
       danger_zone:
         archive_this_repository: false
+    collaborators: []
+    interaction_limits:
+      pull_request_limits:
+        limit_open_pull_requests_from_users_without_write_access: false
+        exemption_list: []
+        maximum_open_pull_requests_per_user: 1
+        count_draft_pull_requests_toward_the_limit: false
     rulesets:
       - id: 24911852
         ruleset_name: default
         enforcement_status: active
+        bypass_list:
+          - role: repository_admin
+            bypass_mode: for_pull_requests_only
         target_branches:
           include_default_branch: true
           include_all_branches: false
           include_by_pattern: []
           exclude_by_pattern: []
-        bypass_list:
-          - role: repository_admin
-            bypass_mode: for_pull_requests_only
         rules:
           restrict_creations: false
           restrict_deletions: true
-          block_force_pushes: true
           require_linear_history: true
           require_signed_commits: false
           require_a_pull_request_before_merging:
-            require_an_additional_approval_for_unattributed_copilot_pull_requests: true
             required_approvals: 1
-            allowed_merge_methods:
-              - squash
             dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: true
             require_review_from_code_owners: true
             require_approval_of_the_most_recent_reviewable_push: false
             require_conversation_resolution_before_merging: true
+            require_an_additional_approval_for_unattributed_copilot_pull_requests: true
+            allowed_merge_methods:
+              - squash
           require_status_checks_to_pass:
+            require_branches_to_be_up_to_date_before_merging: true
+            do_not_require_status_checks_on_creation: false
             required_status_checks:
               - check: prlint
                 source:
@@ -194,8 +189,7 @@ repository:
               - check: settings-pr
                 source:
                   app: 15368
-            require_branches_to_be_up_to_date_before_merging: true
-            do_not_require_status_checks_on_creation: false
+          block_force_pushes: true
           require_code_scanning_results:
             code_scanning_tools:
               - tool_name: CodeQL
@@ -203,22 +197,41 @@ repository:
                 alerts: errors
           require_code_quality_results:
             severity: errors
+    branch_protection_rules: []
     actions:
-      runners: []
-      policies: []
       general:
-        cache:
-          cache_retention: 7
         actions_permissions:
           policy: allow_all_actions_and_reusable_workflows
           require_actions_to_be_pinned_to_a_full_length_commit_sha: true
         check_workflow_run_status_artifact_and_log_retention: 90
+        cache:
+          cache_retention: 7
         approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors
         workflow_permissions:
           default_permissions: read_repository_contents_and_packages_permissions
           allow_github_actions_to_create_and_approve_pull_requests: true
+      runners: []
+      policies: []
       variables: []
+    webhooks: []
+    environments:
+      - name: gh-settings
+        deployment_protection_rules:
+          required_reviewers:
+            - person: 155234749
+          prevent_self_review: false
+          wait_timer: 0
+          custom_rules: []
+          allow_administrators_to_bypass_configured_protection_rules: false
+        deployment_branches_and_tags: selected_branches_and_tags
+        deployment_branch_or_tag_rules:
+          - ref_type: branch
+            name_pattern: main
     advanced_security:
+      private_vulnerability_reporting: true
+      dependabot:
+        alerts: true
+        security_updates: true
       code_security:
         codeql_analysis:
           default_setup: true
@@ -231,23 +244,10 @@ repository:
           runner:
             type: standard_github_runner
           threat_model: remote_sources
-      dependabot:
-        alerts: true
-        security_updates: true
-      private_vulnerability_reporting: true
       secret_protection:
         enabled: true
         push_protection: true
-    environments:
-      - deployment_branches_and_tags: selected_branches_and_tags
-        deployment_branch_or_tag_rules:
-          - ref_type: branch
-            name_pattern: main
-        name: gh-settings
-        deployment_protection_rules:
-          custom_rules: []
-          wait_timer: 0
-          required_reviewers:
-            - person: 155234749
-          prevent_self_review: false
-          allow_administrators_to_bypass_configured_protection_rules: false
+    deploy_keys: []
+    agents:
+      variables: []
+    autolinks: []
