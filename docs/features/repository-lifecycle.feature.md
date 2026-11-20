@@ -8,7 +8,15 @@ description: Define archival sequencing and the boundary for deferred identity a
 
 Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
 
-Archive/unarchive is supported according to [ADR 0027](../adr/0027-repository-lifecycle.md). No real repository lifecycle operation or token permission was used as release evidence.
+The [v1 support policy](../settings.md#feature-adoption-scope) excludes
+already-archived targets from the ordinary CLI/Action `export` → `plan` → `apply`
+contract. This is a product decision rather than an API impossibility claim.
+The explicit archive/unarchive transition retains its separate contract from
+[ADR 0027](../adr/0027-repository-lifecycle.md). The archived reads, guards and
+limited matching paths below describe existing defensive behavior; they do not
+make already-archived repository management supported. No runtime behavior is
+changed by this scope decision. No real repository lifecycle operation or token
+permission was used as release evidence.
 
 The target stays the checkout's GitHub.com origin. There is no repository creation, deletion, transfer, fork migration, organization policy update, local-origin rewrite, saved-plan execution, or automatic rollback.
 
