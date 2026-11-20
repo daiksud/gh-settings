@@ -178,8 +178,8 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The two settings callers select the immutable v0.45.0 package at
-`b074b1de2e7cbc7f623cc0e31bcab71d681d166d` so the operational codec matches the
+The two settings callers select the immutable v0.46.0 package at
+`e283ab6a65fd8ca342da41d742f104b289519a58` so the operational codec matches the
 expanded declaration. Their events, credential sources, Environment and token
 permission requests are unchanged; pin adoption grants no access and dispatches
 no apply.
@@ -358,8 +358,8 @@ do not configure live Environment, token, ruleset, or review settings.
 
 ### Moderation format and operational package
 
-The operational declaration and both settings workflows now use the published
-v0.45.0 package and canonical
+The operational declaration and both settings workflows use the published
+v0.46.0 package and canonical
 `repository.settings.moderation.interaction_limits` namespace. The adoption wraps
 only the previous Interaction limits mapping in `moderation`, in its existing
 sidebar position after Collaborators. Values, lists, IDs, comments and all other
@@ -376,45 +376,33 @@ authorize additional settings, credentials, permissions or live mutations.
 
 ### Release immutability format and operational package
 
-Current source uses
+The operational declaration uses
 `repository.settings.general.releases.enable_release_immutability`, matching the
-UI label. The former `immutable_release` name is rejected, without an alias or
-migration. The unchanged operational YAML deliberately keeps the former name:
-both existing callers select v0.45.0, which rejects the canonical name. Source
-validation of that file fails at this known boundary; `settings-pr` validates it
-with the actual pinned published package.
-
-A compatible immutable release and separately reviewed adoption must precede the
-operational rename. Change only the key at its existing position; preserve its
-true value and every other value, ID, comment, list and omission. Validate with
-the selected published package and compare a fresh read-only plan. No release,
-live apply, permission change or workflow repin to development main is implied.
-
-The [test-only projection](../../tests/github-actions/managed_immutability_test.go)
-guards the v0.45.0 pin and obsolete-key rejection, projects only unpublished UI
-key renames and proves byte-identical reversal plus unchanged observed intent. Remove it when a
-compatible package and canonical operational file are adopted. Product decoding
-has no fallback; local owner-authenticated plans are not operating-App evidence.
+UI label and published v0.46.0 package. Adoption changes only the former
+`immutable_release` key at its existing position; its true value and every other
+value, ID, comment, list and omission remain unchanged. The former key is rejected
+without an alias or migration. Published v0.45.0 requires the former spelling.
 
 ### Plural UI keys and operational package
 
-Current source uses `general.pull_requests.merge_commits` and
-`general.pull_requests.squash_merging`, each retaining `default_commit_message`.
-CodeQL default configuration uses `query_suites`, still a single `default` or
-`extended` scalar. Former `merge_commit`, `squash_merge` and YAML `query_suite`
-keys are rejected, including old/new names together. REST and native report
-fields are unchanged. There is no product alias or migration.
+Published v0.46.0 and current source use `general.pull_requests.merge_commits` and
+`general.pull_requests.squash_merging`, retaining `default_commit_message`.
+CodeQL default configuration uses `query_suites`, still one `default` or `extended`
+scalar. REST/native fields and choices are unchanged. Former `merge_commit`,
+`squash_merge` and YAML `query_suite` keys are rejected, including old/new names
+together; v0.45.0 requires those former spellings.
 
-The operational file and both caller pins remain unchanged at v0.45.0. That
-package accepts the old spellings, so its declared `squash_merge` and
-`query_suite` remain until a compatible immutable release is separately adopted.
-Merge-commit defaults remain omitted while disabled; no new intent is invented.
-The pin-limited test projection handles those two declared keys together with
-the release-immutability key from PR #873. Byte-identical reversal and native policy checks
-prove the fixture did not add/change values, lists, IDs, comments or omissions.
-Remove the projection with the eventual compatible adoption; it is not a runtime
-fallback. Verify each package's accepted format and read-only plan separately.
-No release, live apply/prune, permissions or protections are changed by this work.
+This repository adopts the canonical `squash_merging` and `query_suites` keys with
+both callers pinned to immutable v0.46.0. Merge-commit defaults remain omitted
+while disabled. No value or managed scope is added or changed. The temporary
+pin-limited test projection is deleted; operational tests decode the actual
+tracked YAML and retain independently observed native-policy checks.
+
+Validate using the selected published package and compare a fresh read-only plan
+before further adoption. Owner-authenticated local plans do not prove operating
+App grants; hosted settings-pr remains validate-only. Package adoption does not
+dispatch the protected manual apply workflow or authorize additional settings,
+permissions, protection changes or live mutations.
 
 ### Required-check verification
 

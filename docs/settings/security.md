@@ -67,7 +67,8 @@ The [initial setup guide](https://docs.github.com/en/code-security/how-tos/find-
 This contract follows the initial-setup spelling `query_suites`, still one scalar.
 The former `query_suite` YAML key is rejected, including when both names are
 present. The REST field and native report identity remain `query_suite`.
-Published v0.45.0 uses the former YAML spelling; see the
+Published v0.46.0 supports `query_suites`; v0.45.0 uses the former YAML spelling.
+This repository adopts the canonical key with matching immutable pins; see the
 [operational package boundary](../contributing/repository-automation.md#plural-ui-keys-and-operational-package).
 
 GitHub documents local sources as [public preview](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#including-local-sources-of-tainted-data-in-default-setup), currently supported for Java/Kotlin and C#. A repository's supported choices and source languages remain GitHub-controlled; gh-settings does not enable languages or infer UI availability from the selected analysis-language list. A complete read requires exactly the API `remote` or `remote_and_local` value. Missing, null, mistyped or unknown values fail acquisition without a fallback to remote-only scanning.
