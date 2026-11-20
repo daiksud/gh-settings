@@ -4,23 +4,23 @@
 
 Ordinary `export` observes all supported named Environment policies and independently inventories their variables. Unavailable policy or variable observations emit info and retain prior intent; one Environment variable failure does not stop another.
 
-`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); policy-selected names select ordinary create-or-update, not numeric IDs; [variable-only entries](#environment-variable-commands) do not upsert policy. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Without explicit [prune](#prune-option), unlisted objects remain untouched. Existing name-only and matching partial entries skip writes. Needed existing-policy updates preserve fresh omitted built-ins and verify them independently; creation still leaves omitted values API-controlled. Inspect plan before apply.
+`validate`, `plan` and `apply` accept the [Environment configuration contract](settings/environments.md#environments); policy-selected names select ordinary create-or-update, not numeric IDs; [variable-only entries](#environment-variable-commands) do not upsert policy. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Without explicit [prune](#prune-option), unlisted objects remain untouched. Existing name-only and matching partial entries skip writes. Needed existing-policy updates preserve fresh omitted built-ins and verify them independently; creation still leaves omitted values API-controlled. Inspect plan before apply.
 
-Environment deployment-mode observations follow the [raw-pair contract](settings.md#environment-deployment-mode-observation-normalization). Export warns only after complete selected acquisition, in folded-name order. Detailed plan/Summary label all Environment before-objects as effective policy and add a scoped normalized/write-required UI decision only for explicit mode intent. Status-only hides names and pair values. Omitted canonical mode is preserved as a fresh companion without unowned warnings; an unreplayable raw mode blocks a needed policy PUT; explicit mode requires canonical raw confirmation, while unknown-mode pattern intent requires explicit Selected.
+Environment deployment-mode observations follow the [raw-pair contract](settings/environments.md#environment-deployment-mode-observation-normalization). Export warns only after complete selected acquisition, in folded-name order. Detailed plan/Summary label all Environment before-objects as effective policy and add a scoped normalized/write-required UI decision only for explicit mode intent. Status-only hides names and pair values. Omitted canonical mode is preserved as a fresh companion without unowned warnings; an unreplayable raw mode blocks a needed policy PUT; explicit mode requires canonical raw confirmation, while unknown-mode pattern intent requires explicit Selected.
 
-Disabling an existing Environment custom deployment mode is rejected when its raw pattern collection is nonempty and omitted from the declaration. First apply `deployment_branch_or_tag_rules: []` while Selected, then change mode. Complete empty acquisition is required; a prior empty plan does not bypass the fresh apply check. See the [Environment contract](settings.md#environments).
+Disabling an existing Environment custom deployment mode is rejected when its raw pattern collection is nonempty and omitted from the declaration. First apply `deployment_branch_or_tag_rules: []` while Selected, then change mode. Complete empty acquisition is required; a prior empty plan does not bypass the fresh apply check. See the [Environment contract](settings/environments.md#environments).
 
 ## Scope and status
 
 The v1 CLI and public Action support boundary excludes already-archived
 repositories, including ordinary `export` → `plan` → `apply` use. Successful reads
 or a limited read-only matching apply do not make that workflow supported.
-The [adoption policy](settings.md#feature-adoption-scope) owns this product-scope
-decision; the separately documented [archive/unarchive transition](settings.md#repository-archive-lifecycle)
+The [adoption policy](settings/scope.md#feature-adoption-scope) owns this product-scope
+decision; the separately documented [archive/unarchive transition](settings/general.md#repository-archive-lifecycle)
 retains its existing behavior. Local `validate` checks schema, not remote support
 eligibility.
 
-The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
+The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings/README.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
 gh settings export
@@ -58,11 +58,11 @@ Plan does not mutate settings, but complete Ruleset bypass observation requires 
 
 ## Topics command behavior
 
-The [topics contract](settings.md#topics) defines names, omission and explicit clearing. Export includes the observed topics; plan compares the managed set; apply reads fresh membership and replaces that set only when it differs, then verifies it independently. A configuration containing only `repository.about.topics` is valid managed intent. Omitted topics skip the resource; `[]` clears it and `{}` is invalid. The command is a local no-op only when no other resource is managed.
+The [topics contract](settings/about.md#topics) defines names, omission and explicit clearing. Export includes the observed topics; plan compares the managed set; apply reads fresh membership and replaces that set only when it differs, then verifies it independently. A configuration containing only `repository.about.topics` is valid managed intent. Omitted topics skip the resource; `[]` clears it and `{}` is invalid. The command is a local no-op only when no other resource is managed.
 
 ## Labels command behavior
 
-The [labels contract](settings.md#labels) uses ID-based listed-object ownership: ordinary apply manages only listed objects; [explicit collection pruning](settings.md#collection-pruning) adds deletions for present lists. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
+The [labels contract](settings/labels.md#labels) uses ID-based listed-object ownership: ordinary apply manages only listed objects; [explicit collection pruning](settings/pruning.md#collection-pruning) adds deletions for present lists. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
 
 Plan shows creates and ID-bound updates, including default-derived values; `--prune labels` also shows unlisted deletions and their Issue/PR assignment loss. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply skips matching objects and independently reads each created/updated label at its resulting name to verify the same ID and complete supported settings before proceeding. A failed readback stops later writes, including prune deletions, with uncertain effects.
 
@@ -71,12 +71,12 @@ Apply records confirmed new IDs in the original YAML after creation verification
 response remains visible for recovery even if verification fails, but is only
 automatically recorded after successful independent readback. Earlier confirmed
 IDs remain available after later remote or local writeback failure. See
-[Label ownership and ID writeback](settings.md#labels). There is no automatic
+[Label ownership and ID writeback](settings/labels.md#labels). There is no automatic
 commit, push, create retry or rollback.
 
 ## Actions event policy commands
 
-Ordinary `export` observes the complete [Actions event/actor policy collection](settings.md#actions-event-policies), including IDs and explicit workflow include/exclude selections, in stable order. Every page/detail must succeed; otherwise info reports the family and its valid existing declaration is retained.
+Ordinary `export` observes the complete [Actions event/actor policy collection](settings/actions.md#actions-event-policies), including IDs and explicit workflow include/exclude selections, in stable order. Every page/detail must succeed; otherwise info reports the family and its valid existing declaration is retained.
 
 `validate` checks the complete listed objects locally. Without prune, omission
 and `[]` make no policy requests. `--prune actions-policies` adds unlisted
@@ -103,7 +103,7 @@ selected published package or live active-policy enforcement.
 
 ## Actions OIDC subject template commands
 
-The [OIDC configuration](settings.md#actions-oidc-subject-template) is one managed
+The [OIDC configuration](settings/actions.md#actions-oidc-subject-template) is one managed
 group with independently selected active-template and immutable units. Export
 refreshes readable units and retains unavailable prior intent with bounded info.
 Plan shows only selected before/after units. Apply skips known matches or replays
@@ -151,7 +151,7 @@ Variable-only declarations do not upsert an Environment or touch its policy, pat
 
 Ordinary `export` inventories all supported Actions, Agents and Environment variables through their complete paginated list APIs. Values are plaintext in the output file; secret APIs are never used. An incomplete or unsupported inventory emits info and retains its prior valid declaration. Environment names must be acquired completely, then variable inventories proceed independently for each parent. See [automatic export](#export-behavior).
 
-Plan is read-only and identifies the selected family. Ordinary apply upserts only declared names, preserving unlisted variables and skipping equal values. Explicit [variable prune scopes](settings.md#variable-pruning) add unlisted deletions for present lists. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
+Plan is read-only and identifies the selected family. Ordinary apply upserts only declared names, preserving unlisted variables and skipping equal values. Explicit [variable prune scopes](settings/actions.md#variable-pruning) add unlisted deletions for present lists. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
 
 ## Export behavior
 
@@ -219,14 +219,14 @@ gh settings validate
 
 ## Validate behavior
 
-Validate reads `.github/settings.yml` and checks the [configuration contract](settings.md#configuration-semantics). It requires one YAML root mapping with the exact string `version: daiksud/gh-settings@v0`, accepts partial UI declarations and empty repository/settings mappings, and rejects unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple documents, and wrong shapes or value types. Alias and merge values are checked after YAML resolves them. Superseded envelopes, scalar permission sections, flat companions and API-shaped aliases are rejected without compatibility or migration. Public page/section paths are defined by the current-source reference; published packages keep their own contracts.
+Validate reads `.github/settings.yml` and checks the [configuration contract](settings/configuration.md#configuration-semantics). It requires one YAML root mapping with the exact string `version: daiksud/gh-settings@v0`, accepts partial UI declarations and empty repository/settings mappings, and rejects unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple documents, and wrong shapes or value types. Alias and merge values are checked after YAML resolves them. Superseded envelopes, scalar permission sections, flat companions and API-shaped aliases are rejected without compatibility or migration. Public page/section paths are defined by the current-source reference; published packages keep their own contracts.
 
 Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr, with no stdout. Validation requires a Git checkout but no GitHub origin or authentication. It makes no API requests and changes neither the file nor GitHub settings. Passing local validation does not guarantee that GitHub will accept an update.
 
 ## Immutable release policy commands
 
 Ordinary `export` automatically attempts the repository
-[immutable release policy](settings.md#immutable-release-policy), requiring
+[immutable release policy](settings/general.md#immutable-release-policy), requiring
 Administration read. Unavailable export acquisition emits info and retains prior
 intent if present. GET 404 is
 interpreted as disabled under the required-permissions precondition, without
@@ -269,7 +269,7 @@ repository.labels: update "help wanted" (id 123) description: "Old description" 
 
 A nonempty label selection counts as one managed item; an empty selection manages nothing. The effective whole supported object is compared, including default-derived description clearing.
 
-Ruleset operations show only selected whole supported objects, with UI control names, numeric IDs and fixed-default changes. Environment updates show requested fields of the effective before policy and the actual request; explicit Environment deletions show complete supported before-policy and absence; existing omitted built-ins remain unowned preservation companions, while creation omissions stay API-controlled. Unlisted Rulesets appear as deletes only with explicit `--prune rulesets`. ID updates can rename; ID-less collisions fail instead of adopting existing names. Normalized enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), bypass modes add independent contextual warnings and UI decisions marked normalized/write-required, followed by one complete effective policy. Allowed merge methods warnings retain original list order, while desired choices use named UI order. Both scanning threshold warnings retain exact tool names. Bypass warnings identify the selected UI actor and its ID when applicable. removing a scanning tool shows an inactive/tool-removed decision; removing a bypass actor shows an inactive/actor-removed decision. Each requires confirmed absence. Fallback-equal selected intent stays actionable; unlisted normalized IDs remain undisclosed. See the [raw enforcement](settings.md#ruleset-enforcement-observation-normalization), [Required approvals](settings.md#ruleset-required-approvals-observation-normalization), [Allowed merge methods](settings.md#ruleset-allowed-merge-methods-observation-normalization), [scanning Alerts](settings.md#ruleset-scanning-alerts-observation-normalization), [scanning Security alerts](settings.md#ruleset-scanning-security-alerts-observation-normalization), [bypass-mode](settings.md#ruleset-bypass-mode-observation-normalization) contracts for strict mutation response/fresh GET verification. A projected fallback never substitutes for exact raw confirmation.
+Ruleset operations show only selected whole supported objects, with UI control names, numeric IDs and fixed-default changes. Environment updates show requested fields of the effective before policy and the actual request; explicit Environment deletions show complete supported before-policy and absence; existing omitted built-ins remain unowned preservation companions, while creation omissions stay API-controlled. Unlisted Rulesets appear as deletes only with explicit `--prune rulesets`. ID updates can rename; ID-less collisions fail instead of adopting existing names. Normalized enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), bypass modes add independent contextual warnings and UI decisions marked normalized/write-required, followed by one complete effective policy. Allowed merge methods warnings retain original list order, while desired choices use named UI order. Both scanning threshold warnings retain exact tool names. Bypass warnings identify the selected UI actor and its ID when applicable. removing a scanning tool shows an inactive/tool-removed decision; removing a bypass actor shows an inactive/actor-removed decision. Each requires confirmed absence. Fallback-equal selected intent stays actionable; unlisted normalized IDs remain undisclosed. See the [raw enforcement](settings/rulesets.md#ruleset-enforcement-observation-normalization), [Required approvals](settings/rulesets.md#ruleset-required-approvals-observation-normalization), [Allowed merge methods](settings/rulesets.md#ruleset-allowed-merge-methods-observation-normalization), [scanning Alerts](settings/rulesets.md#ruleset-scanning-alerts-observation-normalization), [scanning Security alerts](settings/rulesets.md#ruleset-scanning-security-alerts-observation-normalization), [bypass-mode](settings/rulesets.md#ruleset-bypass-mode-observation-normalization) contracts for strict mutation response/fresh GET verification. A projected fallback never substitutes for exact raw confirmation.
 
 Successful comparison exits 0 whether differences exist or not. File, validation, origin, authentication, API, decoding and output errors exit 1 with a diagnostic on stderr. Read and partial-apply errors identify the affected UI resource where known. Failures before output leave stdout empty. Plan changes neither configuration nor GitHub settings. Its output is an observation, not a saved execution plan or drift protection for apply.
 
@@ -288,13 +288,13 @@ prune. Omitted collections stay unmanaged; explicit [] selects all acquired
 objects. Environment pruning retains every listed parent, including variable-only
 entries, and runs after retained policies and variables. It deletes contained
 configuration/secrets and fails jobs waiting on protection rules; recreation does not restore them.
-See the [complete presence, permission and recovery contract](settings.md#collection-pruning).
+See the [complete presence, permission and recovery contract](settings/pruning.md#collection-pruning).
 
 ## Apply behavior
 
-Workflow permissions are applied after execution policy as a separate operation. Partial declarations send only their own keys; fresh complete readback verifies desired and preserved values. Failure retains earlier execution/resource writes and does not broaden existing credentials. See the [workflow-permission contract](settings.md#default-workflow-permissions).
+Workflow permissions are applied after execution policy as a separate operation. Partial declarations send only their own keys; fresh complete readback verifies desired and preserved values. Failure retains earlier execution/resource writes and does not broaden existing credentials. See the [workflow-permission contract](settings/actions.md#default-workflow-permissions).
 
-Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy).
+Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings/actions.md#actions-execution-policy).
 
 Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `repository.about.topics: []`, reads the current complete membership and writes only when it differs. A nonempty label selection reads current labels and preflights ID-selected object updates and ID-less creates. `labels: []` selects nothing.
 
@@ -318,7 +318,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |
 | `repository.settings.pages` | Existing-site declared-only update with identity/visibility/readback checks. |
 
-An explicit archive lifecycle surrounds these operations: unarchive first, final archive last. The [archive contract](settings.md#repository-archive-lifecycle) owns preflight and failure behavior.
+An explicit archive lifecycle surrounds these operations: unarchive first, final archive last. The [archive contract](settings/general.md#repository-archive-lifecycle) owns preflight and failure behavior.
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields remain outside update requests. Selected labels send complete supported values, including description defaults. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
@@ -353,15 +353,15 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 
 Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
-Plan and the credential-free Action Summary use the UI paths, booleans and approval choices. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
+Plan and the credential-free Action Summary use the UI paths, booleans and approval choices. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings/actions.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
-Ordinary `export` includes [Pages configuration](settings.md#pages-configuration). Under the existing required-permissions precondition, target GET 404 exports `source: deploy_from_a_branch` and `branch: none`. Applying that declaration later intentionally deletes any site then present. Other unavailable observations emit info and retain existing intent.
+Ordinary `export` includes [Pages configuration](settings/pages.md#pages-configuration). Under the existing required-permissions precondition, target GET 404 exports `source: deploy_from_a_branch` and `branch: none`. Applying that declaration later intentionally deletes any site then present. Other unavailable observations emit info and retain existing intent.
 
 Actions workflow permissions, fork contributor approval, Security and Pages differences use their public YAML paths and UI choices on both sides. Observation-normalization warnings retain the raw value as provenance and do not establish raw-state equality.
 
 ## Pages commands
 
-Ordinary `export` includes [Pages configuration](settings.md#pages-configuration). Under the existing required-permissions precondition, target GET 404 exports `source: deploy_from_a_branch` and `branch: none`. Applying that declaration later intentionally deletes any site then present. Other unavailable observations emit info and retain existing intent.
+Ordinary `export` includes [Pages configuration](settings/pages.md#pages-configuration). Under the existing required-permissions precondition, target GET 404 exports `source: deploy_from_a_branch` and `branch: none`. Applying that declaration later intentionally deletes any site then present. Other unavailable observations emit info and retain existing intent.
 
 Plan remains read-only and displays creation, deletion or declared configuration differences. Apply creates absent sites only with complete explicit Source intent, directly deletes with the exact Branch none selector, and updates present sites without erasing omitted controls. Contradictory deletion and incomplete creation intent fail before Pages writes. A confirmed creation followed by optional domain/HTTPS failure remains applied and is reported as partial progress; no automatic rollback or write retry occurs. Site visibility and deployment readiness are not managed.
 
@@ -372,12 +372,12 @@ Ordinary `export` attempts this supported setting automatically. Complete readab
 ## Classic branch-protection commands
 
 Ordinary `export` attempts the complete classic rule inventory and projects only
-its [supported controls](settings.md#classic-branch-protection), exact pattern
+its [supported controls](settings/legacy-classic-protection.md#classic-branch-protection), exact pattern
 and numeric ID. It does not enumerate existing branches or clone all protection.
 Unavailable acquisition retains valid prior intent with info. `validate` rejects
 unsupported keys and invalid identities before remote work. `plan` shows only
 requested pattern, checkbox and selected active-group differences and counts
-the collection once. The [required status-check group](settings.md#required-status-checks)
+the collection once. The [required status-check group](settings/legacy-classic-protection.md#required-status-checks)
 uses exact names with explicit `any` or opaque App-node sources; it does not
 discover recent checks or infer a provider.
 
@@ -392,13 +392,13 @@ retention: [] selects all acquired rules, while omission stays unmanaged. Deleti
 removes the whole rule, including unowned protections, and may expose an overlapping
 rule. Fixed complete snapshots precede every remote write; all classic upserts and
 required ID recording precede deletes with fresh identity/state and absence checks.
-See the [pruning contract](settings.md#classic-branch-protection-pruning). CLI and
+See the [pruning contract](settings/legacy-classic-protection.md#classic-branch-protection-pruning). CLI and
 Action share these ownership and failure semantics.
 
 ## Personal collaborator commands
 
 `export`, `validate`, `plan` and `apply` support
-[`repository.settings.collaborators`](settings.md#personal-collaborators). Plan
+[`repository.settings.collaborators`](settings/collaborators.md#personal-collaborators). Plan
 shows each selected person as active, pending or needing an initial invitation;
 pending remains visible with no differences. A username-only matching person
 needs a verified local identity binding and no invitation PUT. Apply reports
@@ -419,13 +419,13 @@ removals. Omission stays unmanaged. Complete global preflight precedes unrelated
 writes; selected reconciliation and bindings precede cancellations, then removals,
 then Environment work. Failed or changed access/operator/inviter evidence stops
 execution. Diagnostics distinguish attempted, acknowledged and verified deletion;
-see [collaborator pruning](settings.md#collaborator-pruning) for permissions,
+see [collaborator pruning](settings/collaborators.md#collaborator-pruning) for permissions,
 management-path protection, side effects and unavoidable races.
 
 ## Environment protection App commands
 
 Current source manages installed Environment protection Apps through
-[`deployment_protection_rules.custom_rules`](settings.md#custom-protection-apps).
+[`deployment_protection_rules.custom_rules`](settings/environments.md#custom-protection-apps).
 App-only changes skip parent PUT, preserve raw companions and independently verify
 binding operations. Omission preserves the checkbox set; [] disables supported
 bindings without parent pruning. Positive rule IDs in failure diagnostics are
@@ -434,7 +434,7 @@ remain failures; inspect state before retrying.
 
 ## Deploy keys in current source
 
-[`repository.settings.deploy_keys`](settings.md#deploy-keys) uses immutable
+[`repository.settings.deploy_keys`](settings/deploy-keys.md#deploy-keys) uses immutable
 numeric IDs and canonical public-key identity. Matching selected entries send no
 write; missing IDs, changed immutable configuration and IDless material collisions
 fail. Verified creation records an ID against the unique key, preserving the
@@ -445,11 +445,11 @@ keys after complete preflight and verifies absence; ordinary `[]` deletes nothin
 
 ## Autolink commands
 
-Automatic export independently attempts the complete [Autolinks family](settings.md#autolink-references). `validate` rejects invalid controls locally. `plan` shows immutable creates/deletions with prefix, URL and format; a matching bound ID is unchanged. `apply` verifies creation with independent object and inventory reads before guarded ID recording. `--prune autolinks` and standalone `all` select fixed unlisted deletion candidates only for a present collection. Replace a reference by explicitly pruning it, then creating its replacement in a later apply. `--no-writeback` leaves creation IDs for the documented follow-up process. Failures retain confirmed earlier progress and unconfirmed effects honestly.
+Automatic export independently attempts the complete [Autolinks family](settings/legacy-autolinks.md#autolink-references). `validate` rejects invalid controls locally. `plan` shows immutable creates/deletions with prefix, URL and format; a matching bound ID is unchanged. `apply` verifies creation with independent object and inventory reads before guarded ID recording. `--prune autolinks` and standalone `all` select fixed unlisted deletion candidates only for a present collection. Replace a reference by explicitly pruning it, then creating its replacement in a later apply. `--no-writeback` leaves creation IDs for the documented follow-up process. Failures retain confirmed earlier progress and unconfirmed effects honestly.
 
 ## Existing runner label commands
 
-Automatic export independently acquires the complete [runner labels family](settings.md#existing-runner-custom-labels).
+Automatic export independently acquires the complete [runner labels family](settings/actions.md#existing-runner-custom-labels).
 `validate` checks required IDs and explicit sets locally. Without pruning, `plan`
 reads selected IDs only; detailed output contains their custom labels. `apply`
 prepares the whole selection, then performs fresh conditional replacements with
@@ -457,13 +457,13 @@ independent readback. Explicit empty custom sets clear labels. `--prune runners`
 and standalone `all` additionally select fixed unlisted registrations for remote
 removal when the runner list is present; an empty list selects all. Detailed
 plans show each deletion's ID, name, OS and custom labels. Read the
-[runner pruning contract](settings.md#runner-registration-pruning) before applying:
+[runner pruning contract](settings/actions.md#runner-registration-pruning) before applying:
 removal may affect work and cannot be made atomic with the busy check. There is
 no ID recovery or writeback.
 
 ## Webhook configuration and creation in current source
 
-[Webhook declarations](settings.md#webhook-configuration-and-creation) select
+[Webhook declarations](settings/webhooks.md#webhook-configuration-and-creation) select
 existing IDs for URL/Content type/SSL verification reconciliation and optional Active/events
 matching guards. An IDless entry must declare URL, Content type, Active and events to create a hook
 without a Secret; omitted `ssl_verification` enables verification, while explicit
@@ -479,4 +479,4 @@ retain the reported ID in a reviewed configuration change before retrying. An
 IDless repeat colliding with an existing URL stops without creation. Failure keeps
 earlier verified progress and never rolls it back. Detailed plans show selected
 controls and creation consequences; status-only hides values. The CLI does not
-send extra pings/tests, fetch destinations or manage Secret values. See the [explicit pruning contract](settings.md#explicit-webhook-pruning) for irreversible effects, verification and the non-atomic Secret boundary.
+send extra pings/tests, fetch destinations or manage Secret values. See the [explicit pruning contract](settings/webhooks.md#explicit-webhook-pruning) for irreversible effects, verification and the non-atomic Secret boundary.

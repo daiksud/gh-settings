@@ -8,7 +8,7 @@ description: Manage repository-level General Pull Requests options.
 
 Current source supports optional `repository.settings.general.pull_requests.allow_auto_merge` and `always_suggest_updating_pull_request_branches`. This extends the existing repository group, with no new resource family or credential permissions.
 
-The [configuration reference](../settings.md#auto-merge-and-branch-updates) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. The UI branch-update checkbox permits behind-head branch updates; it performs no branch operation or protection change.
+The [configuration reference](../settings/general.md#auto-merge-and-branch-updates) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. The UI branch-update checkbox permits behind-head branch updates; it performs no branch operation or protection change.
 
 ## API and execution contract
 

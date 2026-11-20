@@ -55,7 +55,7 @@ Choose the reader and the question first. Use one authoritative page for a detai
 | What the product does, installation, and a first successful use | [README](README.md) |
 | Navigation by audience and task | [Documentation index](docs/README.md) |
 | Public CLI syntax, target selection, output, and errors | [Command reference](docs/commands.md) |
-| Supported settings, YAML schema, omission, and value semantics | [Configuration reference](docs/settings.md) |
+| Supported settings, YAML schema, omission, and value semantics | [Configuration reference](docs/settings/README.md) |
 | Public Action inputs/outputs, prerequisites, caller setup, and recovery | [GitHub Actions guide](docs/github-actions.md) |
 | Copyable consumer workflows and instructions specific to those files | [Examples](examples/github-actions/README.md) |
 | Tool setup, building, and making a code change | [Development guide](docs/contributing/development.md) |

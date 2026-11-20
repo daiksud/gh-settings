@@ -4,7 +4,7 @@ title: Default workflow permissions
 description: Select independent UI workflow permission and PR approval controls.
 ---
 
-Status: implemented in current source, supported. The [configuration contract](../settings.md#default-workflow-permissions) is authoritative.
+Status: implemented in current source, supported. The [configuration contract](../settings/actions.md#default-workflow-permissions) is authoritative.
 
 ## Rule: Declare independent optional native values
 

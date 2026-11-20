@@ -2,18 +2,18 @@
 
 ## Public Action and supported checkout
 
-The same [v1 repository support boundary](settings.md#feature-adoption-scope)
+The same [v1 repository support boundary](settings/scope.md#feature-adoption-scope)
 applies to CLI and Action: already-archived targets are outside ordinary
 `export` → `plan` → `apply` support. Readable results or limited read-only matching
 behavior do not establish supported archived-repository management. The explicit
-[archive/unarchive transition](settings.md#repository-archive-lifecycle) remains
+[archive/unarchive transition](settings/general.md#repository-archive-lifecycle) remains
 separately documented.
 
 The pinned `daiksud/gh-settings` package exports, validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout/data preparation, credentials and approval policy; they do not install the CLI or copy Action internals. The [selected Action pin](#published-package-and-consumer-pins) determines which CLI is installed.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and keep `.github/settings.yml` at its root. Export can create the file and its `.github` directory on first use; validate/plan/apply require an existing configuration.
 
-A resolvable checkout commit and a directly configured GitHub.com `origin` are required even for validate's output metadata. Supported origins are HTTPS, `git@github.com:owner/repo.git` and full SSH URLs. The checkout's origin selects the target; the Action repository and `GH_REPO` do not. See [repository resolution](commands.md#repository-and-authentication) and [configuration semantics](settings.md#configuration-semantics).
+A resolvable checkout commit and a directly configured GitHub.com `origin` are required even for validate's output metadata. Supported origins are HTTPS, `git@github.com:owner/repo.git` and full SSH URLs. The checkout's origin selects the target; the Action repository and `GH_REPO` do not. See [repository resolution](commands.md#repository-and-authentication) and [configuration semantics](settings/configuration.md#configuration-semantics).
 
 Validate performs no settings API requests, but installing the public CLI still requires network access. Workflow, configuration and Action revisions must remain available for ordinary reruns.
 
@@ -95,24 +95,24 @@ Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256S
 
 ### Labels and permissions
 
-The selected published CLI determines supported [label behavior](settings.md#labels).
+The selected published CLI determines supported [label behavior](settings/labels.md#labels).
 **Safety:** The pinned v0.44.0 CLI uses ID-selected labels and repository
 Rulesets. Without explicit pruning, unlisted objects are left untouched and
 empty collections delete nothing. Omitted collections always stay unmanaged.
 An entry without an ID is
 create-only. Updating a listed Ruleset still sends supported whole-object
 values and defaults, which may alter required reviews, checks, or bypasses.
-Review the [Rulesets contract](settings.md#rulesets), observed plan, and
+Review the [Rulesets contract](settings/rulesets.md#rulesets), observed plan, and
 pinned binary before approving apply.
 
 Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Installing or pinning the Action does not grant permissions.
 
-The pinned v0.44.0 label apply is ID-based and leaves unlisted labels unchanged unless explicitly pruned. The examples do not select prune scopes. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created label/Ruleset IDs remain available in output or error diagnostics for manual adoption. See the [labels contract](settings.md#labels).
+The pinned v0.44.0 label apply is ID-based and leaves unlisted labels unchanged unless explicitly pruned. The examples do not select prune scopes. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created label/Ruleset IDs remain available in output or error diagnostics for manual adoption. See the [labels contract](settings/labels.md#labels).
 
 ### Actions event policies
 
 The pinned CLI and Action planning/apply support
-[Actions event policies](settings.md#actions-event-policies). Fine-grained/App tokens need **Administration write even for
+[Actions event policies](settings/actions.md#actions-event-policies). Fine-grained/App tokens need **Administration write even for
 list/GET and plan**. Treat the plan credential as write-capable and protect its
 path accordingly; a read-only Administration token is insufficient.
 
@@ -131,11 +131,11 @@ lifecycle.
 
 ### Repository variables and plaintext reporting
 
-The pinned CLI and Action planning/apply accept separate [Actions repository variables](settings.md#actions-repository-variables) and [Agents repository variables](settings.md#agents-repository-variables). Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. The same name in both families retains separate values and resource labels. Variable API requests for Actions, Agents and Environments suppress inherited `GH_DEBUG` transport logging. Do not store credentials in variables. These repository-variable declarations do not use Secrets, Environment or organization variable endpoints, and no App grant or token-request permission is added by this implementation. Supply only the **Variables** or **Agent variables** permissions needed by the respective selected declaration.
+The pinned CLI and Action planning/apply accept separate [Actions repository variables](settings/actions.md#actions-repository-variables) and [Agents repository variables](settings/agents.md#agents-repository-variables). Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. The same name in both families retains separate values and resource labels. Variable API requests for Actions, Agents and Environments suppress inherited `GH_DEBUG` transport logging. Do not store credentials in variables. These repository-variable declarations do not use Secrets, Environment or organization variable endpoints, and no App grant or token-request permission is added by this implementation. Supply only the **Variables** or **Agent variables** permissions needed by the respective selected declaration.
 
 ### Actions OIDC subject template
 
-The pinned package supports [OIDC subject configuration](settings.md#actions-oidc-subject-template)
+The pinned package supports [OIDC subject configuration](settings/actions.md#actions-oidc-subject-template)
 through shared export, plan and apply use cases. The complete active template and
 immutable boolean can be selected independently. Detailed reports show only
 selected units; status-only output hides them. Export can refresh the active
@@ -148,26 +148,26 @@ Action neither issues a token nor edits cloud trust or checkout YAML during appl
 
 ### Copilot MCP tools
 
-The pinned CLI and Action planning/apply support the independently declared [MCP tools toggle](settings.md#copilot-code-review-mcp-tools). Full reports show native booleans at the fixed UI path; status-only Summary hides the control and values. The toggle stores configuration only, without managing MCP servers, secrets, grants, review entitlement, execution or billing. Repository administration and endpoint authorization remain caller prerequisites; exact fine-grained/App-token grants were not independently established. Apply verifies both the requested toggle and preservation of acquired sibling settings.
+The pinned CLI and Action planning/apply support the independently declared [MCP tools toggle](settings/copilot.md#copilot-code-review-mcp-tools). Full reports show native booleans at the fixed UI path; status-only Summary hides the control and values. The toggle stores configuration only, without managing MCP servers, secrets, grants, review entitlement, execution or billing. Repository administration and endpoint authorization remain caller prerequisites; exact fine-grained/App-token grants were not independently established. Apply verifies both the requested toggle and preservation of acquired sibling settings.
 
 ### Copilot review effort
 
-The pinned CLI and Action planning/apply support the independently declared [Review effort level](settings.md#copilot-code-review-effort-level), including Max when the repository reports it as available. Full reports use string choices at the UI path; status-only output hides them. Default means the API's observable configured-null state and is not proof of a cleared hidden override. Unavailable or unsupported effort observations fail rather than falling back. The existing Copilot endpoint credential and review-entitlement boundaries below apply equally; no permission, license or review is created.
+The pinned CLI and Action planning/apply support the independently declared [Review effort level](settings/copilot.md#copilot-code-review-effort-level), including Max when the repository reports it as available. Full reports use string choices at the UI path; status-only output hides them. Default means the API's observable configured-null state and is not proof of a cleared hidden override. Unavailable or unsupported effort observations fail rather than falling back. The existing Copilot endpoint credential and review-entitlement boundaries below apply equally; no permission, license or review is created.
 
 ### Copilot custom instructions
 
-The pinned CLI and Action planning/apply support the [Use custom instructions toggle](settings.md#copilot-code-review-custom-instructions). The API stores only configuration, not Copilot access or review activation. No instructions file, review request, workflow/token grant or license is created. Exact App-token permission grants and instruction consumption were not verified by the owner-authenticated storage probe. Full reports show native booleans; the existing status-only lifecycle hides the control and values in its published Summary.
+The pinned CLI and Action planning/apply support the [Use custom instructions toggle](settings/copilot.md#copilot-code-review-custom-instructions). The API stores only configuration, not Copilot access or review activation. No instructions file, review request, workflow/token grant or license is created. Exact App-token permission grants and instruction consumption were not verified by the owner-authenticated storage probe. Full reports show native booleans; the existing status-only lifecycle hides the control and values in its published Summary.
 
 ## Personal collaborators
 
 The pinned package supports the
-[personal collaborator contract](settings.md#personal-collaborators) in export/plan/apply.
+[personal collaborator contract](settings/collaborators.md#personal-collaborators) in export/plan/apply.
 Detailed plan Summary distinguishes initial invitations, pending acceptance and
 active access, including matching pending people. Explicit `prune: collaborators`
 (or standalone `all`) additionally shows invitation cancellations and grant removals
 for a present list. The same explicit installation token must prove target access
 and complete admin-only invitation visibility; no second credential or installation
-ID is used. See [prune guards and side effects](settings.md#collaborator-pruning).
+ID is used. See [prune guards and side effects](settings/collaborators.md#collaborator-pruning).
 Status-only publication omits
 recipient identities. Action apply never writes user IDs into the checkout;
 record the reported verified user IDs through a reviewed declaration update
@@ -189,30 +189,12 @@ The two supported use cases are distinct:
 
 The following are resource-specific boundaries, not a request to grant all permissions. Metadata read is automatic for installations. Add only the permissions needed by the actual declaration to both the App installation and token request; no workflow here changes the installation's grants. Public unauthenticated reads do not establish private access or mutation permission.
 
-| Feature/API | Plan/observation boundary | Apply boundary |
-| --- | --- | --- |
-| Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
-| Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
-| Personal collaborators | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
-| Webhook configuration, creation and pruning | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH, guarded creation POST or explicit whole-object DELETE, then independent verification |
-| Deploy keys | Administration read, complete personal-public target and key inventory | Administration write; immutable creation or explicit guarded deletion with independent readback |
-| Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
-| Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
-| Actions repository variables | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
-| Agents repository variables | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
-| Actions event policies | Administration **write**, including list/GET, export and plan ([official API](https://docs.github.com/en/rest/actions/policies)) | Administration write, complete preflight, fresh detail guard and independent acknowledgment/readback |
-| Existing runner labels and pruning | Administration read, complete personally owned public target, runner detail and label evidence | Administration write plus independent acknowledgment/readback; explicit pruning removes unlisted registrations by ID, with no registration or tokens |
-| Actions OIDC subject configuration | Actions read and complete personal-public target identity | Actions write, complete active-template/immutable evidence, fresh omitted-unit replay and independent readback |
-| Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
-| Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
-| Actions cache size eviction limit | Actions read | Administration write plus Actions read for preflight/readback |
-| Secret scanning/push protection | Complete repository security-block visibility; Metadata read alone is insufficient | Administration write plus applicable security authority/entitlement and complete readback |
-| Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
-| Immutable release policy | Administration read; target GET 404 means disabled under the required-permissions precondition, with owner enforcement unknown | Administration write; fresh owner-enforcement preflight and readback |
-| Pages lifecycle/configuration | Pages read | Pages write plus Administration write and applicable repository authority |
-| Classic branch protection | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update/delete and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
-| Named Environments | Actions read, including enabled custom-protection visibility; App additions also need Administration read for available integrations; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
-| PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
+Use the [GitHub App permission matrix](settings/permissions.md) for actual YAML
+paths, export/plan acquisition, apply/prune grants and compound permission
+requirements. It is the single resource-permission table. It also distinguishes
+App registration, installation approval and each job's issued-token scope, and
+records endpoint and live-verification limits. In particular, persistent PR
+limits and Actions event-policy GETs require Administration write even for plan.
 
 GitHub documents installation-token support for the relevant [repository/topic](https://docs.github.com/en/rest/repos/repos), [label](https://docs.github.com/en/rest/issues/labels), [Ruleset](https://docs.github.com/en/rest/repos/rules#get-a-repository-ruleset), [Actions permissions](https://docs.github.com/en/rest/actions/permissions), [cache limits](https://docs.github.com/en/rest/actions/cache), [Pages](https://docs.github.com/en/rest/pages/pages) and [Environment](https://docs.github.com/en/rest/deployments/environments) REST APIs. The Ruleset GET explicitly limits `bypass_actors` to actors with write access: nonmutating plan is **not** proof that a read-only installation token is sufficient. Missing visibility must fail, never become an empty bypass list.
 
@@ -359,21 +341,21 @@ Implementation protocols belong in [Action internals](contributing/actions-inter
 
 ## Dependabot settings
 
-The pinned package supports the two [Dependabot controls](settings.md#dependabot-alerts-and-security-updates) in validate/plan/apply and UI-named detailed Summary differences; the same-version report carries their two native booleans and closed count bounds. No Action input, token grant or credential source is added.
+The pinned package supports the two [Dependabot controls](settings/security.md#dependabot-alerts-and-security-updates) in validate/plan/apply and UI-named detailed Summary differences; the same-version report carries their two native booleans and closed count bounds. No Action input, token grant or credential source is added.
 
-Complete family reads require Administration read plus applicable actor authorization; writes require Administration write. Under this required-permissions precondition, GET 404 means disabled and adds no permission-risk warning. Pause metadata remains unavailable on 404; known paused state is diagnosed without requesting a resume. DELETE 204 plus matching fresh whole-family readback completes disabled intent, allowing declared dependency order to continue. Explicit 401/403, timeouts, malformed/incomplete reads, unexpected write status and target/companion mismatch fail while retaining prior completed progress. These endpoint-specific semantics do not certify actual grants, live enforcement or update activity. The [configuration reference](settings.md#dependabot-alerts-and-security-updates) owns the full contract.
+Complete family reads require Administration read plus applicable actor authorization; writes require Administration write. Under this required-permissions precondition, GET 404 means disabled and adds no permission-risk warning. Pause metadata remains unavailable on 404; known paused state is diagnosed without requesting a resume. DELETE 204 plus matching fresh whole-family readback completes disabled intent, allowing declared dependency order to continue. Explicit 401/403, timeouts, malformed/incomplete reads, unexpected write status and target/companion mismatch fail while retaining prior completed progress. These endpoint-specific semantics do not certify actual grants, live enforcement or update activity. The [configuration reference](settings/security.md#dependabot-alerts-and-security-updates) owns the full contract.
 
 ## Fork workflow policies
 
-[Fork workflow policies](settings.md#fork-pr-workflow-policies), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows UI choices and boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.
+[Fork workflow policies](settings/actions.md#fork-pr-workflow-policies), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows UI choices and boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.
 
-[Pages configuration](settings.md#pages-configuration) through validate/plan/apply and UI-named Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Export uses the same acquired-state contract; caller grants remain prerequisites. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Complete Source intent creates missing sites; explicit deploy-from-branch with exact `branch: none` deletes them. Partial creation intent and deletion conflicts fail. Confirmed creation remains reported if an optional follow-up fails. Site visibility is not managed.
+[Pages configuration](settings/pages.md#pages-configuration) through validate/plan/apply and UI-named Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Export uses the same acquired-state contract; caller grants remain prerequisites. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Complete Source intent creates missing sites; explicit deploy-from-branch with exact `branch: none` deletes them. Partial creation intent and deletion conflicts fail. Confirmed creation remains reported if an optional follow-up fails. Site visibility is not managed.
 
 The Summary shares Actions workflow-permission and contributor-approval, Security and Pages display paths and choices with CLI plans. Private plan transport fields retain their internal identities; these are not public YAML field names.
 
 ### Persistent pull request limits
 
-The Action accepts the same optional [Pull request limits declaration](settings.md#persistent-pull-request-limits)
+The Action accepts the same optional [Pull request limits declaration](settings/moderation.md#persistent-pull-request-limits)
 as the CLI, under `repository.settings.moderation.interaction_limits.pull_request_limits`.
 This namespace is a current-source contract and is not accepted by the published
 v0.44.1 package. Select a compatible published package before using this shape;
@@ -387,7 +369,7 @@ applied effects without retrying the write or rolling back earlier operations.
 ## Explicit collection pruning
 
 The pinned package accepts optional comma-separated `prune` for `command: plan` or
-`apply`, using the same [CLI prune contract](settings.md#collection-pruning). It
+`apply`, using the same [CLI prune contract](settings/pruning.md#collection-pruning). It
 adds deletions to other declared work and defaults to no pruning. `export` and `validate`
 reject a nonempty prune input. Omitted collections stay unmanaged; explicit []
 can delete all objects in the selected scope. Label deletion loses Issue/PR
@@ -406,19 +388,19 @@ restore them. Complete deletion snapshots need Actions read and Environments rea
 for child variables/secret metadata; DELETE needs Administration write. Metadata
 and child values stay out of plan/report output, and snapshot transport ignores
 inherited `GH_DEBUG`. Status-only also hides parent names and policy. See the
-[Environment pruning contract](settings.md#environment-pruning) for custom-rule
+[Environment pruning contract](settings/pruning.md#environment-pruning) for custom-rule
 blocking, inactive-pattern visibility limits, fresh checks and nontransactional
 failure effects.
 
 The pinned package's Environment protection App selection shares the CLI's
-[custom-rule ownership and verification](settings.md#custom-protection-apps).
+[custom-rule ownership and verification](settings/environments.md#custom-protection-apps).
 Detailed plans show App-ID membership; status-only output omits selections and
 Environment names. Raw binding evidence stays out of plan reports and transport
 debug logs. Apply publishes success outputs only after verification and never
 writes binding rule IDs to configuration. Package support does not establish actual App permissions.
 
 Classic branch-protection entries use the same
-[partial-ownership contract](settings.md#classic-branch-protection) in CLI and
+[partial-ownership contract](settings/legacy-classic-protection.md#classic-branch-protection) in CLI and
 Action. Detailed Summary shows requested patterns, checkboxes and selected active
 status-check policy, including check names and App-node sources; status-only
 hides names and values after validating the same private report. Unowned actor,
@@ -431,21 +413,21 @@ shows supported before-policy and whole-rule removal consequences, including
 protections outside the supported controls. Omission remains unmanaged; []
 selects all acquired rules under its scope or standalone `all`. Complete frozen
 candidates, exact drift checks and independent complete absence verification use
-the [same deletion contract](settings.md#classic-branch-protection-pruning). This source addition
+the [same deletion contract](settings/legacy-classic-protection.md#classic-branch-protection-pruning). This source addition
 does not change an immutable published Action or CLI, and it adds no live mutation
 to the repository workflows. Classic creation IDs are reported for recovery;
 Actions does not rewrite the configuration file.
 
 ## Repository AI Scan
 
-The pinned package supports the [AI Scan for repositories toggle](settings.md#ai-scan-for-repositories)
+The pinned package supports the [AI Scan for repositories toggle](settings/security.md#ai-scan-for-repositories)
 independently of PR scanning in export, plan and apply. Apply changes configuration and verifies the PR
 companion; it does not request a scan. Detailed reports show the boolean, while
 status-only publication hides it. Actual scan usage and billing remain separate.
 
 ## Deploy keys in current source
 
-The Action shares the [Deploy keys contract](settings.md#deploy-keys), including
+The Action shares the [Deploy keys contract](settings/deploy-keys.md#deploy-keys), including
 canonical public-key identity, exact matching no-ops and explicit `deploy-keys`
 pruning. Detailed plans show title, fingerprint and read/write grant; status-only
 hides those values. Transport ignores `GH_DEBUG` for private snapshot data.
@@ -456,13 +438,13 @@ later deletion.
 
 ## Autolink permissions and identity recording
 
-The pinned package supports [Autolink references](settings.md#autolink-references) through the same export/plan/apply contract. App installation tokens require repository Administration read for acquisition and write for creation/deletion. Nothing grants or broadens permissions automatically. `prune: autolinks`, comma combinations and standalone `all` use fixed candidates for a present collection. Ordinary apply preserves unlisted references.
+The pinned package supports [Autolink references](settings/legacy-autolinks.md#autolink-references) through the same export/plan/apply contract. App installation tokens require repository Administration read for acquisition and write for creation/deletion. Nothing grants or broadens permissions automatically. `prune: autolinks`, comma combinations and standalone `all` use fixed candidates for a present collection. Ordinary apply preserves unlisted references.
 
 Autolinks are immutable ID-bound objects: changes require explicit pruning and later creation. The Action does not write creation IDs, commit or push. Record confirmed IDs through the [creation-ID procedure](contributing/repository-automation.md#repository-settings-changes) before repeating creation; unbound collisions fail. Detailed plans and Summary may show non-secret prefix/URL/format, while status-only hides them. Export saves local YAML without logging its contents; API debug bodies are suppressed. Package support still depends on the selected immutable release.
 
 ### Existing runner custom labels
 
-The pinned package supports [custom labels on existing runner IDs](settings.md#existing-runner-custom-labels)
+The pinned package supports [custom labels on existing runner IDs](settings/actions.md#existing-runner-custom-labels)
 through the shared export/plan/apply path. Explicit `prune: runners` or `all`
 removes unlisted remote registrations from a present list; `[]` selects all.
 Detailed Summaries show selected IDs and custom labels and deletion candidates'
@@ -470,13 +452,13 @@ ID, name, OS and custom labels; status-only hides them. Operational state and
 private runner/readonly evidence stay out of reports and debug logs. A failed
 acknowledgment or readback fails the Action without success outputs, even when
 remote changes may have occurred. Removal may affect jobs; busy checks are not
-atomic. See the [runner pruning contract](settings.md#runner-registration-pruning).
+atomic. See the [runner pruning contract](settings/actions.md#runner-registration-pruning).
 The Action does not modify input YAML, register runners, issue credentials or
 clean up hosts.
 
 ## Webhook configuration and creation in current source
 
-The Action uses the shared [webhook contract](settings.md#webhook-configuration-and-creation).
+The Action uses the shared [webhook contract](settings/webhooks.md#webhook-configuration-and-creation).
 Detailed plans/Summary show selected controls, the security consequence of disabled
 SSL verification, and creation's automatic ping/no supplied Secret consequences.
 Omitted SSL verification preserves an existing hook and enables verification for
@@ -491,5 +473,5 @@ and add the binding through a reviewed follow-up before retrying. A repeated
 IDless request with a live matching URL fails rather than creating again. Success
 outputs appear only after required verification; earlier confirmed creations
 remain when later work fails. The Action makes no extra ping, test, redelivery or
-destination request. Explicit `prune: webhooks` or `all` deletes unlisted whole hooks and their opaque Secrets from a present list; `[]` selects all. Detailed plans show deletion consequences; status-only hides values. Equal timestamps do not prove Secret equality, and no atomic lock protects the final read and DELETE. See the [pruning contract](settings.md#explicit-webhook-pruning). Support depends on the selected
+destination request. Explicit `prune: webhooks` or `all` deletes unlisted whole hooks and their opaque Secrets from a present list; `[]` selects all. Detailed plans show deletion consequences; status-only hides values. Equal timestamps do not prove Secret equality, and no atomic lock protects the final read and DELETE. See the [pruning contract](settings/webhooks.md#explicit-webhook-pruning). Support depends on the selected
 immutable package; permissions are not granted or broadened automatically.

@@ -1,6 +1,6 @@
 # Autolink reference behavior
 
-The [Autolinks reference](../settings.md#autolink-references) owns the public
+The [Autolinks reference](../settings/legacy-autolinks.md#autolink-references) owns the public
 fields, identity, permissions, explicit replacement and failure contract.
 These scenarios use local fixtures; they do not establish live API persistence,
 an authenticated form observation, or external-link rendering.

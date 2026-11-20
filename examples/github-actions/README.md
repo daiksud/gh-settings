@@ -18,7 +18,7 @@ in the [Action guide](../../docs/github-actions.md#labels-and-permissions).
 | [settings-pr.yml](settings-pr.yml) | `.github/workflows/settings-pr.yml` |
 | [settings-main.yml](settings-main.yml) | `.github/workflows/settings-main.yml` |
 
-Commit `.github/settings.yml` with [`version: daiksud/gh-settings@v0`](../../docs/settings.md#configuration-semantics) at the repository root. These three files are the consumer workflow/configuration files; CLI installation, validation and PR Summary rendering belong to the Action. Copying them does not configure GitHub branch or Environment protections and does not install a workflow-scope guard.
+Commit `.github/settings.yml` with [`version: daiksud/gh-settings@v0`](../../docs/settings/configuration.md#configuration-semantics) at the repository root. These three files are the consumer workflow/configuration files; CLI installation, validation and PR Summary rendering belong to the Action. Copying them does not configure GitHub branch or Environment protections and does not install a workflow-scope guard.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job. Main checks out its exact `github.sha` without persisted credentials. PR plan does **not** check out PR code: its trusted inline preparation creates only Git metadata and the pinned candidate `.github/settings.yml` at `GITHUB_WORKSPACE`. The fixed containing-repository GitHub.com `origin` selects the target. No external caller script is needed.
 

@@ -6,7 +6,7 @@ description: Manage the General Commits sign-off checkbox.
 
 ## Status
 
-supported and implemented in current source. The field is `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` in the current UI document. The [settings reference](../settings.md#web-commit-sign-off) owns adoption and usage guidance.
+supported and implemented in current source. The field is `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` in the current UI document. The [settings reference](../settings/general.md#web-commit-sign-off) owns adoption and usage guidance.
 
 ## Behavior
 

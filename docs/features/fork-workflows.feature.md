@@ -6,7 +6,7 @@ description: Explicit contributor approval for workflows from public fork pull r
 
 ## Scope and declaration
 
-The [configuration contract](../settings.md#fork-pr-workflow-policies) owns the public contributor approval choice under `repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors`. It accepts the three UI approval policies. Omission is unmanaged; null, unknown keys and wrong types fail locally. This control is distinct from workflow token permissions and approving PR reviews. `pull_request_target` is outside this approval gate. Private fork execution/credential settings and sharing access are [excluded](../settings.md#excluded-private-actions-controls).
+The [configuration contract](../settings/actions.md#fork-pr-workflow-policies) owns the public contributor approval choice under `repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors`. It accepts the three UI approval policies. Omission is unmanaged; null, unknown keys and wrong types fail locally. This control is distinct from workflow token permissions and approving PR reviews. `pull_request_target` is outside this approval gate. Private fork execution/credential settings and sharing access are [excluded](../settings/actions.md#excluded-private-actions-controls).
 
 ## Observation and reconciliation
 

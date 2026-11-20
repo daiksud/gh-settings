@@ -1,6 +1,6 @@
 # Explicit whole-webhook pruning
 
-The [public contract](../settings.md#explicit-webhook-pruning) owns scope,
+The [public contract](../settings/webhooks.md#explicit-webhook-pruning) owns scope,
 irreversible effects and concurrency limits. This specification adds deletion
 without authorizing live mutations or claiming secret-aware concurrency.
 

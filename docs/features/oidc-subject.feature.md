@@ -6,7 +6,7 @@ description: Reconcile independently selected active-template and immutable conf
 
 ## Feature: Manage the Subject claim active template
 
-The [configuration reference](../settings.md#actions-oidc-subject-template) owns
+The [configuration reference](../settings/actions.md#actions-oidc-subject-template) owns
 YAML, permissions, active-template ownership and cloud trust coordination.
 
 ### Scenario: Validate the complete active union before remote work

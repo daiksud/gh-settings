@@ -28,7 +28,7 @@ Use `github.com/cli/go-gh/v2` for GitHub API access and integration with GitHub 
 
 ## Consequences
 
-The REST client resolves host and credentials from the `gh` environment and configuration and exposes GET and PATCH methods.[^go-gh-rest-client] The library can support export and plan reads, and a direct apply PATCH without a preceding current-settings fetch. Library selection does not change the [command contracts](../commands.md) or [configuration schema](../settings.md).
+The REST client resolves host and credentials from the `gh` environment and configuration and exposes GET and PATCH methods.[^go-gh-rest-client] The library can support export and plan reads, and a direct apply PATCH without a preceding current-settings fetch. Library selection does not change the [command contracts](../commands.md) or [configuration schema](../settings/README.md).
 
 The library's repository helper respects `GH_REPO`.[^go-gh-readme] Adopting it does not authorize a target override: the tool still targets only the repository containing `.github/settings.yml`. Detailed target resolution and credential/error presentation remain to be designed within that boundary. Remaining authentication details and the deferred Action's authentication design are not settled by this choice.
 

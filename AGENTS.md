@@ -16,9 +16,9 @@ Autolink references are an explicit v1 exclusion under the confirmed Free-plan
 scope: the official UI guide lists paid-plan availability, and this repository
 has no observed sidebar entry. This is not API absence; preserve the existing
 v0 implementation, schema and export behavior. See the
-[Autolinks contract](docs/settings.md#autolink-references).
+[Autolinks contract](docs/settings/legacy-autolinks.md#autolink-references).
 
-Follow the [feature adoption policy](docs/settings.md#feature-adoption-scope)
+Follow the [feature adoption policy](docs/settings/scope.md#feature-adoption-scope)
 and [coverage ledger](docs/contributing/settings-coverage.md). Rulesets are the
 only supported branch-protection mechanism in v1. Classic branch protection is
 outside v1 by product choice, not API or plan unavailability; retain the existing

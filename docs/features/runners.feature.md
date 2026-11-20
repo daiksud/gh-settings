@@ -1,6 +1,6 @@
 # Existing repository runner labels and pruning
 
-The [configuration reference](../settings.md#existing-runner-custom-labels) owns
+The [configuration reference](../settings/actions.md#existing-runner-custom-labels) owns
 the supported contract. These scenarios cover selected labels and explicit remote
 registration removal, not registration, credentials, host installation or workflow execution.
 

@@ -9,7 +9,8 @@ Start with the [README quick start](../README.md#quick-start).
 | Task | Guide |
 | --- | --- |
 | Export, validate, plan, or apply; understand targeting and errors | [Command reference](commands.md) |
-| Declare repository settings, topics, and labels in YAML | [Configuration reference](settings.md) |
+| Declare repository settings, topics, and labels in YAML | [Configuration reference](settings/README.md) |
+| Select GitHub App grants by YAML path and command | [Permission matrix](settings/permissions.md) |
 | Use the public Action and configure approval and credentials | [GitHub Actions guide](github-actions.md) |
 | Check which published Action/CLI a copied workflow runs | [Published package and consumer pins](github-actions.md#published-package-and-consumer-pins) |
 | Protect apply with Environment review and trusted required checks | [Apply protection guide](github-actions.md#protect-the-apply-path) |
@@ -38,7 +39,8 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 | Understand the reasons for a design decision | [Architecture decision records](adr/README.md) |
 | Find detailed scenarios and their Go test mappings | [Behavior specifications](features/README.md) |
 
-The user guides stay directly under `docs/`; contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.
+User guides live under `docs/`; the category-based settings reference lives under
+`docs/settings/`, and contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.
 
 UI/API boundary: [Actions UI mappings](contributing/ui-actions-mapping.md).
 

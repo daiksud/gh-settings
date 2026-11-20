@@ -6,7 +6,7 @@ description: Planned declarations, complete observations, dependencies, and acce
 
 ## Status and scope
 
-The project-wide [personal-public UI adoption policy](../settings.md#feature-adoption-scope) also applies to Security; the historical scope and implemented contracts below do not certify a completed eligibility audit. For API-unconfirmed settings, to be reassessed under that policy, and separately excluded controls, see [Security UI settings not managed by gh-settings](../settings.md#security-ui-settings-not-managed-by-gh-settings).
+The project-wide [personal-public UI adoption policy](../settings/scope.md#feature-adoption-scope) also applies to Security; the historical scope and implemented contracts below do not certify a completed eligibility audit. For API-unconfirmed settings, to be reassessed under that policy, and separately excluded controls, see [Security UI settings not managed by gh-settings](../settings/security.md#security-ui-settings-not-managed-by-gh-settings).
 
 [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
 
@@ -92,7 +92,7 @@ All fixtures use local APIs and dummy credentials. They establish modeled behavi
 
 Neither `security_and_analysis.code_security` nor `security_and_analysis.advanced_security` becomes a YAML enablement key, export family or implicit prerequisite. The existing `advanced_security` page and `code_security` section organize individual controls; those containers do not enable products. Missing product fields remain unavailable, not disabled. A rejected product request never authorizes retrying with another product or enrolling a contract.
 
-CodeQL default setup/configuration and both AI Scan toggles are implemented as described below. Other individual UI controls whose complete public API paths remain unconfirmed stay in the [separate inventory](../settings.md#security-ui-settings-not-managed-by-gh-settings).
+CodeQL default setup/configuration and both AI Scan toggles are implemented as described below. Other individual UI controls whose complete public API paths remain unconfirmed stay in the [separate inventory](../settings/security.md#security-ui-settings-not-managed-by-gh-settings).
 
 ## Automatic readable export
 
@@ -166,7 +166,7 @@ The [private vulnerability reporting guide](https://docs.github.com/en/code-secu
 
 ## Implemented Secret scanning test mappings
 
-The [public configuration contract](../settings.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans with automatic export, independently of private vulnerability reporting below. The implemented families below remain separate from the excluded product switches.
+The [public configuration contract](../settings/security.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans with automatic export, independently of private vulnerability reporting below. The implemented families below remain separate from the excluded product switches.
 
 - Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
 - Strict YAML, explicit false and omission round-trip: [Security UI codec](../../internal/workspace/ui_security_test.go) and [page/section schema](../../internal/workspace/ui_page_sections_test.go), including nested controls and rejection of superseded shapes.
@@ -179,7 +179,7 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` with automatic export. Product-wide Code Security and Advanced Security enablement remains excluded.
+The [public configuration contract](../settings/security.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` with automatic export. Product-wide Code Security and Advanced Security enablement remains excluded.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../internal/settings/private_reporting_test.go).
 - Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [Security UI codec](../../internal/workspace/ui_security_test.go).
@@ -265,11 +265,11 @@ Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/work
 
 Owning checks: `internal/settings/codeql_configuration_test.go`, `internal/workspace/ui_codeql_configuration_test.go`, `internal/github/codeql_configuration_test.go`, `internal/app/codeql_configuration_test.go`, `internal/actions/codeql_configuration_test.go`, and `tests/acceptance/codeql_configuration_test.go` / `tests/acceptance/codeql_threat_model_test.go`.
 
-`threat_model` accepts `remote_sources` and `remote_and_local_sources`, mapping exactly to API `remote` and `remote_and_local`. Both are exported automatically from complete configured observations. A threat-only declaration counts one managed scalar, sends only `threat_model` when changed and preserves languages/query suite/runner through readback. Omission preserves the acquired threat model during other configuration updates. Unknown, missing, null or mistyped raw choices fail acquisition; no normalization or fallback makes them supported. Confirmed disabled export removes all four prior configuration controls. Adapter/model and real-binary cases cover both directions, no-op, unknown-detail retention, disabled cleanup and readback failure stopping. GitHub currently documents the local-source choice as Preview for Java/Kotlin and C#; fixture success does not establish live language availability or analysis completion. See the [configuration contract](../settings.md#codeql-default-configuration) and [coverage inventory](../contributing/settings-coverage.md).
+`threat_model` accepts `remote_sources` and `remote_and_local_sources`, mapping exactly to API `remote` and `remote_and_local`. Both are exported automatically from complete configured observations. A threat-only declaration counts one managed scalar, sends only `threat_model` when changed and preserves languages/query suite/runner through readback. Omission preserves the acquired threat model during other configuration updates. Unknown, missing, null or mistyped raw choices fail acquisition; no normalization or fallback makes them supported. Confirmed disabled export removes all four prior configuration controls. Adapter/model and real-binary cases cover both directions, no-op, unknown-detail retention, disabled cleanup and readback failure stopping. GitHub currently documents the local-source choice as Preview for Java/Kotlin and C#; fixture success does not establish live language availability or analysis completion. See the [configuration contract](../settings/security.md#codeql-default-configuration) and [coverage inventory](../contributing/settings-coverage.md).
 
 ## AI Scan for repositories
 
-The [configuration contract](../settings.md#ai-scan-for-repositories) owns schema,
+The [configuration contract](../settings/security.md#ai-scan-for-repositories) owns schema,
 permissions and execution boundaries.
 
 ```gherkin

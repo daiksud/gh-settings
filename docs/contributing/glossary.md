@@ -1,6 +1,6 @@
 # Settings model and application terms
 
-These terms describe the shared Go model. [Architecture](architecture.md#implementation-ownership) explains the code boundaries; the [settings reference](../settings.md) defines user-facing YAML.
+These terms describe the shared Go model. [Architecture](architecture.md#implementation-ownership) explains the code boundaries; the [settings reference](../settings/README.md) defines user-facing YAML.
 
 | Term | Meaning | Go type |
 | --- | --- | --- |
@@ -33,4 +33,4 @@ These terms describe the shared Go model. [Architecture](architecture.md#impleme
 | Label report attributes | Optional color/description fields preserve the operation's attribute presence; complete before values are required where applicable | `actions.LabelAttributes` |
 | Run metadata | Explicit nonsecret run, workflow, consumer, Action, and CLI identity context kept separate from plan data | `actions.RunMetadata` |
 
-The [model](../../internal/settings/) has no YAML/JSON mappings, I/O, or presentation responsibility. [Application operations](../../internal/app/) compose those model values with workspace and GitHub boundaries. The [Actions internals reference](actions-internals.md) defines the report and metadata interfaces.
+The [model](../../internal/settings) has no YAML/JSON mappings, I/O, or presentation responsibility. [Application operations](../../internal/app) compose those model values with workspace and GitHub boundaries. The [Actions internals reference](actions-internals.md) defines the report and metadata interfaces.

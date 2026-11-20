@@ -2,7 +2,7 @@
 
 ## Contract
 
-The [configuration reference](../settings.md#persistent-pull-request-limits) owns
+The [configuration reference](../settings/moderation.md#persistent-pull-request-limits) owns
 UI paths, values, scope, permissions, export and confirmation semantics.
 
 ## Scenarios and owning tests

@@ -6,7 +6,7 @@ description: Select whole Ruleset objects by numeric ID with explicit command-se
 
 ## Status and goal
 
-Rulesets use ID-selected whole-object ownership. The [configuration reference](../settings.md#rulesets) owns schema, fixed defaults and observation limits. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
+Rulesets use ID-selected whole-object ownership. The [configuration reference](../settings/rulesets.md#rulesets) owns schema, fixed defaults and observation limits. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
 
 ## Ownership and identity
 
@@ -46,7 +46,7 @@ Confirmed created IDs are appended immediately to the original YAML through the 
 
 ## API, access and availability
 
-The adapter pins API version `2026-03-10`, uses bounded requests and refuses redirects. [Repository Rulesets REST](https://docs.github.com/en/rest/repos/rules) owns request permissions/shapes; complete bypass visibility requires Ruleset write access beyond ordinary public listing. Supported enforcement GET strings and other complete unknown values follow the [active ID-bound normalization policy](../settings.md#ruleset-enforcement-observation-normalization). [Required approvals](../settings.md#ruleset-required-approvals-observation-normalization) retains typed integer provenance; [Allowed merge methods](../settings.md#ruleset-allowed-merge-methods-observation-normalization) retains typed ordered list provenance; [bypass modes](../settings.md#ruleset-bypass-mode-observation-normalization) retain exact actor-bound strings. Scanning [Alerts](../settings.md#ruleset-scanning-alerts-observation-normalization) and [Security alerts](../settings.md#ruleset-scanning-security-alerts-observation-normalization) retain independent tool-bound strings. Account/plan eligibility and team-feature prerequisites remain GitHub's responsibility. Do not expand credentials or change live protection to make a test pass.
+The adapter pins API version `2026-03-10`, uses bounded requests and refuses redirects. [Repository Rulesets REST](https://docs.github.com/en/rest/repos/rules) owns request permissions/shapes; complete bypass visibility requires Ruleset write access beyond ordinary public listing. Supported enforcement GET strings and other complete unknown values follow the [active ID-bound normalization policy](../settings/rulesets.md#ruleset-enforcement-observation-normalization). [Required approvals](../settings/rulesets.md#ruleset-required-approvals-observation-normalization) retains typed integer provenance; [Allowed merge methods](../settings/rulesets.md#ruleset-allowed-merge-methods-observation-normalization) retains typed ordered list provenance; [bypass modes](../settings/rulesets.md#ruleset-bypass-mode-observation-normalization) retain exact actor-bound strings. Scanning [Alerts](../settings/rulesets.md#ruleset-scanning-alerts-observation-normalization) and [Security alerts](../settings/rulesets.md#ruleset-scanning-security-alerts-observation-normalization) retain independent tool-bound strings. Account/plan eligibility and team-feature prerequisites remain GitHub's responsibility. Do not expand credentials or change live protection to make a test pass.
 
 Fresh reads and response verification do not lock concurrent edits. Whole-object management can overwrite intervening edits to supported selected settings; unknown writable fields and other unsupported policy values cause failure rather than silent erasure. Fixtures establish client behavior, not live entitlement, server mutation success or atomicity.
 
@@ -187,7 +187,7 @@ Push targets and file restriction controls remain unsupported; their target UI e
 
 ## Additional approval for unattributed Copilot pull requests
 
-The [PR control contract](../settings.md#pr-review-and-required-check-parameters)
+The [PR control contract](../settings/rulesets.md#pr-review-and-required-check-parameters)
 accepts the additional-approval checkbox as a boolean. Omission inside a selected
 PR group declares true; explicit false is owned. The setting is stored even when
 Required approvals is 0, where GitHub documents no effect. A missing, null or
@@ -213,7 +213,7 @@ settings, Copilot PR execution or enforcement was exercised.
 
 ## Unimplemented branch controls
 
-The [unimplemented-control contract](../settings.md#unimplemented-branch-controls)
+The [unimplemented-control contract](../settings/rulesets.md#unimplemented-branch-controls)
 rejects team-required review declarations before API access. Preview
 status itself is not a policy exclusion. Acquired nonempty team reviewers
 and unknown/malformed protection fail the complete collection without writes or
@@ -226,7 +226,7 @@ cover these rejection boundaries.
 
 ## Code coverage thresholds
 
-The [coverage contract](../settings.md#code-coverage-thresholds) manages the branch
+The [coverage contract](../settings/rulesets.md#code-coverage-thresholds) manages the branch
 Ruleset checkbox and both finite 0–100 numeric thresholds. Selected child
 omission defaults to explicit zero, which disables that threshold; selected 0/0
 is distinct from absent coverage. Omitting the group removes it under whole-object
