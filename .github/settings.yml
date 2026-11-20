@@ -197,7 +197,6 @@ repository:
                 alerts: errors
           require_code_quality_results:
             severity: errors
-    branch_protection_rules: []
     actions:
       general:
         actions_permissions:

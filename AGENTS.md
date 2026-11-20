@@ -19,9 +19,12 @@ v0 implementation, schema and export behavior. See the
 [Autolinks contract](docs/settings.md#autolink-references).
 
 Follow the [feature adoption policy](docs/settings.md#feature-adoption-scope)
-and [coverage ledger](docs/contributing/settings-coverage.md). Remaining classic
-branch-protection controls and additional configurable custom rules
-are adopted future work where the target UI and APIs permit them. Organization
+and [coverage ledger](docs/contributing/settings-coverage.md). Rulesets are the
+only supported branch-protection mechanism in v1. Classic branch protection is
+outside v1 by product choice, not API or plan unavailability; retain the existing
+v0 implementation/schema/export contracts and live protection. No implicit
+migration, replacement or removal is authorized. Additional configurable custom
+rules remain adopted future work where the target UI and APIs permit them. Organization
 settings, repository rename/visibility/transfer/deletion, feature configuration
 file authoring and secret values remain excluded. Temporary interaction restrictions
 are an explicit exception: their finite duration automatically restores normal
