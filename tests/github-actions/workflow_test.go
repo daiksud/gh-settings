@@ -88,7 +88,7 @@ func findStep(t *testing.T, j job, id string) step {
 
 const (
 	exampleAction         = "daiksud/gh-settings@cccd06a151c2dce3b9eb71520d3c01b4c73ac92f"
-	exampleConsumerAction = "daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2"
+	exampleConsumerAction = "daiksud/gh-settings@948873d260be87aecc3d0597f715a8c09e1347b9"
 )
 
 func TestWorkflowCredentialBoundaries(t *testing.T) {
