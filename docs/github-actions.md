@@ -357,8 +357,8 @@ The Summary shares Actions workflow-permission and contributor-approval, Securit
 
 The Action accepts the same optional [Pull request limits declaration](settings/moderation.md#persistent-pull-request-limits)
 as the CLI, under `repository.settings.moderation.interaction_limits.pull_request_limits`.
-This namespace is a current-source contract and is not accepted by the published
-v0.44.1 package. Select a compatible published package before using this shape;
+The published v0.45.0 package supports this namespace; v0.44.1 does not.
+Select a compatible published package before using this shape;
 see the [published package boundary](#published-package-and-consumer-pins).
 Its token must already authorize the administrator-only creation-cap endpoint.
 Detailed plans/Summaries retain the three distinct UI controls and native values;

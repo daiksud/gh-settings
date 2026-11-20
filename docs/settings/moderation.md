@@ -27,11 +27,10 @@ latent maximum/draft values while disabled. Empty groups manage nothing. Null,
 quoted booleans/integers, fractions and API-shaped aliases are rejected.
 Moderation is the canonical configuration group. The former direct `repository.settings.interaction_limits` path is rejected, including declarations containing both paths. No input alias or automatic rewrite is provided.
 
-The published v0.44.1 package does not accept this current-source namespace.
-Use a compatible published CLI/Action before adopting it. This repository keeps
-its working operational declaration for that pinned package until publication
-and adoption can be reviewed separately; see the
-[operational format boundary](../contributing/repository-automation.md#moderation-format-and-operational-package).
+The published v0.45.0 CLI/Action supports this namespace. Earlier v0.44.1 does
+not accept it; select a compatible published package before changing the shape.
+This repository adopts the canonical declaration with matching immutable pins;
+see the [operational package contract](../contributing/repository-automation.md#moderation-format-and-operational-package).
 
 Plan selects the cap endpoint only when a cap control is declared. Apply
 acquires fresh complete cap state, skips
