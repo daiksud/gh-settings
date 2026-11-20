@@ -152,7 +152,7 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 
 		return nil
 	})
-	observe("repository.settings.general.releases.immutable_release", func(candidate *settings.SecurityDeclaration) error {
+	observe("repository.settings.general.releases.enable_release_immutability", func(candidate *settings.SecurityDeclaration) error {
 		if read.ImmutableReleases == nil {
 			return fmt.Errorf("reader unavailable")
 		}

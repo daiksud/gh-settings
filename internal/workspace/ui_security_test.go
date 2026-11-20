@@ -13,7 +13,7 @@ repository:
     settings:
         general:
             releases:
-                immutable_release: false
+                enable_release_immutability: false
         advanced_security:
             private_vulnerability_reporting: true
             secret_protection:
@@ -42,7 +42,7 @@ func TestUIConfigSecurityRejectsInvalidPlacementAndTypes(t *testing.T) {
 	for _, settings := range []string{
 		"security: {}", "advanced_security: {general_releases: {}}", "general: {general_releases: {}}",
 		"advanced_security: {secret_scanning: true}", "advanced_security: null",
-		"advanced_security: {secret_protection: {push_protection: 'false'}}", "general: {releases: {immutable_release: null}}",
+		"advanced_security: {secret_protection: {push_protection: 'false'}}", "general: {releases: {enable_release_immutability: null}}",
 		"advanced_security: {enforced_by_owner: true}", "advanced_security: {secret_protection: null}",
 		"advanced_security: {secret_protection: {enabled: 'true'}}",
 	} {

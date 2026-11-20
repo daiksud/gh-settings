@@ -88,7 +88,7 @@ Test mapping: the [Actions UI codec tests](../../internal/workspace/ui_actions_t
 
 - Given `repository.settings.advanced_security.secret_protection` declares independently optional `enabled` and `push_protection` booleans
 - And `private_vulnerability_reporting` is a sibling of Secret Protection
-- And release immutability is declared at `repository.settings.general.releases.immutable_release`
+- And release immutability is declared at `repository.settings.general.releases.enable_release_immutability`
 - When the document is read and exported
 - Then each explicit boolean stays at its UI location and omitted controls remain unmanaged
 - And navigation-category wrappers, scalar Secret Protection, flat push protection, API aliases and owner enforcement metadata are rejected

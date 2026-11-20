@@ -628,11 +628,11 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 	if desired.Security.ImmutableReleases != nil {
 		observed, err := read.ImmutableReleases(repo)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.immutable_release", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.enable_release_immutability", Target: repo, Err: err}
 		}
 		managed, changes, err := settings.CompareImmutableReleases(observed, desired.Security)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.immutable_release", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.enable_release_immutability", Target: repo, Err: err}
 		}
 		comparison.Managed += managed
 		comparison.Security = append(comparison.Security, changes...)

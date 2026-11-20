@@ -16,7 +16,15 @@ description: "General settings declaration, ownership and API contracts."
 
 ## Immutable release policy
 
-Use `repository.settings.general.releases.immutable_release`, a boolean. This General-page control is independent from Advanced Security. Ordinary `export` automatically attempts this policy, with info and omission/prior-declaration retention when unavailable. Owner enforcement is read-only metadata, never YAML intent.
+Use `repository.settings.general.releases.enable_release_immutability`, a boolean. This General-page control is independent from Advanced Security. Ordinary `export` automatically attempts this policy, with info and omission/prior-declaration retention when unavailable. Owner enforcement is read-only metadata, never YAML intent.
+
+The key follows GitHub's [Enable release immutability UI label](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/prevent-release-changes).
+The former `immutable_release` key is rejected, including declarations containing
+both names. There is no input alias or automatic rewrite. The published v0.45.0
+package accepts the former name and rejects the new name; adopt a compatible
+published package before changing operational files. This repository preserves
+its v0.45.0 declaration and pins until that separate adoption; see the
+[operational format boundary](../contributing/repository-automation.md#release-immutability-format-and-operational-package).
 
 A complete successful 200 observation requires both enabled and owner-enforced booleans. Under required permissions, HTTP 404 means disabled without an authorization-discrimination request, but supplies no owner-enforcement metadata. This does not certify actual grants or change other endpoints' 404 semantics. Explicit 401/403, timeouts and malformed/incomplete successful reads remain errors.
 

@@ -36,7 +36,7 @@ The following paths are relative to `repository.settings.general`:
 | `pull_requests.merge_commit.default_commit_message`, `pull_requests.squash_merge.default_commit_message` | UI menu choice below |
 | `commits.require_contributors_to_sign_off_on_web_based_commits` | boolean |
 | `danger_zone.archive_this_repository` | boolean; automatic export |
-| `releases.immutable_release` | boolean; automatic export |
+| `releases.enable_release_immutability` | boolean; automatic export |
 
 Omitting a scalar leaves it unmanaged. Explicit false and empty strings remain intent. REST-backed About/General controls use [fresh reconciliation](../commands.md#apply-behavior): skip exact matches and independently verify declared state after changed writes. An explicitly disabled Issues/Pull requests feature cannot accompany its creation-permission choice. Likewise, an explicitly disabled merge method cannot accompany its commit-message menu. Omitting the enabling checkbox never implicitly enables it. Export hides choices behind explicitly disabled controls after validating the acquired raw values.
 

@@ -14,7 +14,7 @@ repository:
   settings:
     general:
       releases:
-        immutable_release: false
+        enable_release_immutability: false
     actions:
       general:
         actions_permissions:
@@ -57,12 +57,12 @@ repository:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"immutable_release: false", "policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows", "default_permissions: read_repository_contents_and_packages_permissions", "enabled: false", "push_protection: false"} {
+	for _, required := range []string{"enable_release_immutability: false", "policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows", "default_permissions: read_repository_contents_and_packages_permissions", "enabled: false", "push_protection: false"} {
 		if !strings.Contains(string(encoded), required) {
 			t.Errorf("export missing %q: %s", required, encoded)
 		}
 	}
-	for _, forbidden := range []string{"security_and_quality:", "enable_release_immutability:", "selection:"} {
+	for _, forbidden := range []string{"security_and_quality:", "immutable_release:", "selection:"} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Errorf("export contains obsolete key %q: %s", forbidden, encoded)
 		}
@@ -115,7 +115,7 @@ repository:
 func TestUIPageSectionSchemaRejectsSupersededShapes(t *testing.T) {
 	for name, body := range map[string]string{
 		"navigation category":         "security_and_quality: {advanced_security: {secret_protection: true}}",
-		"old release key":             "general: {releases: {enable_release_immutability: true}}",
+		"old release key":             "general: {releases: {immutable_release: true}}",
 		"scalar actions policy":       "actions: {general: {actions_permissions: allow_all_actions_and_reusable_workflows}}",
 		"scalar workflow permissions": "actions: {general: {workflow_permissions: read_and_write_permissions}}",
 		"flat SHA control":            "actions: {general: {require_actions_to_be_pinned_to_a_full_length_commit_sha: true}}",

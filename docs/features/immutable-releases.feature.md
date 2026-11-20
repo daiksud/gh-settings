@@ -10,7 +10,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 
 ## Declaration and observation
 
-- `repository.settings.general.releases.immutable_release` is an optional boolean. Omission is
+- `repository.settings.general.releases.enable_release_immutability` is an optional boolean. Omission is
   unmanaged, false is explicit, and null/type/key/duplicate errors fail locally.
 - Ordinary export automatically attempts this independent
   family. Existing required permissions remain; failed
@@ -41,7 +41,7 @@ release publisher and individual releases/tags/assets are outside ownership.
   failed readback or refused write fails with uncertain-write diagnostics and
   retains any confirmed earlier operations. No retries or rollback occur.
 - CLI and credential-free Action Summary render
-  `repository.settings.general.releases.immutable_release: false → true`.
+  `repository.settings.general.releases.enable_release_immutability: false → true`.
   The private report retains its native field identity. The closed
   security report registry accepts only distinct native boolean changes, not
   owner metadata, unavailable values, guessed defaults or arbitrary fields.
@@ -53,7 +53,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 - [Security/General Releases UI codec](../../internal/workspace/ui_security_test.go) and
   [CLI options](../../internal/cli/security_test.go): false round trip,
   invalid types/duplicates, independent selections and duplicate-option failure.
-- [Page/section schema](../../internal/workspace/ui_page_sections_test.go): the concise
+- [Page/section schema](../../internal/workspace/ui_page_sections_test.go): the UI-label
   release key roundtrips, and the superseded release key is rejected without an alias.
 - [API](../../internal/github/immutable_releases_test.go): complete/incomplete
   200 and endpoint-specific 404 interpretation under the permission precondition,
@@ -74,3 +74,16 @@ was changed or tested. See the official [GET](https://docs.github.com/en/rest/re
 [enable](https://docs.github.com/en/rest/repos/repos#enable-immutable-releases) and
 [disable](https://docs.github.com/en/rest/repos/repos#disable-immutable-releases)
 contracts for endpoint permissions and status codes.
+
+## Canonical-key and package boundary
+
+- The UI-derived key is `enable_release_immutability`; `immutable_release` is
+  rejected even when the canonical key is also present. Validate, plan, apply
+  and export reject that existing invalid input before API work or file writes.
+- Current-source export and reports use only the canonical name. Native
+  comparison fields, REST paths/payloads, booleans and permission requirements
+  remain unchanged.
+- Published v0.45.0 accepts the old name and rejects the new one. The operational
+  YAML/pins retain that published contract until a compatible release is adopted.
+  A test-only candidate renames this single key, proves unchanged file bytes on
+  reversal, and retains the observed true policy; it is not a product importer.
