@@ -83,7 +83,7 @@ contracts for endpoint permissions and status codes.
 - Current-source export and reports use only the canonical name. Native
   comparison fields, REST paths/payloads, booleans and permission requirements
   remain unchanged.
-- Published v0.45.0 accepts the old name and rejects the new one. The operational
-  YAML/pins retain that published contract until a compatible release is adopted.
-  A test-only candidate renames this single key, proves unchanged file bytes on
-  reversal, and retains the observed true policy; it is not a product importer.
+- Published v0.46.0 accepts the canonical name. v0.45.0 accepts the old name and
+  rejects the canonical one. This repository's declaration and both caller pins
+  adopt v0.46.0 together, retaining the observed true policy. Operational fixtures
+  decode the actual file directly; no temporary projection or importer remains.

@@ -10,15 +10,14 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-// Project only the known published-package key boundaries in tests.
-// The operational file stays readable by its unchanged v0.45.0 consumers.
+// Decode the actual declaration consumed by the pinned published package.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ui, err := workspace.DecodeConfig(managedPublishedCandidate(t, data))
+	ui, err := workspace.DecodeConfig(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,6 +76,9 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	}
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
+	}
+	if desired.Security.ImmutableReleases == nil || !*desired.Security.ImmutableReleases || desired.Security.CodeQLConfiguration.QuerySuite == nil || *desired.Security.CodeQLConfiguration.QuerySuite != "extended" {
+		t.Fatal("retain the independently observed immutable-release and CodeQL suite policy")
 	}
 	if !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
 		t.Fatal("inactive or inapplicable Actions controls must remain unmanaged")

@@ -20,11 +20,10 @@ Use `repository.settings.general.releases.enable_release_immutability`, a boolea
 
 The key follows GitHub's [Enable release immutability UI label](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/prevent-release-changes).
 The former `immutable_release` key is rejected, including declarations containing
-both names. There is no input alias or automatic rewrite. The published v0.45.0
-package accepts the former name and rejects the new name; adopt a compatible
-published package before changing operational files. This repository preserves
-its v0.45.0 declaration and pins until that separate adoption; see the
-[operational format boundary](../contributing/repository-automation.md#release-immutability-format-and-operational-package).
+both names. There is no input alias or automatic rewrite. Published v0.46.0
+supports the canonical name; v0.45.0 accepts only the former name. This repository
+adopts the canonical declaration with matching immutable v0.46.0 pins; see the
+[operational package contract](../contributing/repository-automation.md#release-immutability-format-and-operational-package).
 
 A complete successful 200 observation requires both enabled and owner-enforced booleans. Under required permissions, HTTP 404 means disabled without an authorization-discrimination request, but supplies no owner-enforcement metadata. This does not certify actual grants or change other endpoints' 404 semantics. Explicit 401/403, timeouts and malformed/incomplete successful reads remain errors.
 
@@ -124,4 +123,5 @@ choices, gate booleans, native title/message pairs and API fields are unchanged.
 The former `merge_commit` and `squash_merge` groups are rejected, including old/new
 names together. There are no aliases or automatic migrations. See the
 [operational package boundary](../contributing/repository-automation.md#plural-ui-keys-and-operational-package)
-before changing a declaration consumed by a published package.
+before changing a declaration consumed by a published package. Published v0.46.0
+supports the canonical groups; v0.45.0 requires the former names.

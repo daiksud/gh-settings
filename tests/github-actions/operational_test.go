@@ -8,7 +8,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-const operationalAction = "daiksud/gh-settings@b074b1de2e7cbc7f623cc0e31bcab71d681d166d"
+const operationalAction = "daiksud/gh-settings@e283ab6a65fd8ca342da41d742f104b289519a58"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
 	declaration := readManagedDeclaration(t)

@@ -118,7 +118,7 @@ repository:
       template_repository: false
       default_branch: main
       releases:
-        immutable_release: true
+        enable_release_immutability: true
       features:
         wikis: false
         issues: true
@@ -133,7 +133,7 @@ repository:
       pull_requests:
         allow_merge_commits: false
         allow_squash_merging: true
-        squash_merge:
+        squash_merging:
           default_commit_message: pull_request_title_and_description
         allow_rebase_merging: false
         always_suggest_updating_pull_request_branches: true
@@ -240,7 +240,7 @@ repository:
             - go
             - javascript_typescript
             - python
-          query_suite: extended
+          query_suites: extended
           runner:
             type: standard_github_runner
           threat_model: remote_sources
