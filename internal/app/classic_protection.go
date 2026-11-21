@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -47,11 +46,7 @@ func applyClassicProtection(result *ApplyResult, repo repository.Repository, des
 			}
 		}
 		if err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
+			status := writeFailureStatus(err)
 			result.failOperation(first+i, status)
 			uncertainty := ""
 			if status == OperationFailedUnknown {
@@ -93,11 +88,10 @@ func applyClassicPrune(result *ApplyResult, repo repository.Repository, prepared
 	wrote := false
 	for i, candidate := range candidates {
 		if err := write.DeleteBranchProtectionRule(repo, candidate); err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			uncertainty := " (unconfirmed effects may remain)"
-			if errors.As(err, &pre) {
-				status, uncertainty = OperationFailedRead, ""
+			status := writeFailureStatus(err)
+			uncertainty := ""
+			if status == OperationFailedUnknown {
+				uncertainty = " (unconfirmed effects may remain)"
 			}
 			result.failOperation(first+i, status)
 			return wrote, fmt.Errorf("delete classic protection %q id %d node %q%s: %w", candidate.Pattern(), candidate.ID(), candidate.NodeID(), uncertainty, err)

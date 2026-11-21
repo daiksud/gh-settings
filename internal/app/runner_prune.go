@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -37,12 +36,7 @@ func applyRunnerPrune(result *ApplyResult, repo repository.Repository, desired [
 		result.Operations = append(result.Operations, ApplyOperation{Kind: RunnerLabelsUpdate, RunnerID: d.ID})
 		changed, err := write.RunnerLabels(repo, d)
 		if err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return wrote, fmt.Errorf("apply runner labels: %w", err)
 		}
 		if !changed {

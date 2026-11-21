@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -66,12 +65,7 @@ func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desir
 			err = fmt.Errorf("%s returned mismatched Actions policy id %d; expected %d (writes may already have applied)", change.Operation(), id, change.ID())
 		}
 		if err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
-			result.failOperation(first+i, status)
+			result.failOperation(first+i, writeFailureStatus(err))
 			return false, fmt.Errorf("%s Actions policy %q: %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted

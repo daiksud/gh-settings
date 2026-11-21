@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -30,12 +29,7 @@ func applyAIScanPullRequests(result *ApplyResult, repo repository.Repository, d 
 	result.Operations = append(result.Operations, ApplyOperation{Kind: AIScanPullRequestsUpdate, SecurityField: changes[0].Field()})
 	changed, err := write.AIScanPullRequests(repo, changes[0])
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply AI Scan for pull requests: %w", err)
 	}
 	if changed {

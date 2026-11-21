@@ -164,3 +164,44 @@ func TestReadableExportInfoFailureAndProjectionFailure(t *testing.T) {
 		t.Fatal("failed family projection escaped", err, seen)
 	}
 }
+
+func TestExportChecksOnlyAcquiredActionsFieldsBeforeReplacingThem(t *testing.T) {
+	yes, days := true, 7
+	prior := settings.ActionsPolicyDeclaration{
+		Enabled: &yes, AllowedActions: appString("selected"),
+		SelectedActions:            settings.SelectedActionsDeclaration{GitHubOwnedAllowed: &yes},
+		DefaultWorkflowPermissions: appString("read"), RetentionDays: &days,
+	}
+	observed := settings.ActionsPolicyState{Enabled: true, AllowedActions: "all"}
+	workflow := settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "write"}
+	reader := Reader{
+		Actions:             func(repository.Repository, bool) (settings.ActionsPolicyState, error) { return observed, nil },
+		WorkflowPermissions: func(repository.Repository) (settings.WorkflowPermissionsState, error) { return workflow, nil },
+	}
+	var checked []settings.Declaration
+	var saved settings.Declaration
+	err := Export(ExportCheckout{
+		Existing: settings.Declaration{Actions: prior}, Repository: checkoutRepository,
+		Check: func(d settings.Declaration) error {
+			checked = append(checked, d)
+			if d.Actions.DefaultWorkflowPermissions != nil {
+				return errors.New("workflow permissions projection failed")
+			}
+			return nil
+		},
+		PrepareSave: func() (func(settings.Declaration) error, error) {
+			return func(d settings.Declaration) error { saved = d; return nil }, nil
+		},
+	}, reader)
+	execution, _ := observed.Declaration()
+	permissions, _ := (settings.ActionsPolicyDeclaration{}).WithWorkflowPermissions(workflow)
+	if err != nil || !reflect.DeepEqual(checked, []settings.Declaration{{Actions: execution}, {Actions: permissions}}) {
+		t.Fatalf("checks must contain only each acquired family: %v, %v", checked, err)
+	}
+	want := execution
+	want.DefaultWorkflowPermissions = prior.DefaultWorkflowPermissions
+	want.RetentionDays = prior.RetentionDays
+	if !reflect.DeepEqual(saved.Actions, want) {
+		t.Fatalf("expected execution to replace selected details and retain other controls: %+v", saved.Actions)
+	}
+}

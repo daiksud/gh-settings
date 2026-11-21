@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -87,12 +86,7 @@ func applyPrunedVariables(result *ApplyResult, repo repository.Repository, desir
 	}
 	wroteAny := false
 	fail := func(index int, err error) (bool, error) {
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return wroteAny, fmt.Errorf("apply variable prune: %w", err)
 	}
 	for i, value := range values {

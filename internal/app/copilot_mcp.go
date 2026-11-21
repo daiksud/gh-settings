@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 )
@@ -11,12 +10,7 @@ func applyCopilotMCP(result *ApplyResult, repo repository.Repository, desired bo
 	result.Operations = append(result.Operations, ApplyOperation{Kind: CopilotMCPUpdate})
 	wrote, err := write.CopilotMCP(repo, desired)
 	if err != nil {
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply Copilot MCP tools: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged
