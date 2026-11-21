@@ -86,7 +86,7 @@ Keep `--no-narrow` to retain SHA references. `--verify-local` is an optional
 offline coverage check; it does not verify upstream identity or reachability.
 Never edit the lockfile by hand or automatically accept moved pins.
 
-[Dependabot](../../.github/dependabot.yml) checks Go modules and GitHub Actions weekly. It proposes Go updates with the `build` type and Actions updates with the `ci` type. Both follow the normal review and merge process. The repository allows auto-merge, but its workflows do not turn it on for Dependabot PRs.
+[Dependabot](../../.github/dependabot.yml) checks Go modules, Bun packages, and GitHub Actions weekly. Go and Bun updates use the `build` commit type. Action updates use `ci` and cover workflows, the root Action, and composite actions under `.github/actions/`. Dependabot PRs follow the normal review and merge process. The repository allows auto-merge, but its workflows do not turn it on for Dependabot PRs.
 
 For onboarded workflows, Dependabot updates the lockfile alongside the workflow dependency. Inspect both files and the verification result in each update PR. Local generation alone does not establish that a hosted update occurred. See [GitHub's maintenance instructions](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies).
 
