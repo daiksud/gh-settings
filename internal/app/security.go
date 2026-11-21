@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -28,12 +27,7 @@ func applySecretScanning(result *ApplyResult, repo repository.Repository, d sett
 		result.Operations = append(result.Operations, ApplyOperation{Kind: SecretScanningUpdate, SecurityField: change.Field()})
 		changed, err := write.SecretScanning(repo, change)
 		if err != nil {
-			status := OperationFailedUnknown
-			var readFailure PreWriteReadFailure
-			if errors.As(err, &readFailure) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return wrote, fmt.Errorf("apply %s: %w", change.Field(), err)
 		}
 		if changed {

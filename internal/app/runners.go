@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -26,12 +25,7 @@ func applyRunners(result *ApplyResult, repo repository.Repository, desired []set
 		result.Operations = append(result.Operations, ApplyOperation{Kind: RunnerLabelsUpdate, RunnerID: d.ID})
 		wrote, err := write.RunnerLabels(repo, d)
 		if err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return wroteAny, fmt.Errorf("apply runner labels: %w", err)
 		}
 		result.Operations[index].Status = OperationUnchanged

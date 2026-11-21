@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -33,12 +32,7 @@ func applyDeployKeys(result *ApplyResult, repo repository.Repository, desired *s
 	result.Operations[index].Status = OperationCompleted
 	wrote := false
 	fail := func(index int, err error) (bool, error) {
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return wrote, fmt.Errorf("apply deploy keys: %w", err)
 	}
 	for _, selection := range selected {

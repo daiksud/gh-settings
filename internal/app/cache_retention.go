@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -29,12 +28,7 @@ func applyCacheRetention(result *ApplyResult, repo repository.Repository, d sett
 	result.Operations = append(result.Operations, ApplyOperation{Kind: CacheRetentionUpdate})
 	wrote, err := write.CacheRetention(repo, *d.CacheRetentionDays)
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply cache retention: %w", err)
 	}
 	if wrote {

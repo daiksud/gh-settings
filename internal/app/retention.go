@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -29,12 +28,7 @@ func applyRetention(result *ApplyResult, repo repository.Repository, d settings.
 	result.Operations = append(result.Operations, ApplyOperation{Kind: RetentionUpdate})
 	wrote, err := write.Retention(repo, *d.RetentionDays)
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply retention: %w", err)
 	}
 	if wrote {

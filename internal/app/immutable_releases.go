@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -29,12 +28,7 @@ func applyImmutableReleases(result *ApplyResult, repo repository.Repository, d s
 	result.Operations = append(result.Operations, ApplyOperation{Kind: ImmutableReleasesUpdate, SecurityField: changes[0].Field()})
 	changed, err := write.ImmutableReleases(repo, changes[0])
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply immutable releases: %w", err)
 	}
 	if changed {

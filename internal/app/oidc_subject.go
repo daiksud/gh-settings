@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -13,12 +12,7 @@ func applyOIDCSubject(result *ApplyResult, repo repository.Repository, desired s
 	result.Operations = append(result.Operations, ApplyOperation{Kind: OIDCSubjectUpdate})
 	wrote, err := write.OIDCSubject(repo, desired)
 	if err != nil {
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply OIDC subject template: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -29,12 +28,7 @@ func applyActionsAccess(result *ApplyResult, repo repository.Repository, d setti
 	result.Operations = append(result.Operations, ApplyOperation{Kind: ActionsAccessUpdate})
 	wrote, err := write.ActionsAccess(repo, *d.AccessLevel)
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply Actions access: %w", err)
 	}
 	if wrote {

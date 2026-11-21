@@ -1,6 +1,8 @@
 package app
 
 import (
+	"errors"
+
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -159,6 +161,16 @@ type CreatedObject struct {
 // Completed preserves the CLI's managed-success decision, including matching labels.
 func (result ApplyResult) Completed() bool {
 	return result.Outcome == ApplyCompleted || result.Outcome == ApplyMatchingLabels
+}
+
+// A writer can fail during preflight or after sending a mutation. Callers with
+// separate evidence of a write attempt give that evidence precedence.
+func writeFailureStatus(err error) ApplyOperationStatus {
+	var preflight PreWriteReadFailure
+	if errors.As(err, &preflight) {
+		return OperationFailedRead
+	}
+	return OperationFailedUnknown
 }
 
 func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus) {
