@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -13,12 +12,7 @@ func applyPullRequestLimits(result *ApplyResult, repo repository.Repository, des
 	result.Operations = append(result.Operations, ApplyOperation{Kind: PullRequestLimitsUpdate})
 	wrote, err := write.PullRequestLimits(repo, desired)
 	if err != nil {
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply pull request limits: %w", err)
 	}
 	result.Operations[index].Status = OperationUnchanged

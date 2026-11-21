@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -28,9 +27,8 @@ func applyDependabot(result *ApplyResult, repo repository.Repository, d settings
 		outcome, err := write.Dependabot(repo, change)
 		if err != nil {
 			status := OperationFailedUnknown
-			var before PreWriteReadFailure
-			if !outcome.Wrote && errors.As(err, &before) {
-				status = OperationFailedRead
+			if !outcome.Wrote {
+				status = writeFailureStatus(err)
 			}
 			result.failOperation(i, status)
 			if outcome.Wrote {

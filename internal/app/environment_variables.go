@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -29,12 +28,7 @@ func applyEnvironmentVariables(result *ApplyResult, repo repository.Repository, 
 		for _, value := range settings.SortedVariables(selected.Variables) {
 			wrote, err := write(repo, selected.Environment, value)
 			if err != nil {
-				status := OperationFailedUnknown
-				var pre PreWriteReadFailure
-				if errors.As(err, &pre) {
-					status = OperationFailedRead
-				}
-				result.failOperation(index, status)
+				result.failOperation(index, writeFailureStatus(err))
 				return wroteAny, fmt.Errorf("apply environment %q variable %q: %w", selected.Environment, value.Name, err)
 			}
 			result.Operations[index].Status = OperationUnchanged
