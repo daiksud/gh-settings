@@ -6,7 +6,7 @@ import "github.com/daiksud/gh-settings/internal/settings/uimodel"
 // remain independent of YAML grouping; they are never decoded as a second format.
 // Every scalar pointer preserves omission independently from explicit false/zero.
 type uiSettingsDocument struct {
-	General               *uiGeneralDocument
+	General               *uimodel.General
 	Collaborators         *[]uimodel.Collaborator
 	Moderation            *uiModerationDocument
 	Rulesets              *[]uimodel.Ruleset
@@ -23,18 +23,6 @@ type uiSettingsDocument struct {
 }
 
 type uiModerationDocument struct{ InteractionLimits *uimodel.InteractionLimits }
-
-type uiGeneralDocument struct {
-	TemplateRepository *bool
-	DefaultBranch      *string
-	Releases           *uiReleasesDocument
-	Features           uimodel.Features
-	PullRequests       uimodel.PullRequests
-	Commits            uimodel.Commits
-	DangerZone         uimodel.DangerZone
-}
-
-type uiReleasesDocument struct{ EnableReleaseImmutability *bool }
 
 type uiActionsDocument struct {
 	Runners   *[]uimodel.RunnerLabels
@@ -83,21 +71,21 @@ type uiSecretProtectionDocument struct {
 }
 
 func (document uiSettingsDocument) model() uimodel.RepositorySettings {
-	result := uimodel.RepositorySettings{Webhooks: document.Webhooks, DeployKeys: document.DeployKeys, Collaborators: document.Collaborators, Agents: document.Agents, Copilot: document.Copilot,
-		Autolinks: document.Autolinks, BranchProtectionRules: document.BranchProtectionRules, Rulesets: document.Rulesets, Pages: document.Pages, Environments: document.Environments,
+	result := uimodel.RepositorySettings{
+		General:               document.General,
+		Collaborators:         document.Collaborators,
+		Rulesets:              document.Rulesets,
+		BranchProtectionRules: document.BranchProtectionRules,
+		Webhooks:              document.Webhooks,
+		Copilot:               document.Copilot,
+		Environments:          document.Environments,
+		Pages:                 document.Pages,
+		DeployKeys:            document.DeployKeys,
+		Agents:                document.Agents,
+		Autolinks:             document.Autolinks,
 	}
 	if document.Moderation != nil {
 		result.InteractionLimits = document.Moderation.InteractionLimits
-	}
-	if general := document.General; general != nil {
-		result.General = &uimodel.General{
-			TemplateRepository: general.TemplateRepository, DefaultBranch: general.DefaultBranch,
-			Features: general.Features, PullRequests: general.PullRequests,
-			Commits: general.Commits, DangerZone: general.DangerZone,
-		}
-		if general.Releases != nil {
-			result.General.Releases = &uimodel.SecurityGeneralReleases{EnableReleaseImmutability: general.Releases.EnableReleaseImmutability}
-		}
 	}
 	if document.Actions != nil {
 		result.Actions = &uimodel.ActionsSettings{Runners: document.Actions.Runners, OIDC: document.Actions.OIDC, Variables: document.Actions.Variables, Policies: document.Actions.Policies}
@@ -142,19 +130,21 @@ func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 }
 
 func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDocument {
-	result := uiSettingsDocument{Webhooks: model.Webhooks, DeployKeys: model.DeployKeys, Autolinks: model.Autolinks, Collaborators: model.Collaborators, BranchProtectionRules: model.BranchProtectionRules, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
+	result := uiSettingsDocument{
+		General:               model.General,
+		Collaborators:         model.Collaborators,
+		Rulesets:              model.Rulesets,
+		BranchProtectionRules: model.BranchProtectionRules,
+		Webhooks:              model.Webhooks,
+		Copilot:               model.Copilot,
+		Environments:          model.Environments,
+		Pages:                 model.Pages,
+		DeployKeys:            model.DeployKeys,
+		Agents:                model.Agents,
+		Autolinks:             model.Autolinks,
+	}
 	if model.InteractionLimits != nil {
 		result.Moderation = &uiModerationDocument{InteractionLimits: model.InteractionLimits}
-	}
-	if general := model.General; general != nil {
-		result.General = &uiGeneralDocument{
-			TemplateRepository: general.TemplateRepository, DefaultBranch: general.DefaultBranch,
-			Features: general.Features, PullRequests: general.PullRequests,
-			Commits: general.Commits, DangerZone: general.DangerZone,
-		}
-		if general.Releases != nil {
-			result.General.Releases = &uiReleasesDocument{EnableReleaseImmutability: general.Releases.EnableReleaseImmutability}
-		}
 	}
 	if model.Actions != nil {
 		result.Actions = &uiActionsDocument{Runners: model.Actions.Runners, OIDC: model.Actions.OIDC, Variables: model.Actions.Variables, Policies: model.Actions.Policies}
