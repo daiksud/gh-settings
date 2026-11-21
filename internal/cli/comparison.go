@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/daiksud/gh-settings/internal/presentation"
@@ -12,133 +10,40 @@ import (
 
 func RenderComparison(comparison settings.Comparison) []byte {
 	var output strings.Builder
+	writeLine := func(line string) { fmt.Fprintln(&output, line) }
 	if comparison.Managed == 0 {
 		output.WriteString("No managed repository settings.\n")
 	} else if !comparison.HasChanges() {
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
-		shownMenus := map[settings.CommitMessageMenu]bool{}
-		for _, change := range comparison.Changes {
-			if context, ok := presentation.CommitMessageContextForField(change.Field().Path(), comparison.CommitMessageContexts); ok {
-				if !shownMenus[context.Menu] {
-					fmt.Fprintln(&output, presentation.ExactCommitMessageLine(context))
-					shownMenus[context.Menu] = true
-				}
-				continue
-			}
-			if change.Normalization() != (settings.ObservationNormalization{}) {
-				fmt.Fprintln(&output, presentation.CreationPolicyLine(change))
-				continue
-			}
-			line := func(before, after string) {
-				fmt.Fprintf(&output, "%s: %s → %s\n", presentation.SettingPath(change.Field().Path()), before, after)
-			}
-			change.Visit(
-				func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },
-				func(before, after string) {
-					before, after = presentation.StringValues(change.Field().Path(), before, after)
-					line(strconv.Quote(before), strconv.Quote(after))
-				},
-				func(before, after []string) { line(topicsValue(before), topicsValue(after)) },
-			)
-			if note := presentation.ArchiveOrder(change); note != "" {
-				fmt.Fprintln(&output, note)
-			}
-		}
-		for _, change := range comparison.CommitMessages {
-			fmt.Fprintln(&output, presentation.CommitMessageLine(change))
-		}
-		for _, change := range comparison.Labels.Values() {
-			fmt.Fprintln(&output, presentation.LabelLine(change))
-		}
+		presentation.RenderRepositoryChanges(&comparison, writeLine)
+		presentation.RenderChanges(comparison.Labels.Values(), presentation.LabelLine, writeLine)
 	}
-	for _, change := range comparison.Variables {
-		fmt.Fprintln(&output, presentation.VariableLine(change))
-	}
-	for _, change := range comparison.EnvironmentVariables {
-		fmt.Fprintln(&output, presentation.EnvironmentVariableLine(change))
-	}
-	for _, change := range comparison.AgentsVariables {
-		fmt.Fprintln(&output, presentation.AgentVariableLine(change))
-	}
-	for _, change := range comparison.CopilotInstructions {
-		fmt.Fprintln(&output, presentation.CopilotInstructionsLine(change))
-	}
-	for _, change := range comparison.Runners {
-		fmt.Fprintln(&output, presentation.RunnerLabelsLine(change))
-	}
-	for _, deletion := range comparison.RunnerDeletions {
-		fmt.Fprintln(&output, presentation.RunnerDeletionLine(deletion))
-	}
-	for _, change := range comparison.OIDCSubject {
-		fmt.Fprintln(&output, presentation.OIDCSubjectLine(change))
-	}
-	for _, change := range comparison.CopilotMCP {
-		fmt.Fprintln(&output, presentation.CopilotMCPLine(change))
-	}
-	for _, change := range comparison.PullRequestExemptions {
-		fmt.Fprintln(&output, presentation.PullRequestExemptionsLine(change))
-	}
-	for _, change := range comparison.PullRequestLimits {
-		fmt.Fprintln(&output, presentation.PullRequestLimitsLine(change))
-	}
-	for _, change := range comparison.CopilotReviewEffort {
-		fmt.Fprintln(&output, presentation.CopilotReviewEffortLine(change))
-	}
-	for _, change := range comparison.ActionsPolicies {
-		fmt.Fprintln(&output, presentation.ActionsEventPolicyLine(change))
-	}
+	presentation.RenderChanges(comparison.Variables, presentation.VariableLine, writeLine)
+	presentation.RenderChanges(comparison.EnvironmentVariables, presentation.EnvironmentVariableLine, writeLine)
+	presentation.RenderChanges(comparison.AgentsVariables, presentation.AgentVariableLine, writeLine)
+	presentation.RenderChanges(comparison.CopilotInstructions, presentation.CopilotInstructionsLine, writeLine)
+	presentation.RenderChanges(comparison.Runners, presentation.RunnerLabelsLine, writeLine)
+	presentation.RenderChanges(comparison.RunnerDeletions, presentation.RunnerDeletionLine, writeLine)
+	presentation.RenderChanges(comparison.OIDCSubject, presentation.OIDCSubjectLine, writeLine)
+	presentation.RenderChanges(comparison.CopilotMCP, presentation.CopilotMCPLine, writeLine)
+	presentation.RenderChanges(comparison.PullRequestExemptions, presentation.PullRequestExemptionsLine, writeLine)
+	presentation.RenderChanges(comparison.PullRequestLimits, presentation.PullRequestLimitsLine, writeLine)
+	presentation.RenderChanges(comparison.CopilotReviewEffort, presentation.CopilotReviewEffortLine, writeLine)
+	presentation.RenderChanges(comparison.ActionsPolicies, presentation.ActionsEventPolicyLine, writeLine)
 	for _, change := range comparison.Rulesets {
-		fmt.Fprintln(&output, presentation.RulesetLine(change.Display()))
+		writeLine(presentation.RulesetLine(change.Display()))
 	}
-	for _, change := range comparison.Autolinks {
-		fmt.Fprintln(&output, presentation.AutolinkLine(change))
-	}
-	for _, change := range comparison.BranchProtectionRules {
-		fmt.Fprintln(&output, presentation.ClassicProtectionLine(change))
-	}
-	for _, change := range comparison.Environments {
-		fmt.Fprintln(&output, presentation.EnvironmentLine(change))
-	}
-	for _, change := range comparison.ActionsExecution {
-		fmt.Fprintln(&output, presentation.ActionsExecutionLine(change))
-	}
-	shownActionsExecution := false
-	for _, change := range comparison.Actions {
-		if presentation.IsActionsExecutionField(change.Field()) {
-			if !shownActionsExecution {
-				fmt.Fprintln(&output, presentation.ExactActionsExecutionLine(comparison.ActionsExecutionContext))
-				shownActionsExecution = true
-			}
-			continue
-		}
-		fmt.Fprintln(&output, presentation.ActionsPolicyLine(change))
-	}
-	for _, c := range comparison.CodeQLConfiguration {
-		fmt.Fprintln(&output, presentation.CodeQLConfigurationLine(c))
-	}
-	for _, change := range comparison.Security {
-		fmt.Fprintln(&output, presentation.SecurityLine(change))
-	}
-	for _, c := range comparison.Pages {
-		fmt.Fprintln(&output, presentation.PagesLine(c))
-	}
-	for _, change := range comparison.Webhooks {
-		fmt.Fprintln(&output, presentation.WebhookLine(change))
-	}
-	for _, change := range comparison.DeployKeys {
-		fmt.Fprintln(&output, presentation.DeployKeyLine(change))
-	}
-	for _, deletion := range comparison.CollaboratorDeletions {
-		fmt.Fprintln(&output, presentation.CollaboratorDeletionLine(deletion))
-	}
-	for _, person := range comparison.Collaborators {
-		fmt.Fprintln(&output, presentation.CollaboratorLine(person))
-	}
+	presentation.RenderChanges(comparison.Autolinks, presentation.AutolinkLine, writeLine)
+	presentation.RenderChanges(comparison.BranchProtectionRules, presentation.ClassicProtectionLine, writeLine)
+	presentation.RenderChanges(comparison.Environments, presentation.EnvironmentLine, writeLine)
+	presentation.RenderActionsPolicyChanges(&comparison, writeLine)
+	presentation.RenderChanges(comparison.CodeQLConfiguration, presentation.CodeQLConfigurationLine, writeLine)
+	presentation.RenderChanges(comparison.Security, presentation.SecurityLine, writeLine)
+	presentation.RenderChanges(comparison.Pages, presentation.PagesLine, writeLine)
+	presentation.RenderChanges(comparison.Webhooks, presentation.WebhookLine, writeLine)
+	presentation.RenderChanges(comparison.DeployKeys, presentation.DeployKeyLine, writeLine)
+	presentation.RenderChanges(comparison.CollaboratorDeletions, presentation.CollaboratorDeletionLine, writeLine)
+	presentation.RenderChanges(comparison.Collaborators, presentation.CollaboratorLine, writeLine)
 	return []byte(output.String())
-}
-
-func topicsValue(names []string) string {
-	data, _ := json.Marshal(names)
-	return string(data)
 }

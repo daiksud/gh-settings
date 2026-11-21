@@ -124,127 +124,33 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 		}
 		content.WriteString(quoteHTML(report.diagnostic))
 	}
-	shownMenus := map[settings.CommitMessageMenu]bool{}
-	for _, change := range report.comparison.Changes {
-		if context, ok := presentation.CommitMessageContextForField(change.Field().Path(), report.comparison.CommitMessageContexts); ok {
-			if !shownMenus[context.Menu] {
-				fmt.Fprintln(&content, quoteHTML(presentation.ExactCommitMessageLine(context)))
-				shownMenus[context.Menu] = true
-			}
-			continue
-		}
-		if change.Normalization() != (settings.ObservationNormalization{}) {
-			fmt.Fprintln(&content, quoteHTML(presentation.CreationPolicyLine(change)))
-			continue
-		}
-		line := func(before, after string) {
-			fmt.Fprintf(&content, "%s: %s → %s\n", quoteHTML(presentation.SettingPath(change.Field().Path())), quoteHTML(before), quoteHTML(after))
-		}
-		change.Visit(
-			func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },
-			func(before, after string) {
-				before, after = presentation.StringValues(change.Field().Path(), before, after)
-				line(strconv.Quote(before), strconv.Quote(after))
-			},
-			func(before, after []string) {
-				beforeJSON, _ := json.Marshal(before)
-				afterJSON, _ := json.Marshal(after)
-				line(string(beforeJSON), string(afterJSON))
-			},
-		)
-		if note := presentation.ArchiveOrder(change); note != "" {
-			fmt.Fprintf(&content, "%s\n", quoteHTML(note))
-		}
-	}
-	for _, change := range report.comparison.CommitMessages {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.CommitMessageLine(change)))
-	}
-	for _, change := range report.comparison.CopilotInstructions {
-		fmt.Fprintln(&content, quoteHTML(presentation.CopilotInstructionsLine(change)))
-	}
-	for _, change := range report.comparison.Runners {
-		fmt.Fprintln(&content, quoteHTML(presentation.RunnerLabelsLine(change)))
-	}
-	for _, deletion := range report.comparison.RunnerDeletions {
-		fmt.Fprintln(&content, quoteHTML(presentation.RunnerDeletionLine(deletion)))
-	}
-	for _, change := range report.comparison.OIDCSubject {
-		fmt.Fprintln(&content, quoteHTML(presentation.OIDCSubjectLine(change)))
-	}
-	for _, change := range report.comparison.CopilotMCP {
-		fmt.Fprintln(&content, quoteHTML(presentation.CopilotMCPLine(change)))
-	}
-	for _, change := range report.comparison.PullRequestExemptions {
-		fmt.Fprintln(&content, quoteHTML(presentation.PullRequestExemptionsLine(change)))
-	}
-	for _, change := range report.comparison.PullRequestLimits {
-		fmt.Fprintln(&content, quoteHTML(presentation.PullRequestLimitsLine(change)))
-	}
-	for _, change := range report.comparison.CopilotReviewEffort {
-		fmt.Fprintln(&content, quoteHTML(presentation.CopilotReviewEffortLine(change)))
-	}
-	for _, change := range report.comparison.Variables {
-		fmt.Fprintln(&content, quoteHTML(presentation.VariableLine(change)))
-	}
-	for _, change := range report.comparison.EnvironmentVariables {
-		fmt.Fprintln(&content, quoteHTML(presentation.EnvironmentVariableLine(change)))
-	}
-	for _, change := range report.comparison.AgentsVariables {
-		fmt.Fprintln(&content, quoteHTML(presentation.AgentVariableLine(change)))
-	}
-	for _, change := range report.comparison.Webhooks {
-		fmt.Fprintln(&content, quoteHTML(presentation.WebhookLine(change)))
-	}
-	for _, change := range report.comparison.DeployKeys {
-		fmt.Fprintln(&content, quoteHTML(presentation.DeployKeyLine(change)))
-	}
-	for _, d := range report.comparison.CollaboratorDeletions {
-		fmt.Fprintln(&content, quoteHTML(presentation.CollaboratorDeletionLine(d)))
-	}
-	for _, person := range report.comparison.Collaborators {
-		fmt.Fprintln(&content, quoteHTML(presentation.CollaboratorLine(person)))
-	}
-	for _, change := range report.comparison.Labels.Values() {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
-	}
-	for _, change := range report.comparison.ActionsPolicies {
-		fmt.Fprintln(&content, quoteHTML(presentation.ActionsEventPolicyLine(change)))
-	}
-	for _, change := range report.rulesets {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.RulesetLine(change)))
-	}
-	for _, change := range report.comparison.Autolinks {
-		fmt.Fprintln(&content, quoteHTML(presentation.AutolinkLine(change)))
-	}
-	for _, change := range report.comparison.BranchProtectionRules {
-		fmt.Fprintln(&content, quoteHTML(presentation.ClassicProtectionLine(change)))
-	}
-	for _, change := range report.comparison.Environments {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.EnvironmentLine(change)))
-	}
-	for _, change := range report.comparison.ActionsExecution {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.ActionsExecutionLine(change)))
-	}
-	shownActionsExecution := false
-	for _, change := range report.comparison.Actions {
-		if presentation.IsActionsExecutionField(change.Field()) {
-			if !shownActionsExecution {
-				fmt.Fprintln(&content, quoteHTML(presentation.ExactActionsExecutionLine(report.comparison.ActionsExecutionContext)))
-				shownActionsExecution = true
-			}
-			continue
-		}
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.ActionsPolicyLine(change)))
-	}
-	for _, change := range report.comparison.Security {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.SecurityLine(change)))
-	}
-	for _, c := range report.comparison.CodeQLConfiguration {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.CodeQLConfigurationLine(c)))
-	}
-	for _, c := range report.comparison.Pages {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.PagesLine(c)))
-	}
+	writeLine := func(line string) { fmt.Fprintln(&content, quoteHTML(line)) }
+	presentation.RenderRepositoryChanges(&report.comparison, writeLine)
+	presentation.RenderChanges(report.comparison.CopilotInstructions, presentation.CopilotInstructionsLine, writeLine)
+	presentation.RenderChanges(report.comparison.Runners, presentation.RunnerLabelsLine, writeLine)
+	presentation.RenderChanges(report.comparison.RunnerDeletions, presentation.RunnerDeletionLine, writeLine)
+	presentation.RenderChanges(report.comparison.OIDCSubject, presentation.OIDCSubjectLine, writeLine)
+	presentation.RenderChanges(report.comparison.CopilotMCP, presentation.CopilotMCPLine, writeLine)
+	presentation.RenderChanges(report.comparison.PullRequestExemptions, presentation.PullRequestExemptionsLine, writeLine)
+	presentation.RenderChanges(report.comparison.PullRequestLimits, presentation.PullRequestLimitsLine, writeLine)
+	presentation.RenderChanges(report.comparison.CopilotReviewEffort, presentation.CopilotReviewEffortLine, writeLine)
+	presentation.RenderChanges(report.comparison.Variables, presentation.VariableLine, writeLine)
+	presentation.RenderChanges(report.comparison.EnvironmentVariables, presentation.EnvironmentVariableLine, writeLine)
+	presentation.RenderChanges(report.comparison.AgentsVariables, presentation.AgentVariableLine, writeLine)
+	presentation.RenderChanges(report.comparison.Webhooks, presentation.WebhookLine, writeLine)
+	presentation.RenderChanges(report.comparison.DeployKeys, presentation.DeployKeyLine, writeLine)
+	presentation.RenderChanges(report.comparison.CollaboratorDeletions, presentation.CollaboratorDeletionLine, writeLine)
+	presentation.RenderChanges(report.comparison.Collaborators, presentation.CollaboratorLine, writeLine)
+	presentation.RenderChanges(report.comparison.Labels.Values(), presentation.LabelLine, writeLine)
+	presentation.RenderChanges(report.comparison.ActionsPolicies, presentation.ActionsEventPolicyLine, writeLine)
+	presentation.RenderChanges(report.rulesets, presentation.RulesetLine, writeLine)
+	presentation.RenderChanges(report.comparison.Autolinks, presentation.AutolinkLine, writeLine)
+	presentation.RenderChanges(report.comparison.BranchProtectionRules, presentation.ClassicProtectionLine, writeLine)
+	presentation.RenderChanges(report.comparison.Environments, presentation.EnvironmentLine, writeLine)
+	presentation.RenderActionsPolicyChanges(&report.comparison, writeLine)
+	presentation.RenderChanges(report.comparison.Security, presentation.SecurityLine, writeLine)
+	presentation.RenderChanges(report.comparison.CodeQLConfiguration, presentation.CodeQLConfigurationLine, writeLine)
+	presentation.RenderChanges(report.comparison.Pages, presentation.PagesLine, writeLine)
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String()
 }
