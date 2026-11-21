@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -29,12 +28,7 @@ func applyCacheStorage(result *ApplyResult, repo repository.Repository, d settin
 	result.Operations = append(result.Operations, ApplyOperation{Kind: CacheStorageUpdate})
 	wrote, err := write.CacheStorage(repo, *d.CacheSizeGB)
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply cache storage: %w", err)
 	}
 	if wrote {

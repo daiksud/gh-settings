@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -18,12 +17,7 @@ func applyVariables(result *ApplyResult, repo repository.Repository, desired set
 		index := first + i
 		wrote, err := write(repo, value)
 		if err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return wroteAny, fmt.Errorf("apply repository variable %q: %w", value.Name, err)
 		}
 		result.Operations[index].Status = OperationUnchanged

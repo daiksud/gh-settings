@@ -42,11 +42,10 @@ func applyEnvironments(result *ApplyResult, repo repository.Repository, desired 
 		changed, err := write.Environment(repo, *change.After())
 		if err != nil {
 			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
 			var effects EnvironmentWriteEffectsFailure
 			confirmed := errors.As(err, &effects)
-			if !confirmed && errors.As(err, &pre) {
-				status = OperationFailedRead
+			if !confirmed {
+				status = writeFailureStatus(err)
 			}
 			result.failOperation(i, status)
 			if confirmed {

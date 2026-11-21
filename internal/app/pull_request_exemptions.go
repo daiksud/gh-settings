@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -13,9 +12,8 @@ func applyPullRequestExemptions(result *ApplyResult, repo repository.Repository,
 	wrote, err := write.PullRequestExemptions(repo, desired)
 	if err != nil {
 		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if !wrote && errors.As(err, &pre) {
-			status = OperationFailedRead
+		if !wrote {
+			status = writeFailureStatus(err)
 		}
 		result.failOperation(index, status)
 		// An authoritative replacement can confirm removals before a later add or

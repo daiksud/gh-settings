@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -29,12 +28,7 @@ func applyForkApproval(result *ApplyResult, repo repository.Repository, d settin
 	result.Operations = append(result.Operations, ApplyOperation{Kind: ForkApprovalUpdate})
 	wrote, err := write.ForkApproval(repo, *d.ForkApprovalPolicy)
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply fork approval: %w", err)
 	}
 	if wrote {
@@ -64,12 +58,7 @@ func applyPrivateFork(result *ApplyResult, repo repository.Repository, d setting
 	result.Operations = append(result.Operations, ApplyOperation{Kind: PrivateForkUpdate})
 	wrote, err := write.PrivateFork(repo, d.PrivateFork)
 	if err != nil {
-		status := OperationFailedUnknown
-		var readFailure PreWriteReadFailure
-		if errors.As(err, &readFailure) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply private fork: %w", err)
 	}
 	if wrote {

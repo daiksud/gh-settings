@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -65,11 +64,9 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 	result.Operations[index].Status = OperationCompleted
 	expected := observed.Clone()
 	wrote := false
-	fail := func(index int, attempted bool, err error) (bool, error) {
-		status := OperationFailedRead
+	fail := func(index int, status ApplyOperationStatus, err error) (bool, error) {
 		uncertain := ""
-		if attempted {
-			status = OperationFailedUnknown
+		if status == OperationFailedUnknown {
 			uncertain = " (unconfirmed effects may remain)"
 		}
 		result.failOperation(index, status)
@@ -112,7 +109,11 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 				}
 			}
 			if e != nil {
-				return fail(index, applied.Attempted, e)
+				status := OperationFailedRead
+				if applied.Attempted {
+					status = OperationFailedUnknown
+				}
+				return fail(index, status, e)
 			}
 			expected = applied.Observation.Clone()
 			wrote = true
@@ -152,8 +153,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 		}
 		changed, e := write.Webhook(repo, s)
 		if e != nil {
-			var pre PreWriteReadFailure
-			return fail(index, !errors.As(e, &pre), e)
+			return fail(index, writeFailureStatus(e), e)
 		}
 		result.Operations[index].Status = OperationUnchanged
 		if changed {
@@ -162,7 +162,7 @@ func applyWebhooks(result *ApplyResult, repo repository.Repository, desired []se
 			if ids == nil && prune == nil {
 				expected, e = expected.WithUpdated(s.Desired)
 				if e != nil {
-					return fail(index, true, e)
+					return fail(index, OperationFailedUnknown, e)
 				}
 			}
 		}

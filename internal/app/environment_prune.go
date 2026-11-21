@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -38,12 +37,7 @@ func applyEnvironmentPrune(result *ApplyResult, repo repository.Repository, prep
 	for offset, candidate := range candidates {
 		i := first + offset
 		if err := write.DeleteEnvironment(repo, candidate); err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
-			result.failOperation(i, status)
+			result.failOperation(i, writeFailureStatus(err))
 			return wrote, fmt.Errorf("delete Environment %q: %w", candidate.Name(), err)
 		}
 		result.Operations[i].Status = OperationCompleted
