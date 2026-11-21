@@ -31,7 +31,8 @@ func TestScanningSecurityAlertsProjectorAndCompleteReaderRetainExactNames(t *tes
 			var raw map[string]json.RawMessage
 			json.Unmarshal(encoded, &raw)
 			original := bytes.Clone(raw["rules"])
-			projected, records, err := prepareRulesetScanningSecurityAlertsRules(raw["rules"])
+			projected, evidence, err := projectObservedRules(raw["rules"], scanningSecurityAlertsProjection)
+			records := evidence.ScanningSecurityAlerts
 			if err != nil || !bytes.Equal(raw["rules"], original) {
 				t.Fatal(err)
 			}

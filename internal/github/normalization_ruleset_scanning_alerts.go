@@ -3,84 +3,67 @@ package github
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/daiksud/gh-settings/internal/settings"
 	"strings"
+
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// prepareRulesetScanningAlertsRules projects complete strings, never tool identities.
-// Strict whole-policy validation must succeed before the evidence is published.
-func prepareRulesetScanningAlertsRules(raw json.RawMessage) (json.RawMessage, []settings.RulesetScanningAlertsNormalization, error) {
-	var rules []map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &rules); err != nil {
-		return nil, nil, err
+func normalizeScanningAlerts(parameters map[string]json.RawMessage, records *settings.RulesetNormalizations) (bool, error) {
+	return normalizeScanningTools(parameters, "alerts_threshold", func(tool, raw string) (string, bool) {
+		if _, supported := settings.RulesetScanningAlertsChoiceForValue(raw); supported {
+			return "", false
+		}
+		choice := settings.DefaultRulesetScanningAlertsChoice
+		records.ScanningAlerts = append(records.ScanningAlerts, settings.RulesetScanningAlertsNormalization{
+			Tool: tool, Path: settings.RulesetScanningAlertsPath, RawValue: raw, Fallback: string(choice),
+		})
+		fallback, _ := settings.RulesetScanningAlertsValueForChoice(choice)
+		return fallback, true
+	})
+}
+
+func normalizeScanningSecurityAlerts(parameters map[string]json.RawMessage, records *settings.RulesetNormalizations) (bool, error) {
+	return normalizeScanningTools(parameters, "security_alerts_threshold", func(tool, raw string) (string, bool) {
+		if _, supported := settings.RulesetScanningSecurityAlertsChoiceForValue(raw); supported {
+			return "", false
+		}
+		choice := settings.DefaultRulesetScanningSecurityAlertsChoice
+		records.ScanningSecurityAlerts = append(records.ScanningSecurityAlerts, settings.RulesetScanningSecurityAlertsNormalization{
+			Tool: tool, Path: settings.RulesetScanningSecurityAlertsPath, RawValue: raw, Fallback: string(choice),
+		})
+		fallback, _ := settings.RulesetScanningSecurityAlertsValueForChoice(choice)
+		return fallback, true
+	})
+}
+
+func normalizeScanningTools(parameters map[string]json.RawMessage, threshold string, fallbackFor func(tool, raw string) (string, bool)) (bool, error) {
+	var tools []map[string]json.RawMessage
+	if err := requiredRuleJSON(parameters, "code_scanning_tools", &tools); err != nil {
+		return false, err
 	}
-	if rules == nil {
-		return nil, nil, fmt.Errorf("Rulesets response requires a non-null rules array")
-	}
-	var records []settings.RulesetScanningAlertsNormalization
-	seenRule := false
-	for _, rule := range rules {
-		var kind string
-		if err := requiredRuleJSON(rule, "type", &kind); err != nil {
-			return nil, nil, err
+	seen := map[string]bool{}
+	changed := false
+	for _, tool := range tools {
+		var name, raw string
+		if err := requiredRuleJSON(tool, "tool", &name); err != nil {
+			return false, err
 		}
-		if kind != "code_scanning" {
-			continue
+		if strings.TrimSpace(name) == "" || seen[name] {
+			return false, fmt.Errorf("invalid or duplicate code scanning tool")
 		}
-		if seenRule {
-			return nil, nil, fmt.Errorf("duplicate code_scanning rule")
+		seen[name] = true
+		if err := requiredRuleJSON(tool, threshold, &raw); err != nil {
+			return false, err
 		}
-		seenRule = true
-		var parameters map[string]json.RawMessage
-		if err := requiredRuleJSON(rule, "parameters", &parameters); err != nil {
-			return nil, nil, err
-		}
-		var tools []map[string]json.RawMessage
-		if err := requiredRuleJSON(parameters, "code_scanning_tools", &tools); err != nil {
-			return nil, nil, err
-		}
-		seen := map[string]bool{}
-		changed := false
-		for _, tool := range tools {
-			var name, alerts string
-			if err := requiredRuleJSON(tool, "tool", &name); err != nil {
-				return nil, nil, err
+		if fallback, needed := fallbackFor(name, raw); needed {
+			if err := setRuleJSON(tool, threshold, fallback); err != nil {
+				return false, err
 			}
-			if strings.TrimSpace(name) == "" || seen[name] {
-				return nil, nil, fmt.Errorf("invalid or duplicate code scanning tool")
-			}
-			seen[name] = true
-			if err := requiredRuleJSON(tool, "alerts_threshold", &alerts); err != nil {
-				return nil, nil, err
-			}
-			if _, supported := settings.RulesetScanningAlertsChoiceForValue(alerts); supported {
-				continue
-			}
-			fallback, _ := settings.RulesetScanningAlertsValueForChoice(settings.DefaultRulesetScanningAlertsChoice)
-			encoded, err := json.Marshal(fallback)
-			if err != nil {
-				return nil, nil, err
-			}
-			tool["alerts_threshold"] = encoded
-			records = append(records, settings.RulesetScanningAlertsNormalization{Tool: name, Path: settings.RulesetScanningAlertsPath, RawValue: alerts, Fallback: string(settings.DefaultRulesetScanningAlertsChoice)})
 			changed = true
 		}
-		if changed {
-			encoded, err := json.Marshal(tools)
-			if err != nil {
-				return nil, nil, err
-			}
-			parameters["code_scanning_tools"] = encoded
-			encoded, err = json.Marshal(parameters)
-			if err != nil {
-				return nil, nil, err
-			}
-			rule["parameters"] = encoded
-		}
 	}
-	encoded, err := json.Marshal(rules)
-	if err != nil {
-		return nil, nil, err
+	if !changed {
+		return false, nil
 	}
-	return encoded, records, nil
+	return true, setRuleJSON(parameters, "code_scanning_tools", tools)
 }
