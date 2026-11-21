@@ -5,11 +5,11 @@ package uimodel
 type General struct {
 	TemplateRepository *bool
 	DefaultBranch      *string
+	Releases           *SecurityGeneralReleases
 	Features           Features
 	PullRequests       PullRequests
 	Commits            Commits
 	DangerZone         DangerZone
-	Releases           *SecurityGeneralReleases
 }
 
 type Features struct {
