@@ -46,9 +46,9 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		return result, fmt.Errorf("prune preflight failed before any writes: %w", err)
 	}
 	archiveManaged := desired.Repository.Archived != nil
-	other := desired.Repository
-	other.Archived = nil
-	repositoryManaged, topicsManaged := !other.Empty(), desired.Topics.Names != nil
+	ordinary := desired
+	ordinary.Repository.Archived = nil
+	repositoryManaged, topicsManaged := !ordinary.Repository.Empty(), desired.Topics.Names != nil
 	var archiveState settings.ArchiveState
 	if archiveManaged {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveRead})
@@ -65,7 +65,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			result.failOperation(0, OperationFailedRead)
 			return result, fmt.Errorf("archived repository declaration schema requires review before apply")
 		}
-		if archiveState.Archived && *desired.Repository.Archived && (archiveConflictsWithOtherManaged(desired) || prune.Manages(desired)) {
+		if archiveState.Archived && *desired.Repository.Archived && (!ordinary.Empty() || prune.Manages(desired)) {
 			if archivedMatchingScope(desired, prune) {
 				if err := verifyArchivedMatching(repo, desired, archiveState, write); err != nil {
 					result.failOperation(0, OperationFailedRead)
@@ -95,13 +95,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 	if topicsManaged {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: TopicsUpdate})
 	}
-	if desired.Labels != nil && (hasCollectionEntries(desired.Labels) || prune.Has("labels")) {
+	if settings.CollectionSelected(desired.Labels, prune.Has("labels")) {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
 	}
 	index := firstOrdinary
 	repositoryWrote := false
 	if repositoryManaged {
-		repositoryWrote, err = write.Repository(repo, other)
+		repositoryWrote, err = write.Repository(repo, ordinary.Repository)
 		if err != nil {
 			status := OperationFailedUnknown
 			var writeEffects RepositoryWriteEffectsFailure
@@ -135,7 +135,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		index++
 	}
 	hasWrites := repositoryWrote || topicsWrote || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
-	if desired.Labels != nil && (hasCollectionEntries(desired.Labels) || prune.Has("labels")) {
+	if settings.CollectionSelected(desired.Labels, prune.Has("labels")) {
 		current, err := write.ReadLabels(repo)
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
@@ -206,21 +206,21 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			result.Operations[index].Status = OperationCompleted
 		}
 	}
-	if desired.ActionsPolicies != nil && (hasCollectionEntries(desired.ActionsPolicies) || prune.Has("actions-policies")) {
+	if settings.CollectionSelected(desired.ActionsPolicies, prune.Has("actions-policies")) {
 		wrote, err := applyActionsPolicies(&result, repo, desired.ActionsPolicies, write, prune.Has("actions-policies"), prepared.actionsPolicies)
 		if err != nil {
 			return result, err
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Rulesets != nil && (hasCollectionEntries(desired.Rulesets) || prune.Has("rulesets")) {
+	if settings.CollectionSelected(desired.Rulesets, prune.Has("rulesets")) {
 		wrote, err := applyRulesets(&result, repo, desired.Rulesets, write, prune.Has("rulesets"), prepared.rulesets)
 		if err != nil {
 			return result, err
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Collaborators != nil && (hasCollectionEntries(desired.Collaborators) || prune.Has("collaborators")) {
+	if settings.CollectionSelected(desired.Collaborators, prune.Has("collaborators")) {
 		var wrote bool
 		var err error
 		if prune.Has("collaborators") {
@@ -236,7 +236,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Autolinks != nil && (hasSliceEntries(desired.Autolinks) || prune.Has("autolinks")) {
+	if settings.SliceSelected(desired.Autolinks, prune.Has("autolinks")) {
 		if unarchived && prune.Has("autolinks") {
 			prepared.autolinks = prepared.autolinks.AfterUnarchive()
 		}
@@ -246,7 +246,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.BranchProtectionRules != nil && (hasSliceEntries(desired.BranchProtectionRules) || prune.Has("branch-protection-rules")) {
+	if settings.SliceSelected(desired.BranchProtectionRules, prune.Has("branch-protection-rules")) {
 		if unarchived {
 			prepared.classicProtection = prepared.classicProtection.AfterUnarchive()
 		}
@@ -264,7 +264,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			return result, err
 		}
 	}
-	if hasCollectionEntries(desired.Environments) {
+	if settings.CollectionSelected(desired.Environments, false) {
 		wrote, err := applyEnvironments(&result, repo, desired.Environments, write)
 		if err != nil {
 			return result, err
@@ -289,7 +289,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			}
 			hasWrites = hasWrites || wrote
 		}
-	} else if hasEnvironmentVariableEntries(desired.EnvironmentVariables) {
+	} else if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
 		wrote, err := applyEnvironmentVariables(&result, repo, desired.EnvironmentVariables, write.EnvironmentVariable)
 		if err != nil {
 			return result, err
@@ -303,7 +303,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Variables != nil && (hasCollectionEntries(desired.Variables) || prune.Has("actions-variables")) {
+	if settings.CollectionSelected(desired.Variables, prune.Has("actions-variables")) {
 		var wrote bool
 		var err error
 		if prune.Has("actions-variables") {
@@ -318,7 +318,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.AgentsVariables != nil && (hasCollectionEntries(desired.AgentsVariables) || prune.Has("agents-variables")) {
+	if settings.CollectionSelected(desired.AgentsVariables, prune.Has("agents-variables")) {
 		var wrote bool
 		var err error
 		if prune.Has("agents-variables") {
@@ -403,7 +403,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Webhooks != nil && (hasSliceEntries(desired.Webhooks) || prune.Has("webhooks")) {
+	if settings.SliceSelected(desired.Webhooks, prune.Has("webhooks")) {
 		var frozen *settings.WebhookPruneObservation
 		if prepared.webhooks != nil {
 			value := prepared.webhooks.Clone()
@@ -418,7 +418,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.DeployKeys != nil && (hasCollectionEntries(desired.DeployKeys) || prune.Has("deploy-keys")) {
+	if settings.CollectionSelected(desired.DeployKeys, prune.Has("deploy-keys")) {
 		wrote, err := applyDeployKeys(&result, repo, desired.DeployKeys, prepared.deployKeys, prune.Has("deploy-keys"), unarchived, write)
 		if err != nil {
 			return result, err
@@ -432,7 +432,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Runners != nil && (hasSliceEntries(desired.Runners) || prune.Has("runners")) {
+	if settings.SliceSelected(desired.Runners, prune.Has("runners")) {
 		var wrote bool
 		if prune.Has("runners") {
 			wrote, err = applyRunnerPrune(&result, repo, *desired.Runners, *prepared.runners, unarchived, write)
@@ -584,24 +584,4 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 	default:
 		panic("unknown typed label operation")
 	}
-}
-
-// Archive does not make other declared resources writable on an already archived target.
-func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
-	other := desired.Repository
-	other.Archived = nil
-	return hasSliceEntries(desired.Runners) || hasSliceEntries(desired.Webhooks) || hasCollectionEntries(desired.DeployKeys) || hasSliceEntries(desired.Autolinks) || desired.OIDCSubject != nil || hasCollectionEntries(desired.Collaborators) || hasSliceEntries(desired.BranchProtectionRules) || desired.PullRequestExemptions != nil || hasEnvironmentVariableEntries(desired.EnvironmentVariables) || hasCollectionEntries(desired.ActionsPolicies) || desired.CopilotReviewEffort != nil || !desired.PullRequestLimits.Empty() || desired.CopilotMCP != nil || desired.CopilotInstructions != nil || hasCollectionEntries(desired.Variables) || hasCollectionEntries(desired.AgentsVariables) || !other.Empty() || desired.Topics.Names != nil || hasCollectionEntries(desired.Labels) || hasCollectionEntries(desired.Rulesets) || hasCollectionEntries(desired.Environments) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
-}
-
-// The same typed predicates drive ordinary apply and archived matching.
-func hasSliceEntries[T any](values *[]T) bool {
-	return values != nil && len(*values) > 0
-}
-
-func hasCollectionEntries[T interface{ Len() int }](values *T) bool {
-	return values != nil && (*values).Len() > 0
-}
-
-func hasEnvironmentVariableEntries(values []settings.EnvironmentVariableDeclaration) bool {
-	return !settings.EnvironmentVariablesEmpty(values)
 }
