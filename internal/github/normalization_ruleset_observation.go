@@ -24,7 +24,7 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	for key, value := range raw {
 		copy[key] = value
 	}
-	record := settings.ObservationNormalization{}
+	var enforcementRecord settings.ObservationNormalization
 	if _, supported := settings.RulesetEnforcementChoiceForValue(enforcement); !supported {
 		fallback, _ := settings.RulesetEnforcementValueForChoice(settings.DefaultRulesetEnforcementChoice)
 		value, err := json.Marshal(fallback)
@@ -32,25 +32,12 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 			return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 		}
 		copy["enforcement"] = value
-		record = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: enforcement, Fallback: string(settings.DefaultRulesetEnforcementChoice)}
+		enforcementRecord = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: enforcement, Fallback: string(settings.DefaultRulesetEnforcementChoice)}
 	}
-	rules, quality, err := prepareRulesetQualityRules(raw["rules"])
-	if err != nil {
-		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
-	}
-	rules, approvals, err := prepareRulesetRequiredApprovalsRules(rules)
-	if err != nil {
-		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
-	}
-	rules, methods, err := prepareRulesetMergeMethodsRules(rules)
-	if err != nil {
-		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
-	}
-	rules, scanning, err := prepareRulesetScanningAlertsRules(rules)
-	if err != nil {
-		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
-	}
-	rules, scanningSecurity, err := prepareRulesetScanningSecurityAlertsRules(rules)
+	rules, records, err := projectObservedRules(raw["rules"],
+		qualitySeverityProjection, requiredApprovalsProjection, mergeMethodsProjection,
+		scanningAlertsProjection, scanningSecurityAlertsProjection,
+	)
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
@@ -64,5 +51,7 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
-	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality, RequiredApprovals: approvals, MergeMethods: methods, ScanningAlerts: scanning, ScanningSecurityAlerts: scanningSecurity, BypassModes: bypass}, nil
+	records.Enforcement = enforcementRecord
+	records.BypassModes = bypass
+	return policy, records, nil
 }

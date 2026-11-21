@@ -23,7 +23,8 @@ func TestMergeMethodsProjectorPreservesTypedRawOrderAndWholeFallback(t *testing.
 	} {
 		raw := mergeMethodsRuleJSON(tc.value)
 		original := bytes.Clone(raw)
-		got, record, err := prepareRulesetMergeMethodsRules(raw)
+		got, evidence, err := projectObservedRules(raw, mergeMethodsProjection)
+		record := evidence.MergeMethods
 		if err != nil || !bytes.Equal(raw, original) {
 			t.Fatal(tc.value, record, err)
 		}
@@ -64,7 +65,8 @@ func TestMergeMethodsProjectorPreservesTypedRawOrderAndWholeFallback(t *testing.
 		}
 	}
 	for _, raw := range []string{`[]`, `[{"type":"deletion"}]`} {
-		got, record, err := prepareRulesetMergeMethodsRules(json.RawMessage(raw))
+		got, evidence, err := projectObservedRules(json.RawMessage(raw), mergeMethodsProjection)
+		record := evidence.MergeMethods
 		var before, after any
 		json.Unmarshal([]byte(raw), &before)
 		json.Unmarshal(got, &after)
@@ -83,7 +85,8 @@ func TestMergeMethodsProjectorRejectsIncompleteMalformedOrDuplicateLists(t *test
 	for _, raw := range invalid {
 		input := json.RawMessage(raw)
 		original := bytes.Clone(input)
-		got, record, err := prepareRulesetMergeMethodsRules(input)
+		got, evidence, err := projectObservedRules(input, mergeMethodsProjection)
+		record := evidence.MergeMethods
 		if err == nil || got != nil || !record.IsZero() || !bytes.Equal(input, original) {
 			t.Fatal("invalid acquisition escaped", raw, string(got), record, err)
 		}
@@ -92,7 +95,8 @@ func TestMergeMethodsProjectorRejectsIncompleteMalformedOrDuplicateLists(t *test
 	var policy map[string]json.RawMessage
 	json.Unmarshal([]byte(approvalsRulesetJSON), &policy)
 	raw := strings.Replace(string(policy["rules"]), `"allowed_merge_methods":["squash"]`, `"allowed_merge_methods":["future"],"unknown":true`, 1)
-	got, record, err := prepareRulesetMergeMethodsRules(json.RawMessage(raw))
+	got, evidence, err := projectObservedRules(json.RawMessage(raw), mergeMethodsProjection)
+	record := evidence.MergeMethods
 	if err != nil || record.IsZero() {
 		t.Fatal(record, err)
 	}
