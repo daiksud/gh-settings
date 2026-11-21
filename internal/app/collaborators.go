@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -63,9 +62,8 @@ func applySelectedCollaborators(result *ApplyResult, repo repository.Repository,
 		wrote = wrote || observed.Invited
 		if err != nil {
 			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if !observed.Attempted && !observed.Invited && errors.As(err, &pre) {
-				status = OperationFailedRead
+			if !observed.Attempted && !observed.Invited {
+				status = writeFailureStatus(err)
 			}
 			result.failOperation(index, status)
 			// A valid 201 establishes a sent invitation even if readback failed.

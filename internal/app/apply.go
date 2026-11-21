@@ -104,11 +104,10 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		repositoryWrote, err = write.Repository(repo, ordinary.Repository)
 		if err != nil {
 			status := OperationFailedUnknown
-			var readFailure PreWriteReadFailure
 			var writeEffects RepositoryWriteEffectsFailure
 			hasWriteEffects := errors.As(err, &writeEffects)
-			if !hasWriteEffects && errors.As(err, &readFailure) {
-				status = OperationFailedRead
+			if !hasWriteEffects {
+				status = writeFailureStatus(err)
 			}
 			result.failOperation(index, status)
 			if hasWriteEffects {
@@ -126,12 +125,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 	if topicsManaged {
 		topicsWrote, err = write.Topics(repo, desired.Topics)
 		if err != nil {
-			status := OperationFailedUnknown
-			var readFailure PreWriteReadFailure
-			if errors.As(err, &readFailure) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return result, err
 		}
 		result.Operations[index].Status = OperationUnchanged
@@ -206,12 +200,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 				err = write.DeleteLabel(repo, change)
 			}
 			if err != nil {
-				status := OperationFailedUnknown
-				var readFailure PreWriteReadFailure
-				if errors.As(err, &readFailure) {
-					status = OperationFailedRead
-				}
-				result.failOperation(index, status)
+				result.failOperation(index, writeFailureStatus(err))
 				return result, fmt.Errorf("%s label %q: %w", change.Operation(), change.Name(), err)
 			}
 			result.Operations[index].Status = OperationCompleted
@@ -349,12 +338,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		result.Operations = append(result.Operations, ApplyOperation{Kind: ActionsPolicyUpdate})
 		wrote, err := write.Actions(repo, desired.Actions)
 		if err != nil {
-			status := OperationFailedUnknown
-			var readFailure PreWriteReadFailure
-			if errors.As(err, &readFailure) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return result, fmt.Errorf("apply Actions policy: %w", err)
 		}
 		result.Operations[index].Status = OperationUnchanged
@@ -368,12 +352,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		result.Operations = append(result.Operations, ApplyOperation{Kind: WorkflowPermissionsUpdate})
 		wrote, err := write.WorkflowPermissions(repo, desired.Actions)
 		if err != nil {
-			status := OperationFailedUnknown
-			var readFailure PreWriteReadFailure
-			if errors.As(err, &readFailure) {
-				status = OperationFailedRead
-			}
-			result.failOperation(index, status)
+			result.failOperation(index, writeFailureStatus(err))
 			return result, fmt.Errorf("apply workflow permissions: %w", err)
 		}
 		result.Operations[index].Status = OperationUnchanged

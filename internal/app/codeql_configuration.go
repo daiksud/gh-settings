@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -29,12 +28,7 @@ func applyCodeQLConfiguration(result *ApplyResult, repo repository.Repository, d
 	result.Operations = append(result.Operations, ApplyOperation{Kind: CodeQLConfigurationUpdate})
 	changed, err := w.CodeQLConfiguration(repo, d)
 	if err != nil {
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(index, status)
+		result.failOperation(index, writeFailureStatus(err))
 		return false, fmt.Errorf("apply CodeQL configuration: %w", err)
 	}
 	if changed {

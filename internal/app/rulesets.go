@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 
@@ -72,12 +71,7 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 			}
 		}
 		if err != nil {
-			status := OperationFailedUnknown
-			var readFailure PreWriteReadFailure
-			if errors.As(err, &readFailure) {
-				status = OperationFailedRead
-			}
-			result.failOperation(first+i, status)
+			result.failOperation(first+i, writeFailureStatus(err))
 			return false, fmt.Errorf("%s Ruleset %q: %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted

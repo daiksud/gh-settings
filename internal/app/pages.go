@@ -32,12 +32,7 @@ func applyPages(result *ApplyResult, repo repository.Repository, d settings.Page
 			i = len(result.Operations)
 			result.Operations = append(result.Operations, ApplyOperation{Kind: PagesUpdate})
 		}
-		status := OperationFailedUnknown
-		var pre PreWriteReadFailure
-		if errors.As(err, &pre) {
-			status = OperationFailedRead
-		}
-		result.failOperation(i, status)
+		result.failOperation(i, writeFailureStatus(err))
 		return false, fmt.Errorf("apply Pages: %w", err)
 	}
 	if wrote {
