@@ -110,15 +110,3 @@ func applyPrunedVariables(result *ApplyResult, repo repository.Repository, desir
 	}
 	return wroteAny, nil
 }
-
-func planVariablePrune(repo repository.Repository, desired settings.VariableDeclarations, read func(repository.Repository, string) (settings.VariableObservation, error), inventory settings.VariableInventory) ([]settings.VariableChange, error) {
-	changes, err := planVariables(repo, desired, read)
-	if err != nil {
-		return nil, err
-	}
-	deletions, err := settings.PrunedVariableChanges(inventory, &desired)
-	if err != nil {
-		return nil, err
-	}
-	return append(changes, deletions...), nil
-}
