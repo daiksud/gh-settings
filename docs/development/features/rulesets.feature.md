@@ -1,0 +1,301 @@
+# Feature: Reconcile repository-owned branch and tag Rulesets
+
+Rulesets use ID-selected whole-object ownership. The [configuration reference](../../references/settings/rulesets.md#identity-and-ownership) owns schema, fixed defaults and observation limits. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
+
+## Rule: Select existing Rulesets by ID
+
+- Without prune, given omitted Rulesets or an empty list, validate/plan/apply select no object and acquire no Rulesets state or target solely for that resource.
+- With a positive declared REST ID, update only that supported repository-owned branch/tag object. Missing or wrong repository/type IDs fail; never create as fallback.
+- With no ID, create only a new name. A collision fails with the existing ID and guidance to add it; never adopt by name.
+- With a valid ID and noncolliding new name, rename the same object. Unlisted names/IDs remain untouched unless `--prune rulesets` selects the present list.
+- Reject duplicate declaration IDs or exact names. Preserve existing exact-name comparison; no heuristic case-folding or trimming is introduced.
+
+### Scenario: An ID-less entry collides with an existing name
+
+- Given a repository-owned branch Ruleset named `main` with ID 42
+- When a declaration selects the name `main` without an ID
+- Then plan fails with guidance to add ID 42
+- And apply makes no Rulesets write
+
+## Schema and presence
+
+Current UI entries live under `repository.settings.rulesets`. They require `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one `target_branches`/`target_tags` object. Branch selectors are `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tags use `include_all_tags` and pattern arrays. Patterns use UI spelling without internal ref prefixes. An explicit empty target object yields empty include/exclude lists; no target or protected scope is guessed.
+
+Omitted `bypass_list` and unselected `rules` become empty whole-object policy. Each bypass entry selects one supported role (`repository_admin`, `maintain`, `write`), numeric team/app/user, or `deploy_keys: true`, and requires `bypass_mode` (`always`, `exempt`, `for_pull_requests_only`) with existing applicability checks. No actor/grant is created. Rules contain five basic boolean checkboxes and optional parameter groups; an omitted group removes its rule rather than retaining remote membership.
+
+Within a selected pull request rule, the additional approval for unattributed Copilot pull requests defaults true and the other optional booleans default false. `required_approvals` defaults zero (UI range 0–10), check lists default empty and allowed merge methods default all three. Checks use `check` plus optional `source: {any_source: true}` or `{app: positive-id}`; omitted source means any source, not retained App binding. The configuration reference owns the full exact field inventory.
+
+Null, unknown keys and wrong types remain invalid locally. Explicit false, zero and empty are not omitted. Independent identity-based collections remain canonical sets. Any-source status checks retain their documented distinct identity from App-bound checks.
+
+`rules.require_code_scanning_results` requires complete `code_scanning_tools` entries with `tool_name`, `alerts` and `security_alerts`. Identities are case-sensitive. The scanning rule does not supply defaults or borrow missing parameters from a prior policy; cross-rule parameters are invalid. Tool collections are canonical sets, including explicit empty arrays. The configuration reference owns the exact enums. Complete API reads, export, plan and Action reports retain scanning alongside all other supported policy.
+
+## Complete observation and export
+
+Reads require complete repository ownership/ID, required supported policy, bypass visibility and every page/detail. Unknown writable fields, unsupported rules, missing required values, null values, denied reads and partial data fail rather than becoming defaults or success. A present `dismissal_restriction` and acquired `evaluate` enforcement fail as unsupported protection; neither is stripped or normalized into an editable policy. Absence of the restriction in an API response does not prove it is disabled. Declaration defaults must never be applied to an API read.
+
+Merge queue, metadata-pattern, license-compliance and secret-scanning rules are unsupported. A returned unsupported rule or parameter, including a review-dismissal restriction, fails the complete collection before export, comparison, update or explicit deletion. Validation rejects the corresponding unsupported YAML controls before remote work. The supported PR rule and its remaining review settings are retained.
+
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
+
+## Plan, apply and idempotence
+
+Plan is read-only and reports only selected objects, with their IDs and supported comparable before/after values. Unlisted objects are not diff entries. Empty selection counts zero, nonempty selection counts once. Strict same-version Action reports reject incomplete objects, missing/mismatching IDs, duplicate identities and malformed deletion operations; Summary escapes values without credentials.
+
+Apply reads fresh state after earlier resources and prepares every selected Ruleset operation before the first Rulesets write. POST/PUT never send YAML IDs as payload fields. Every response must confirm positive ID, target repository ownership and requested comparable policy; updates retain the selected ID. Every create/update, including basic and empty-rule policies, requires independent post-write GET identity/ownership/complete-policy verification with `includes_parents=false`. A matching mutation response alone cannot establish success. Changed comparable values or failed readback stop later creates/updates, prune deletions and later resources with uncertain-write semantics. A positive reported creation ID remains available in diagnostics but is withheld from YAML until verification succeeds; earlier verified IDs remain recorded. Only explicit `--prune rulesets` with a present list permits unlisted DELETE; no hidden retry, rollback or saved-plan execution exists.
+
+Confirmed created IDs are appended immediately to the original YAML through the shared guarded recorder. Repeat apply then selects that ID, avoiding duplicate creation. Explicit no-writeback and GitHub Actions leave configuration unchanged and display IDs for manual adoption. A successful remote create followed by local persistence failure is a partial failure with recovery ID; earlier confirmed label/Ruleset IDs remain available. Unverified response IDs are reported but never persisted as confirmed creation. Output failure retains ID diagnostics on stderr. No Git commit/push is made.
+
+## API, access and availability
+
+The adapter pins API version `2026-03-10`, uses bounded requests and refuses redirects. [Repository Rulesets REST](https://docs.github.com/en/rest/repos/rules) owns request permissions/shapes; complete bypass visibility requires Ruleset write access beyond ordinary public listing. Supported enforcement GET strings and other complete unknown values follow the [active ID-bound normalization policy](../../references/settings/rulesets.md#values-outside-the-ui-choices). [Required approvals](../../references/settings/rulesets.md#values-outside-the-ui-choices) retains typed integer provenance; [Allowed merge methods](../../references/settings/rulesets.md#values-outside-the-ui-choices) retains typed ordered list provenance; [bypass modes](../../references/settings/rulesets.md#values-outside-the-ui-choices) retain exact actor-bound strings. Scanning [Alerts](../../references/settings/rulesets.md#values-outside-the-ui-choices) and [Security alerts](../../references/settings/rulesets.md#values-outside-the-ui-choices) retain independent tool-bound strings. Account/plan eligibility and team-feature prerequisites remain GitHub's responsibility. Do not expand credentials or change live protection to make a test pass.
+
+Fresh reads and response verification do not lock concurrent edits. Whole-object management can overwrite intervening edits to supported selected settings; unknown writable fields and other unsupported policy values cause failure rather than silent erasure. Fixtures establish client behavior, not live entitlement, server mutation success or atomicity.
+
+## Existing test mapping and evidence limits
+
+| Boundary | Tests and behavior |
+| --- | --- |
+| Model | [ID selection/defaults](../../../internal/settings/ruleset_ids_test.go), [validation/copies](../../../internal/settings/rulesets_test.go), [parameters](../../../internal/settings/ruleset_parameters_test.go): collision guidance, wrong IDs, no implicit deletion, whole supported values, create/update defaults, ordered patterns and strict read state. |
+| YAML | [Codec](../../../internal/workspace/ui_rulesets_test.go): positive numeric ID round-trip, strict types/null/unknown rejection and aliases. |
+| API | [Inventory/payload](../../../internal/github/rulesets_test.go), [identity](../../../internal/github/ruleset_identity_test.go), [parameters](../../../internal/github/ruleset_parameters_test.go): complete pages/details, owner/type isolation, ID-free complete writes, response mismatch/redirect/refusal. |
+| Application | [Sequencing](../../../internal/app/rulesets_test.go), [ID recording](../../../internal/app/ruleset_ids_test.go): empty no-op, fresh preparation, partial failure, confirmed recorder ordering and earlier-label recovery. |
+| Action | [Whole-object report](../../../internal/actions/rulesets_test.go), [parameters](../../../internal/actions/ruleset_parameters_test.go): complete selected policy/IDs, native false/zero/order, no unlisted values and escaped Summary. |
+| Built process | [Lifecycle](../../../tests/acceptance/rulesets_test.go), [ID modes/recovery](../../../tests/acceptance/ruleset_ids_test.go), [parameters](../../../tests/acceptance/ruleset_parameters_test.go): export/zero plan, rename, unmanaged siblings, writeback/repeat, opt-out/Actions, partial failures and response loss. |
+| Code analysis rules | [Model](../../../internal/settings/ruleset_code_analysis_test.go), [YAML](../../../internal/workspace/ui_rulesets_test.go), [API](../../../internal/github/ruleset_code_analysis_test.go), [Action](../../../internal/actions/ruleset_code_analysis_test.go), [built process](../../../tests/acceptance/ruleset_code_analysis_test.go): exact thresholds, closed complete reads, complete existing-policy export, zero plan, exact writes, independent readback failures, escaped reports and repeat no-op. The shared [fixture](../../../tests/fixtures/ruleset-code-analysis.json) retains all seven rules from a read-only public snapshot with repository identity normalized. |
+| Unsupported controls and acquired protection | [Built-process rejection](../../../tests/acceptance/ruleset_unsupported_controls_test.go): `TestRemovedRulesetDeclarationsFailBeforeRemoteWork` rejects unsupported declarations before remote requests; `TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion` rejects unsupported observed enforcement/rules/parameters without export replacement or update/delete writes. |
+
+All cases use local HTTP/files/Git and dummy credentials. Hosted candidate/required CI and review results must be inspected separately; local tests are not evidence of live settings changes or publication.
+
+The current YAML has no API-shaped Ruleset aliases or legacy parser. Independent UI maps in process tests are checked against exact HTTP expectations. CLI and detailed Summary project selected objects to UI names and choices; serialized private reports retain native policy identities.
+
+## Rule: Keep normalized enforcement distinct from raw state
+
+- For a complete typed out-of-UI enforcement string, including unknown, empty or whitespace but excluding unsupported `evaluate`, retain exact raw provenance per positive ID and project Disabled. Missing/null/type and later nested/entry failures return no partial observation; pure readers stay silent.
+- Export warns only after complete comparable acquisition, in deterministic name order with ID/name context. A later UI conversion failure preserves legitimate warnings but does not save.
+- Plan only declared IDs. A fallback-equal selected object still requires one whole update; unlisted normalized objects are not printed or written. Ordinary equality, collision and create-only contracts remain unchanged.
+- Detailed output labels the before status as normalized and the object as effective policy, never raw evidence. Closed private metadata rejects forged/no-op/create/ID-conflicting entries; Summary escapes HTML and status-only suppresses object/raw context. Existing collection count stays one.
+- Apply emits selected pre-write provenance and only complete fresh GET diagnostics after verified identity/ownership. Strict mutation response and independent GET must confirm desired whole policy; retained unknown values cannot confirm a fallback. A canonical acknowledgment alone is insufficient. Prior REST effects remain reported on failure; malformed preflight makes no Ruleset write and export preserves the destination.
+
+Test mapping: [ID-bound carrier](../../../internal/settings/ruleset_enforcement_observation_test.go), [closed changes](../../../internal/settings/ruleset_enforcement_change_test.go), [selected reconciliation](../../../internal/settings/ruleset_enforcement_reconcile_test.go), [HTTP acquisition](../../../internal/github/ruleset_enforcement_read_test.go), [strict fresh verification](../../../internal/github/ruleset_enforcement_verification_test.go), [scoped diagnostics](../../../internal/github/ruleset_enforcement_warning_test.go), [export scope](../../../internal/app/normalization_ruleset_enforcement_export_test.go), [private report/HTML/privacy](../../../internal/actions/normalization_ruleset_enforcement_test.go), [executable commands](../../../tests/acceptance/normalization_ruleset_enforcement_test.go).
+
+### Scenario: Require a write for unknown enforcement even when the declaration says Disabled
+
+- Given a complete read of a selected ID returns an unknown enforcement string and the declaration selects Disabled
+- When plan compares the effective policy with the declaration
+- Then it reports the original value and plans one whole-object update
+
+## Rule: Keep normalized Quality distinct from missing or removed rules
+
+- For a complete present code-quality rule, canonical API `errors`, `warnings`, `notes` and `all` map to the four UI choices. Other typed severity strings project Errors with exact ID-bound provenance; absent rules stay absent, and missing/null/type/duplicate/incomplete policy fails without partial acquisition.
+- A fixed concrete aggregate retains simultaneous enforcement and Quality provenance. Plan only selected IDs and make one whole-object update even for fallback equality. Contextual diagnostics order enforcement, Required approvals, then Quality; effective-policy display is emitted once.
+- Desired Quality removal shows inactive/rule-removed intent, never an invented after severity. Strict original mutation response and independent GET must confirm actual absence; retained canonical or unknown rules cannot confirm removal. Unknown readback cannot confirm Errors even with a canonical acknowledgment.
+- Same-version private report metadata validates each concrete record, including present-zero rejection, and never supplies mutation values. Status-only hides provenance/object details; the existing collection count remains one. Canonical no-op, unlisted privacy, prior REST effects, export preservation remain unchanged.
+
+Test mapping: [mapping](../../../internal/settings/ruleset_quality_mapping_test.go), [carrier](../../../internal/settings/ruleset_quality_observation_test.go), [reconciliation](../../../internal/settings/ruleset_quality_reconcile_test.go), [HTTP acquisition](../../../internal/github/ruleset_quality_read_test.go), [strict confirmation/removal](../../../internal/github/ruleset_quality_verification_test.go), [diagnostics](../../../internal/github/ruleset_quality_warning_test.go), [private metadata](../../../internal/actions/normalization_ruleset_quality_test.go), [export](../../../internal/app/normalization_ruleset_quality_export_test.go), [executable commands](../../../tests/acceptance/normalization_ruleset_quality_test.go).
+
+### Scenario: Verify that an omitted code quality rule was removed
+
+- Given a selected Ruleset has a code quality rule with an unfamiliar severity
+- When apply removes the rule and fresh readback still contains it
+- Then verification fails even if the update acknowledgment omitted the rule
+
+## Rule: Distinguish normalized Required approvals from acquired zero
+
+- Acquire a complete integer from each present PR rule. Keep UI 0–10 exact; project other integers to 0 with ID-bound typed provenance. Missing/null/fractional/string/overflow fields fail without partial results; absent rules stay absent.
+- Selected normalized equality requires one whole-object update, with independent supported records preserved. Plan/Summary show unquoted integer choices and one effective policy. Warning order is enforcement then Required approvals.
+- Verify exact original mutation response and fresh GET. A canonical acknowledgment followed by same-ID/name raw 11/-1 cannot prove desired 0; retaining a canonical PR rule cannot confirm removal. Do not retry or roll back uncertain effects.
+- Same-version reports require explicit typed metadata members and reject forged, present-zero, create, ID-conflicting and unsupported desired counts. Status-only hides object/provenance. Count one, omitted/unlisted privacy and prior-resource failure semantics remain unchanged.
+
+Test mapping: [mapping](../../../internal/settings/ruleset_required_approvals_mapping_test.go), [carrier](../../../internal/settings/ruleset_required_approvals_observation_test.go), [closed changes](../../../internal/settings/ruleset_required_approvals_change_test.go), [reconciliation](../../../internal/settings/ruleset_required_approvals_reconcile_test.go), [integer JSON](../../../internal/settings/ruleset_required_approvals_json_test.go), [acquisition](../../../internal/github/ruleset_required_approvals_read_test.go), [strict verification/removal](../../../internal/github/ruleset_required_approvals_verification_test.go), [diagnostics](../../../internal/github/ruleset_required_approvals_warning_test.go), [private reports](../../../internal/actions/normalization_ruleset_required_approvals_test.go), [export](../../../internal/app/normalization_ruleset_required_approvals_export_test.go), [built executable](../../../tests/acceptance/normalization_ruleset_required_approvals_test.go).
+
+### Scenario: An out-of-range count does not confirm zero
+
+- Given a selected pull request rule declares zero required approvals
+- When the PUT acknowledges zero but the independent GET returns 11
+- Then apply reports the update as unverified and stops
+
+## Rule: Retain actor-bound bypass-mode provenance
+
+- A complete unsupported mode string projects to `always` with exact Ruleset/actor identity and raw evidence. Canonical actors stay unchanged; nil IDs are not numeric IDs. Missing/null modes, malformed identities, duplicate actors, unsupported applicability and later failed acquisition produce no partial observation.
+- Requested export warns in name order; selected plan/apply disclose only managed IDs. Within an object, scalar warnings precede bypass records sorted by actor type and numeric ID. Pure readers remain silent.
+- Fallback-equal intent still requires one whole-object update. Actor removal retains its original warning and an inactive/actor-removed decision. Canonical equal policy remains unchanged and does not write.
+- A canonical PUT acknowledgment does not establish a successful update: strict fresh GET must confirm raw desired policy and removed actor absence. Fresh complete diagnostics cannot turn unchanged unknown modes or retained canonical actors into success.
+- Private report round-trip preserves closed actor records and owned IDs with scalar companions, detailed escaping and status-only privacy. It never becomes apply input or proof of complete acquisition; collection count remains one.
+
+Test mapping: [owned carrier](../../../internal/settings/ruleset_bypass_observation_test.go), [reconciliation](../../../internal/settings/ruleset_bypass_reconcile_test.go), [reader](../../../internal/github/ruleset_bypass_read_test.go), [strict confirmation](../../../internal/github/ruleset_bypass_verification_test.go), [fresh diagnostics](../../../internal/github/ruleset_bypass_readback_warning_test.go), [private reports](../../../internal/actions/normalization_ruleset_bypass_test.go), [presentation](../../../internal/presentation/ruleset_bypass_test.go) and [built executable](../../../tests/acceptance/normalization_ruleset_bypass_test.go).
+
+### Scenario: Match an unknown bypass mode to its actor
+
+- Given one bypass actor has an unknown mode while a second actor has a supported mode
+- When export reads the complete Ruleset
+- Then it projects the first mode to `always` and identifies that actor in the warning
+- And it preserves the second actor’s supported mode
+
+## Rule: Retain raw Allowed merge methods lists
+
+- For a complete PR rule with a nonempty unique typed list, any unsupported string projects the whole list to Merge, Squash, Rebase. Keep exact raw order; empty/whitespace strings are acquired values. Missing/null/non-string members, empty lists, duplicates and incomplete policies fail without partial evidence.
+- Absent PR rules stay absent. Selected fallback-equal and subset intents retain provenance and require one whole-object update; declaration defaults remain distinct from observed fallback. Unlisted IDs and omitted collections are silent no-ops.
+- Export saves effective UI choices and emits scoped warnings. Plan/detailed Summary preserve raw order and render desired choices in named UI order. Closed private reports retain typed arrays and reject unbound/forged evidence; status-only output hides details and collection count remains one.
+- Original PUT acknowledgment and independent raw GET must confirm the desired policy. Retained unknown methods cannot confirm the default; retained canonical PR rules cannot confirm removal. Failure preserves honest earlier/uncertain effects and caller YAML.
+
+Test mapping: [owned state](../../../internal/settings/ruleset_merge_methods_observation_test.go), [reconciliation](../../../internal/settings/ruleset_merge_methods_reconcile_test.go), [pure projector](../../../internal/github/normalization_ruleset_merge_methods_test.go), [complete acquisition](../../../internal/github/ruleset_merge_methods_read_test.go), [strict confirmation](../../../internal/github/ruleset_merge_methods_verification_test.go), [fresh warnings](../../../internal/github/ruleset_merge_methods_readback_warning_test.go), [private reports](../../../internal/actions/normalization_ruleset_merge_methods_test.go), [presentation](../../../internal/presentation/ruleset_merge_methods_test.go) and [built executable](../../../tests/acceptance/normalization_ruleset_merge_methods_test.go).
+
+### Scenario: An unsupported merge method changes the projection of the entire list
+
+- Given the selected Ruleset has a complete unique list containing a supported method and an unknown string
+- When export projects those merge methods
+- Then it writes all three UI choices and retains the exact original list order in the warning
+
+## Rule: Retain exact tool-bound scanning Alerts strings
+
+- Complete canonical Alerts strings remain exact; unsupported strings, including empty/whitespace, project Errors with raw provenance under the exact tool name and Ruleset ID. Preserve canonical tools and Security alerts companions. Never repair identity, missing fields, malformed types, duplicates or incomplete acquisition.
+- An absent scanning rule and an explicit empty tool list remain distinct. Declared tool choices stay required. Selected normalized equality, different intent, tool removal/name replacement and scanning-rule removal each retain one whole-object update; unlisted IDs remain private.
+- Tool-name-ordered warning/decision lines precede Security alerts. Removed tools and removed rules have distinct inactive decisions. Canonical acknowledgment plus retained unknown raw GET cannot confirm Errors; retained canonical objects cannot confirm removal. Failed confirmation reports uncertain effects.
+- Private reports preserve explicit empty raw strings, independently validate every concrete record, own data and keep status-only output private. They never supply mutation input or prove acquisition completeness. Collection count remains one.
+
+Test mapping: [mapping/state/closed changes/reconciliation](../../../internal/settings/ruleset_scanning_alerts_observation_test.go), [projector and complete acquisition](../../../internal/github/ruleset_scanning_alerts_read_test.go), [strict confirmation and scoped diagnostics](../../../internal/github/ruleset_scanning_alerts_verification_test.go), [private reports and presentation](../../../internal/actions/normalization_ruleset_scanning_alerts_test.go), [export](../../../internal/app/normalization_ruleset_scanning_alerts_export_test.go) and [built executable](../../../tests/acceptance/normalization_ruleset_scanning_alerts_test.go).
+
+### Scenario: Verify raw alerts for a selected scanning tool
+
+- Given a scanning tool has an unknown Alerts string and its declaration selects Errors
+- When the update acknowledges Errors but fresh readback still has the unknown string
+- Then apply reports an unverified update for the selected Ruleset
+
+## Rule: Retain independent tool-bound Security alerts strings
+
+- Complete supported Security alerts map exactly to None, Critical, High or higher, Medium or higher or All. Other strings, including empty/whitespace, project High or higher while retaining exact tool-name-bound raw evidence. Missing/null/type/identity/duplicate/pagination failures remain acquisition errors.
+- Alerts and Security alerts may both be unknown on one tool. Preserve both concrete records and canonical companions independently; neither changes tool identity or fills an omitted desired choice. Absent rules and empty lists remain distinct.
+- Selected equality, differing choices, tool removal/name replacement and rule removal require one whole-object update with independently ordered contextual warnings. Strict acknowledgment and fresh GET confirm exact raw desired policy or removal, never projected equality.
+- Private metadata keeps explicit empty raw strings, validates both record families independently and preserves owned policy, escaping and status-only privacy. Collection count remains one.
+
+Test mapping: [mapping/state/closed changes/reconciliation](../../../internal/settings/ruleset_scanning_security_alerts_observation_test.go), [projector and complete acquisition](../../../internal/github/ruleset_scanning_security_alerts_read_test.go), [strict confirmation and scoped warnings](../../../internal/github/ruleset_scanning_security_alerts_verification_test.go), [private reports/presentation](../../../internal/actions/normalization_ruleset_scanning_security_alerts_test.go), [export](../../../internal/app/normalization_ruleset_scanning_security_alerts_export_test.go) and [executable commands including simultaneous thresholds](../../../tests/acceptance/normalization_ruleset_scanning_security_alerts_test.go).
+
+### Scenario: Normalize both thresholds for the same tool independently
+
+- Given a complete scanning tool entry has unknown Alerts and Security alerts strings
+- When export projects that entry
+- Then Alerts becomes Errors and Security alerts becomes High or higher
+- And the diagnostics associate each original value with its own threshold and tool
+
+## Restrict creations and updates
+
+- Branch and tag Rulesets map `restrict_creations: true` to parameterless `creation` and `restrict_updates: {allow_fetch_and_merge: false}` to `update` with its explicit API boolean. Empty update objects default false only in declarations.
+- Complete export preserves true and false upstream-sync values. Missing/null/wrong-type parameters and unknown companion fields fail without partial observation or writes. Parameters from another rule are rejected.
+- Executable export, validate, plan, apply and repeat no-difference behavior use independent literal payload expectations in `TestRulesetCreationUpdatesExecutableLifecycle`. A mutation acknowledgment that claims removal while fresh GET retains either restriction fails. Readback covers both previous and desired policies.
+- `TestRulesetUpdateAcquisitionRequiresBoolean` covers incomplete acquisition, wrong-rule parameters and owned conversion. These local API fixtures neither change live protections nor establish account eligibility or effective enforcement.
+
+## Required deployments
+
+- `require_deployments_to_succeed.required_deployment_environments` is a required explicit list on branch and tag Rulesets. Empty lists remain selected; omission removes the rule. Invalid, blank or duplicate names and mixed-rule parameters fail before remote work.
+- Complete acquired environment names export, validate and plan without loss; canonical ordering does not change membership. Unknown fields and incomplete reads fail without a partial policy.
+- Apply checks the exact declared whole-object payload, mutation acknowledgment and independent GET, including deployment-rule removal. A stale GET fails with uncertain-write reporting; a matching repeat produces no differences or writes.
+- [Domain](../../../internal/settings/ruleset_deployments_test.go), [transport](../../../internal/github/ruleset_deployments_test.go) and [built-product](../../../tests/acceptance/ruleset_deployments_test.go) tests use local fixtures and dummy credentials; they do not establish live GitHub enforcement or entitlement.
+
+## Automatically request Copilot code review
+
+- The branch-only `automatically_request_copilot_code_review` group selects `copilot_code_review`. Review new pushes and Review draft pull requests map to independently acquired booleans; an empty desired group defaults both false, while omission removes the rule.
+- Missing, null, malformed or unknown acquired options fail without partial output. Copilot parameters on unrelated rules are rejected, and returned checkbox pointers are owned.
+- Updates and removals require strict mutation acknowledgment and a separate GET confirming the complete desired policy, selected ID and repository ownership. A retained old policy, incomplete GET or denied read fails with uncertain-write reporting.
+- `TestCopilotRulesetUIAndExport`, `TestCopilotRulesetAcquisitionFailsClosed` and `TestCopilotRulesetStrictIndependentReadback` cover mapping, export roundtrip, validation, ownership and failure cases. `TestRulesetCopilotExportValidatePlanApplyReadback` exercises the built CLI through export, validate, plan, apply, independent readback and repeat no writes with exact independently authored payloads.
+- Local fixtures use dummy tokens. They do not establish actual Copilot review execution, licensing, AI credits or live protection.
+
+## Explicit pruning
+
+The [prune contract](prune.feature.md) owns membership, all-candidate preflight and
+operation ordering. `--prune rulesets` adds unlisted deletions only for an
+explicitly present list; `[]` selects every acquired object. Ordinary apply
+remains create/update only. Tombstone `delete` declarations are rejected with
+instructions to declare every retained Ruleset before pruning; this changes the
+scope of deletion compared with the former single-ID selector.
+
+Each delete change contains the complete acquired policy and no after value.
+Plan/report/Summary show deletion to absent. Unsupported, inherited/Push and
+normalized policy still prevent deletion. Complete supported PR rules with
+either additional-approval value are eligible. Exact pre-DELETE
+identity/policy checks and HTTP 204 followed by complete inventory absence are
+mandatory. Drift, incomplete pagination or mismatching readback fails without
+retry/rollback; earlier writes remain reported.
+
+`TestRulesetPruneExecutableLifecycle` covers branch/tag retention-list pruning,
+plan/report/Summary, old-key rejection and repeated no-op. Domain pruning tests,
+`TestRulesetDeleteRequiresStrictPreflightAndConfirmedInventoryAbsence` and
+`TestRulesetExplicitDeletionAppOperationAndPartialFailure` cover rejected policy,
+identity drift, strict readback and partial progress. All use isolated fixtures.
+
+## Unsupported Push policy
+
+Push targets and file restriction controls remain unsupported; their target UI eligibility is recorded separately in the [coverage inventory](../settings-coverage.md). Removed YAML controls fail local validation, including false and empty values. Acquired Push policy or a file-restriction rule fails complete acquisition before export, update or explicit deletion; no partial policy or protection-dropping rewrite is produced. The [unsupported-control executable cases](../../../tests/acceptance/ruleset_unsupported_controls_test.go) cover rejection without API calls, destination preservation and no writes for acquired unsupported state. Existing branch/tag lifecycle and scanning controls remain supported.
+
+## Additional approval for unattributed Copilot pull requests
+
+The [PR control contract](../../references/settings/rulesets.md#pr-review-and-required-check-parameters)
+accepts the additional-approval checkbox as a boolean. Omission inside a selected
+PR group declares true; explicit false is owned. The setting is stored even when
+Required approvals is 0, where GitHub documents no effect. A missing, null or
+incorrectly typed observation fails acquisition and never receives the declaration
+default. Export retains actual true and false values.
+
+Matching whole objects make no write. Both true-to-false and false-to-true updates
+send the requested value, after independently comparing the fresh value and
+PR-rule presence with the original acquisition. Drift fails before PUT, while
+acknowledgment or independent readback mismatch fails with uncertain effects and
+stops later operations. Creation sends an explicit normalized boolean and retains
+a reported ID in recovery diagnostics if verification fails. Omitting the PR
+group removes the rule; ordinary explicit prune may delete its containing Ruleset.
+Existing complete-policy, unsupported-rule and deletion-drift guards remain.
+
+[Ownership tests](../../../internal/settings/ruleset_additional_approval_test.go),
+[API drift/readback tests](../../../internal/github/ruleset_scope_test.go),
+[prune API tests](../../../internal/github/ruleset_delete_test.go) and the
+[export/edit/apply process test](../../../tests/acceptance/ruleset_parameters_test.go)
+cover explicit values, the true declaration default, removal, repeat no-op,
+CLI/Action presentation and partial failures using local fixtures. No live
+settings, Copilot PR execution or enforcement was exercised.
+
+## Unimplemented branch controls
+
+The [unimplemented-control contract](../../references/settings/rulesets.md#unimplemented-branch-controls)
+rejects team-required review declarations before API access. Preview
+status itself is not a policy exclusion. Acquired nonempty team reviewers
+and unknown/malformed protection fail the complete collection without writes or
+partial export. Code Quality remains managed through its severity contract and
+retains its independent raw pre-update drift gate.
+
+[API safety tests](../../../internal/github/ruleset_scope_test.go) and
+[executable unsupported controls](../../../tests/acceptance/ruleset_unsupported_controls_test.go)
+cover these rejection boundaries.
+
+## Code coverage thresholds
+
+The [coverage contract](../../references/settings/rulesets.md#code-coverage-thresholds) manages the branch
+Ruleset checkbox and both finite 0–100 numeric thresholds. Selected child
+omission defaults to explicit zero, which disables that threshold; selected 0/0
+is distinct from absent coverage. Omitting the group removes it under whole-object
+ownership. False/null groups, mistyped members, nonfinite/out-of-range values,
+API aliases and tag use fail validation before remote work.
+
+Complete raw observation requires both thresholds, despite their optional API
+schema. Missing values never receive declaration defaults. Export preserves
+actual zero/fractional values; unavailable Rulesets retain prior intent as a
+whole family. Code Quality normalization remains independent, and forged private
+reports cannot manufacture a complete valid coverage observation.
+
+Matching objects skip mutations. Fresh rule presence and either threshold must
+match the acquired coverage before a needed PUT, including removal intent and
+absent-to-present drift. Existing Code Quality and PR additional-approval checks
+remain. Create/update/removal require complete ACK and independent GET; failed
+confirmation retains positive creation-ID recovery without adopting an unverified
+ID into YAML. Explicit prune preserves complete fixed snapshots and rejects
+changed or incomplete coverage before DELETE.
+
+[Domain ownership](../../../internal/settings/ruleset_coverage_test.go),
+[YAML](../../../internal/workspace/ui_ruleset_coverage_test.go),
+[raw acquisition](../../../internal/github/ruleset_coverage_read_test.go),
+[drift/readback/prune](../../../internal/github/ruleset_coverage_write_test.go),
+[private reports](../../../internal/actions/ruleset_coverage_test.go),
+[built CLI](../../../tests/acceptance/ruleset_coverage_test.go) and
+[actual composite](../../../tests/github-actions/ruleset_coverage_acceptance_test.go)
+cover these boundaries. The read-only personal-public UI form observed on
+2026-11-14 exposed optional blank number inputs with min 0, max 100 and arbitrary
+step. No form was submitted. Local fixtures establish product behavior, not live
+write acceptance, Code Quality entitlement, coverage availability or enforcement.

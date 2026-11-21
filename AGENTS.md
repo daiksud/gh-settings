@@ -16,10 +16,10 @@ Autolink references are an explicit v1 exclusion under the confirmed Free-plan
 scope: the official UI guide lists paid-plan availability, and this repository
 has no observed sidebar entry. This is not API absence; preserve the existing
 v0 implementation, schema and export behavior. See the
-[Autolinks contract](docs/settings/legacy-autolinks.md#autolink-references).
+[Autolinks contract](docs/references/settings/legacy-autolinks.md#autolink-references).
 
-Follow the [feature adoption policy](docs/settings/scope.md#feature-adoption-scope)
-and [coverage ledger](docs/contributing/settings-coverage.md). Rulesets are the
+Follow the [feature adoption policy](docs/references/settings/scope.md#feature-adoption-scope)
+and [coverage ledger](docs/development/settings-coverage.md). Rulesets are the
 only supported branch-protection mechanism in v1. Classic branch protection is
 outside v1 by product choice, not API or plan unavailability; retain the existing
 v0 implementation/schema/export contracts and live protection. No implicit
@@ -58,7 +58,7 @@ under the [code-review policy](.agents/skills/code-review/SKILL.md).
 
 Use the reviewed `.github/settings.yml` and manual `settings-apply` workflow
 for this repository's normal settings changes. Read the
-[settings change procedure](docs/contributing/repository-automation.md#repository-settings-changes)
+[settings change procedure](docs/development/repository-automation.md#repository-settings-changes)
 before choosing an execution path or recovering created resource IDs. After
 merge, dispatch it from `main`; settings are not applied automatically. The
 hosted workflow uses its own App authentication; local CLI authentication is

@@ -1,51 +1,35 @@
 # Documentation
 
-Choose the documentation for your task. Users install and operate gh-settings; contributors change its implementation, tests, documentation, or project automation.
-
 ## For users
 
-Start with the [README quick start](../README.md#quick-start).
+If this is your first checkout, [install the CLI](../README.md#install) and [manage a repository description](tutorials.md). For an existing checkout or workflow, choose the task below.
 
-| Task | Guide |
+| Task | Read |
 | --- | --- |
-| Export, validate, plan, or apply; understand targeting and errors | [Command reference](commands.md) |
-| Declare repository settings, topics, and labels in YAML | [Configuration reference](settings/README.md) |
-| Select GitHub App grants by YAML path and command | [Permission matrix](settings/permissions.md) |
-| Use the public Action and configure approval and credentials | [GitHub Actions guide](github-actions.md) |
-| Check which published Action/CLI a copied workflow runs | [Published package and consumer pins](github-actions.md#published-package-and-consumer-pins) |
-| Protect apply with Environment review and trusted required checks | [Apply protection guide](github-actions.md#protect-the-apply-path) |
-| Adopt the example PR and main workflows | [Workflow examples](../examples/github-actions/README.md) |
-
-These public guides describe the supported interface and its effects, marking source-only capabilities separately from published releases. You do not need the implementation or release procedures to use gh-settings.
+| Understand how the checkout, declaration, and remote state relate | [How gh-settings manages settings](concepts.md) |
+| Look up a command, flag, exit status, or failure | [CLI reference](references/commands.md) |
+| Find a YAML field by its GitHub Settings page | [Settings reference](references/settings/README.md) |
+| Update one label while preserving other labels | [Manage labels by ID](guides/manage-labels.md) |
+| Check what happens to omitted or unlisted resources | [Value semantics](references/settings/configuration.md#configuration-semantics) · [Collection pruning](references/settings/pruning.md#collection-pruning) |
+| Find the GitHub App permissions a command needs | [Permission matrix](references/settings/permissions.md) |
+| Set up pull request plans and protected applies on main | [Workflow setup](guides/github-actions.md) · [Protect the apply path](guides/protect-apply.md) |
+| Look up Action inputs, outputs, or which CLI a pin runs | [Action reference](references/action.md) · [Package selection](guides/github-actions.md#published-package-and-consumer-pins) |
+| Check the supported repository types and v1 scope | [Support policy](references/settings/scope.md#feature-adoption-scope) |
 
 ## For contributors
 
-Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation placement rules](../CONTRIBUTING.md#where-documentation-belongs).
+Start with [CONTRIBUTING](../CONTRIBUTING.md) to propose a change. For implementation and maintenance work, use the following guides.
 
-| Task | Guide |
+| Task | Read |
 | --- | --- |
-| Install development tools, build, and extend the implementation | [Development](contributing/development.md) |
-| Understand the current design and code boundaries | [Architecture](contributing/architecture.md) |
-| Check target UI eligibility, API evidence and current setting coverage | [Settings coverage](contributing/settings-coverage.md) |
-| Inspect the About, General and Labels UI/API boundary | [Repository UI mapping](contributing/ui-repository-mapping.md) |
-| Look up declaration, observed-state, and comparison terminology | [Model glossary](contributing/glossary.md) |
-| Inspect the Ruleset UI/API boundary and complete acquisition | [Ruleset UI mapping](contributing/ui-ruleset-mapping.md) |
-| Select checks and understand local/CI evidence | [Testing](contributing/testing.md) |
-| Review PR scope, squash messages, compatibility, and implementation | [Code-review policy](../.agents/skills/code-review/SKILL.md) |
-| Change the private metadata, plan-report, or Summary protocol | [Actions internals](contributing/actions-internals.md) |
-| Change this repository's managed settings and verify the main apply | [Settings change procedure](contributing/repository-automation.md#repository-settings-changes) |
-| Maintain this repository's CI, review, and settings automation | [Repository automation](contributing/repository-automation.md) |
-| Prepare, publish, or recover a release | [Releases](contributing/releases.md) |
-| Understand the reasons for a design decision | [Architecture decision records](adr/README.md) |
-| Find detailed scenarios and their Go test mappings | [Behavior specifications](features/README.md) |
+| Set up the tools, build the CLI, and run checks | [Local development](development/setup.md) · [Testing and CI](development/testing.md) |
+| Find the code that owns a change | [Architecture](development/architecture.md) · [Model glossary](development/glossary.md) |
+| Check the constraints for a design or documentation change | [Development policies](development/policies.md) · [Architecture decision records](development/adr/README.md) |
+| Find behavior scenarios and the tests that cover them | [Feature specifications](development/features/README.md) |
+| Assess a setting's UI availability, API support, and implementation | [Settings coverage and evidence](development/settings-coverage.md) |
+| Change the internal Action reports or job summary | [Actions internals](development/actions-internals.md) |
+| Review a PR or troubleshoot a required check | [Code-review policy](../.agents/skills/code-review/SKILL.md) · [PR validation](development/pr-validation.md) |
+| Apply this repository's own settings | [Repository settings changes](development/repository-automation.md#repository-settings-changes) |
+| Publish or recover a release | [Release procedure](development/releases.md) |
 
-User guides live under `docs/`; the category-based settings reference lives under
-`docs/settings/`, and contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.
-
-UI/API boundary: [Actions UI mappings](contributing/ui-actions-mapping.md).
-
-UI/API boundary: [Security UI mappings](contributing/ui-security-mapping.md).
-
-UI/API boundary: [Pages UI mappings](contributing/ui-pages-mapping.md).
-
-UI/API boundary: [Environment UI mappings](contributing/ui-environments-mapping.md).
+The UI mappings record the evidence for individual settings pages. See [Repository and Labels](development/ui-repository-mapping.md), [Rulesets](development/ui-ruleset-mapping.md), [Actions](development/ui-actions-mapping.md), [Security](development/ui-security-mapping.md), [Pages](development/ui-pages-mapping.md), or [Environments](development/ui-environments-mapping.md).

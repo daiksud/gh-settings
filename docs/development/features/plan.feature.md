@@ -1,0 +1,158 @@
+# Feature: Plan declared settings
+
+## Rule: Validate before reading GitHub
+
+- Read `.github/settings.yml` from the Git root, including from a subdirectory.
+- Reject missing files and invalid configuration before API access.
+- For declared fields, resolve the same GitHub.com origin as export and ignore `GH_REPO`.
+- When any REST-backed repository field is declared, read the complete supported typed REST state, including Discussions, using the existing GET normalization and validation. Merge-related fields use the selective [GraphQL read](merge-methods.feature.md); topics and labels use their own reads below.
+- Never send a mutation request or change the configuration file.
+
+### Scenario: Reject an invalid field before target lookup
+
+- Given the checkout has no origin and its declaration contains an unknown field
+- When the maintainer runs plan
+- Then the configuration error is reported before any repository lookup
+
+## Rule: Empty declarations are local no-ops
+
+A valid document without managed fields succeeds before origin resolution, authentication or API access. Invalid documents still fail validation; explicit false and empty strings remain managed values. The [Action's metadata and explicit-token requirements](actions.feature.md#public-composite-action-contract) remain an independent audit contract.
+
+### Scenario: A version-only declaration without origin or credentials
+
+- Given a Git checkout with `.github/settings.yml` containing only `version: daiksud/gh-settings@v0`
+- And no origin or authentication
+- When the maintainer runs plan
+- Then it prints `No managed repository settings.` and exits 0
+- And it makes no API calls or configuration changes
+
+### Scenario: Empty settings without origin or credentials
+
+- Given a Git checkout with the current marker and `repository: {settings: {}}`
+- And no origin or authentication
+- When the maintainer runs plan
+- Then it prints `No managed repository settings.` and exits 0
+- And it makes no API calls or configuration changes
+
+### Scenario: An empty repository declaration without origin or credentials
+
+- Given a Git checkout with the current marker and `repository: {}`
+- And no origin or authentication
+- When the maintainer runs plan
+- Then it prints `No managed repository settings.` and exits 0
+- And it makes no API calls or configuration changes
+
+## Rule: Compare declared fields only
+
+- Omitted fields are unmanaged and produce no difference.
+- Explicit false and empty strings are managed values.
+- Retain stable existing comparison order for About/General fields, then Topics and selected-object operations; see [current output](../../references/commands.md#plan).
+- Scalar and nested settings use current UI paths and choices with `CURRENT → DESIRED`; whole-object changes show UI-named controls.
+- Strings are double-quoted with Go string escaping; booleans use `true` or `false`.
+- Equal exact managed values produce `No differences for managed repository settings.`; normalized fallback equality remains actionable.
+- A valid document without managed fields produces `No managed repository settings.`
+
+### Scenario: Keep omissions out of the plan
+
+- Given the declaration selects a description of `new` and omits the website
+- When the repository description is `old` and the maintainer runs plan
+- Then the plan shows the description change and no website change
+
+## Rule: Report success and failures
+
+- Successful comparison exits 0 whether differences exist or not.
+- File, validation, origin, authentication, API, decoding, and output failures exit 1.
+- Errors appear on standard error; failures before output leave standard output empty.
+
+### Scenario: A read failure makes the plan unsuccessful
+
+- Given the declaration selects a setting whose required GitHub read returns a permission error
+- When the maintainer runs plan
+- Then the process reports the error on stderr and exits with status 1
+
+## Test mapping
+
+Focused application tests record declaration loading, target resolution, and reads without Git or YAML fixtures. Workspace tests own origin syntax, configuration scope, and isolation between Checkout instances; comparison and CLI tests own declaration semantics and exact output. Process acceptance uses the already-built executable with an isolated local API fixture, checks exact exit codes and output, observes GET-only requests, and verifies configuration preservation.
+
+| Behavior | Test |
+| --- | --- |
+| Original five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../../internal/settings/comparison_test.go), [TestRenderComparison](../../../internal/cli/comparison_test.go) |
+| Discussions omission/false/equality/order after wiki and REST-only selective read | [TestDiscussionsComparison](../../../internal/settings/discussions_test.go), [TestPlanRequestsDiscussionsField](../../../internal/app/discussions_test.go), [TestPlanAcceptance](../../../tests/acceptance/plan_test.go) |
+| CLI operation selection and output failure | [TestRunSelectsOperation and TestPlanOutputFailure](../../../internal/cli/run_test.go) |
+| API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../../internal/github/repository_test.go) |
+| Exact declared Repository FieldID requests; observation failure or missing required values discard the report | [TestPlanRequestsMergeMethodFields and TestPlanMixedRepositoryObservationFailureDiscardsComparison](../../../internal/app/merge_methods_test.go) |
+| Necessary REST/GraphQL reads in REST-first order; complete response validation and partial-error rejection | [TestObserveRepositorySelectsReads, TestObserveRepositoryDiscardsPartialRead and TestObserveRepositoryRetainsCompleteResponseValidation](../../../internal/github/observation_test.go) |
+| Acquired values versus unread values, native pairs and stable ordering | [TestCompareRepositoryObservationRequiresAcquiredFields and TestCompareRepositoryObservationPreservesOrderAndNativeValues](../../../internal/settings/requested_observation_test.go) |
+| Typed target/comparison, changes/no differences, load → target → read order | [TestPlanResults](../../../internal/app/plan_test.go) |
+| Unmanaged declaration returns a zero result without target resolution or reads; explicit empty Topics remain managed while empty Labels select nothing without label pruning | [TestPlanNoManagedSettings and TestPlanManagedEmptyCollectionsResolveTarget](../../../internal/app/plan_test.go) |
+| Direct origin syntax, configuration scope and overrides; multiple explicit Checkout directories | [TestCurrentRepositoryFormats and TestCurrentRepositoryIgnoresUnscopedOrigins](../../../internal/workspace/repository_test.go), [TestCheckoutRepositoryUsesItsDirectory](../../../internal/workspace/checkout_test.go) |
+| Omitted fields versus each explicit false/empty field | [TestRepositoryDeclarationEmpty](../../../internal/settings/repository_test.go) |
+| Validation before target/read, target failure before read, read failures | [TestPlanValidatesBeforeRead, TestPlanTargetFailureBeforeRead and TestPlanReadFailure](../../../internal/app/plan_test.go) |
+| File/subdirectory, managed false/empty values, GET nulls, API/output failures, no PATCH; three empty forms without origin/auth/GET | [TestPlanAcceptance](../../../tests/acceptance/plan_test.go) |
+| Export → edit → validate → plan | `TestExportEditValidatePlan` |
+
+## Rule: Compare topics as a stable set
+
+### Scenario: Ignore topic order
+
+- Given declared topics and observed topics contain the same names in different orders.
+- When plan runs.
+- Then no topic difference is reported.
+- And omitted resources are not read.
+
+### Scenario: Show a topic membership change
+
+- Given the topic sets differ
+- When the maintainer runs plan
+- Then one `repository.about.topics` change shows sorted arrays with native string values.
+
+Test mapping: [TestTopicsSetComparison](../../../internal/settings/topics_test.go), [TestTopicsOnlyPlanAndApply](../../../internal/app/topics_test.go), [TestTopicsPlanApplyAcceptance](../../../tests/acceptance/topics_test.go).
+
+## Rule: Show label collection operations
+
+An ordinary plan reports creates and ID-selected whole-object updates, including changes caused by declaration defaults. An empty labels list manages nothing unless label pruning is selected. Explicit label pruning counts a present list once and includes eligible unlisted labels as deletions. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns label comparison scenarios and test mappings.
+
+### Scenario: An ID-selected rename appears as one update
+
+- Given label ID 17 is currently named `defect` and the declaration renames it to `bug` with the same color
+- When the maintainer runs plan
+- Then the plan shows an ID-bound update and leaves the file and remote label unchanged
+
+## Rule: Actions execution policy comparison
+
+Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.
+
+Plan reads only managed resources, retaining existing field/resource ordering and native comparison semantics. A UI menu can expand to two internal members; the private same-version report preserves native comparisons and their bounds, with validated context for composite choices. Collections count according to their ownership contracts. Denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. Complete out-of-UI values follow their adopted field-specific normalization policies with raw provenance and actionable fallback equality; unsupported identities and incomplete/malformed observations remain errors. A zero plan covers only successfully observed managed intent and proves neither write permission nor future drift protection.
+
+| Subset | Existing application and supplied-binary coverage |
+| --- | --- |
+| PR/Issue policies | [PR access](../../../tests/acceptance/pr_access_test.go), [Issue policy](../../../tests/acceptance/issue_creation_policy_test.go) |
+| Ruleset operations and parameters | [Rulesets](../../../tests/acceptance/rulesets_test.go), [PR/check parameters](../../../tests/acceptance/ruleset_parameters_test.go) |
+| Workflow permissions and retention | [Workflow](../../../tests/acceptance/workflow_permissions_test.go), [retention](../../../tests/acceptance/retention_test.go) |
+| Secret scanning and public reporting | [Secret scanning](../../../tests/acceptance/security_test.go), [reporting](../../../tests/acceptance/private_reporting_test.go) |
+| Fork workflow policies | [Fork app sequencing](../../../internal/app/fork_workflows_test.go), [fork process/Summary](../../../tests/acceptance/normalization_fork_approval_test.go) |
+
+The dedicated feature specifications own conditional reads, dependencies, cap checks and visibility boundaries. The same typed comparison feeds credential-free Summary validation; no saved report becomes apply input.
+
+### Scenario: Keep a matching execution policy out of the changes
+
+- Given the repository has Actions disabled and the declaration explicitly selects Disable
+- When the maintainer runs plan
+- Then the matching execution switch produces no change
+
+## Rule: Render scalar policy differences with UI names
+
+- Actions workflow permissions and contributor approval use the selectable UI choices on both sides of a difference.
+- Security and Pages differences identify their public YAML paths; Pages source and folder choices use UI values.
+- Exact merge/squash and Actions execution differences each display one UI choice, including when an internal companion did not change.
+- Rulesets use UI-named policies; Environment before policies omit controls absent from the request.
+- CLI and Action Summary use the same presentation helpers while the private report transport retains internal field identities.
+- A normalization warning retains raw provenance and does not independently verify raw equality.
+
+Test mapping: [presentation choices](../../../internal/presentation/ui_reporting_test.go), [workflow Summary](../../../internal/actions/workflow_permissions_test.go), [workflow executable acceptance](../../../tests/acceptance/workflow_permissions_test.go), [paired context validation](../../../internal/actions/ui_context_test.go) and [merge menu process acceptance](../../../tests/acceptance/merge_methods_test.go).
+
+### Scenario: Render an explicit Discussions difference
+
+- Given Discussions is enabled and the declaration sets it to false
+- When the maintainer runs plan
+- Then the difference shows the UI path `repository.settings.general.features.discussions` and boolean values `true → false`

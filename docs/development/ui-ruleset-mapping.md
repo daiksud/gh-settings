@@ -1,0 +1,127 @@
+---
+type: Reference
+title: Ruleset UI mappings
+description: Observed Ruleset controls, API translation, complete acquisition and normalization.
+sources:
+  - id: ruleset-ui
+    resource: https://github.com/daiksud/gh-settings/settings/rules
+  - id: existing-bypass-ui
+    resource: https://github.com/daiksud/agents/settings/rules/22615823
+  - id: role-identities
+    resource: https://raw.githubusercontent.com/integrations/terraform-provider-github/main/docs/resources/repository_ruleset.md
+---
+
+# Ruleset UI mappings
+
+Use this mapping to check how branch and tag Ruleset controls translate to selected policy objects, observations and writes. The [Ruleset reference](../references/settings/rulesets.md) defines accepted YAML, whole-object ownership and unsupported protection.
+
+## UI evidence
+
+English labels and choices were inspected on 2026-10-28. Existing gh-settings and agents Rulesets supplied root, bypass and active-rule controls. Conditional reviewer and code-analysis controls were revealed only in an unnamed, unsaved new Ruleset form; no Create or Save action was submitted, and that form was discarded. This verifies UI wording and options, not live mutation effects or effective protection.[^ruleset-ui][^existing-bypass-ui]
+
+The visible bypass options' DOM identities map Repository admin to `RepositoryRole:5`, Maintain to `RepositoryRole:2`, and Write to `RepositoryRole:4`. The independent provider reference documents the same role IDs; the existing agents API/UI pair also identifies Repository admin 5. App, team and user identities remain dynamic; no installation-specific ID is hardcoded.[^role-identities]
+
+## Mapped control paths
+
+In these tables `R` means `repository.settings.rulesets[]`. The [model](../../internal/settings/uimodel/rulesets.go) has no serialization tags; these paths are the preparation handoff. The `ui_ruleset_*.go` files in [the adapter](../../internal/github) contain the transport identifiers and conversions.
+
+| UI control | UI path | Internal API representation |
+| --- | --- | --- |
+| Prune unlisted Rulesets | Command `--prune rulesets` with an explicitly present retention list | Fixed ID-addressed DELETE candidates after complete preflight; no YAML deletion member |
+| Selected Ruleset identity | `R.id` | Numeric ID selects an existing resource; no ID remains create-only; never a writable payload field |
+| Ruleset Name | `R.ruleset_name` | `name` |
+| Enforcement status | `R.enforcement_status` | `enforcement`; Active / Disabled become `active` / `disabled` |
+| Target branches / Include default branch | `R.target_branches.include_default_branch` | `target: branch`, include sentinel `~DEFAULT_BRANCH` |
+| Target branches / Include all branches | `R.target_branches.include_all_branches` | Include sentinel `~ALL` |
+| Target branches / Include by pattern | `R.target_branches.include_by_pattern` | Include strings prefixed with `refs/heads/` |
+| Target branches / Exclude by pattern | `R.target_branches.exclude_by_pattern` | Exclude strings prefixed with `refs/heads/` |
+| Target tags / Include all tags | `R.target_tags.include_all_tags` | `target: tag`, include sentinel `~ALL` |
+| Target tags / Include by pattern | `R.target_tags.include_by_pattern` | Include strings prefixed with `refs/tags/` |
+| Target tags / Exclude by pattern | `R.target_tags.exclude_by_pattern` | Exclude strings prefixed with `refs/tags/` |
+| Bypass list / Roles | `R.bypass_list[].role` | `RepositoryRole`; `repository_admin` → 5, `maintain` → 2, `write` → 4 |
+| Bypass list / Teams, Apps, Users | `R.bypass_list[].team`, `.app`, `.user` | Dynamic numeric IDs; `Team`, `Integration`, `User` respectively |
+| Bypass list / Deploy keys | `R.bypass_list[].deploy_keys` | Selected `true` marker → `DeployKey`, API `actor_id: null` |
+| Select bypass mode | `R.bypass_list[].bypass_mode` | Always → `always`; Exempt → `exempt`; For pull requests only → `for_pull_requests_only` → API `pull_request` |
+| Rules / Restrict creations | `R.rules.restrict_creations` | Rule type `creation` |
+| Rules / Restrict updates | `R.rules.restrict_updates` | Rule type `update`; `.allow_fetch_and_merge` maps to required `update_allows_fetch_and_merge` |
+| Rules / Restrict deletions | `R.rules.restrict_deletions` | Rule type `deletion` |
+| Rules / Block force pushes | `R.rules.block_force_pushes` | `non_fast_forward` |
+| Rules / Require linear history | `R.rules.require_linear_history` | `required_linear_history` |
+| Rules / Require signed commits | `R.rules.require_signed_commits` | `required_signatures` |
+| Require a pull request before merging | `R.rules.require_a_pull_request_before_merging` | Selects `pull_request` rule |
+| Required approvals | PR rule `.required_approvals` | `required_approving_review_count`; UI integers 0–10 |
+| Allowed merge methods | PR rule `.allowed_merge_methods` | Merge / Squash / Rebase → `merge` / `squash` / `rebase` |
+| Dismiss stale pull request approvals when new commits are pushed | PR rule `.dismiss_stale_pull_request_approvals_when_new_commits_are_pushed` | `dismiss_stale_reviews_on_push` |
+| Require review from Code Owners | PR rule `.require_review_from_code_owners` | `require_code_owner_review` |
+| Require an additional approval for unattributed Copilot pull requests | PR rule `.require_an_additional_approval_for_unattributed_copilot_pull_requests` | `require_extra_approval_for_unattributed_changes`; declaration default true; strict acquired boolean |
+| Require approval of the most recent reviewable push | PR rule `.require_approval_of_the_most_recent_reviewable_push` | `require_last_push_approval` |
+| Require conversation resolution before merging | PR rule `.require_conversation_resolution_before_merging` | `required_review_thread_resolution` |
+| Require status checks to pass | `R.rules.require_status_checks_to_pass` | Selects `required_status_checks` rule |
+| Require branches to be up to date before merging | Status rule `.require_branches_to_be_up_to_date_before_merging` | `strict_required_status_checks_policy` |
+| Do not require status checks on creation | Status rule `.do_not_require_status_checks_on_creation` | `do_not_enforce_on_create` |
+| Required status checks | Status rule `.required_status_checks[]` | API `required_status_checks` collection |
+| Search for checks / selected check | Check entry `.check` | API `context`, preserved exactly |
+| Select source / Any source | Check entry `.source.any_source` | Selected `true` → absent/null `integration_id`; UI option ID 0 is not an API identity |
+| Select source / selected App | Check entry `.source.app` | Positive dynamic `integration_id`; do not infer it from the provider's display name |
+| Require code scanning results | `R.rules.require_code_scanning_results` | Selects `code_scanning` rule |
+| Code scanning tools | Scanning rule `.code_scanning_tools[]` | `code_scanning_tools` |
+| Tool name | Scanning tool `.tool_name` | Case-sensitive API `tool`, not a fixed product enum |
+| Security alerts | Scanning tool `.security_alerts` | `security_alerts_threshold` |
+| Alerts | Scanning tool `.alerts` | `alerts_threshold` |
+| Automatically request Copilot code review | `R.rules.automatically_request_copilot_code_review` | Selects `copilot_code_review`; `.review_new_pushes` → `review_on_push`, `.review_draft_pull_requests` → same API name |
+
+Branch rules and Tag rules are subheadings under Rules, selected by the target object rather than a second independent discriminator. Require exactly one target object and an explicit enforcement choice. A present empty target object selects an empty inclusion. Empty or whitespace-only naming patterns are invalid before prefixing and after reverse prefix removal; nonblank contents are otherwise retained exactly. Tag criteria cannot use the default-branch sentinel.
+
+Each bypass entry selects exactly one actor and explicitly supplies its mode. `deploy_keys: false`, multiple selectors, nonpositive dynamic IDs and unsupported role tokens are invalid. Existing target dependencies remain enforced, including no pull-request bypass for tag Rulesets or deploy keys.
+
+## Analysis choices and defaults
+
+| Control | Verified UI choices | Prepared choice → API value when different |
+| --- | --- | --- |
+| Alerts | None; Errors; Errors and Warnings; All | `none`, `errors`, `errors_and_warnings`, `all` |
+| Security alerts | None; Critical; High or higher; Medium or higher; All | `none`, `critical`, `high_or_higher`, `medium_or_higher`, `all` |
+
+The model supplies separate observation defaults. They match the inspected new-form controls. Enforcement, Required approvals, Allowed merge methods, scanning Alerts, scanning Security alerts, bypass-mode normalization are active:
+
+| UI field | Explicit observation fallback |
+| --- | --- |
+| Enforcement status | `disabled` (`DefaultRulesetEnforcementStatus`) |
+| Bypass mode | `always` (`DefaultBypassMode`) |
+| Required approvals | 0 (`DefaultRequiredApprovals`) |
+| Allowed merge methods | Merge, Squash, Rebase (`DefaultRulesetMergeMethods`, returning owned values) |
+| Scanning Alerts | `errors` (`DefaultCodeScanningAlerts`) |
+| Scanning Security alerts | `high_or_higher` (`DefaultCodeScanningSecurityAlerts`) |
+
+Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. OrganizationAdmin remains unsupported in UI projection without an invented identity. Acquired Evaluate is rejected as unsupported, rather than normalized into a writable Disabled policy. Complete unknown enforcement projects to Disabled with exact ID-bound provenance and contextual warnings; the native validator still distinguishes API transport values from UI choices. Normalization must preserve the raw identity and make any projection visible before a user applies policy.
+
+Bypass-mode normalization changes only a complete acquired mode string to `always`. Its record preserves exact actor type, ID presence and numeric value; canonical companions remain intact. Nil DeployKey identity is not interchangeable with a numeric actor. Invalid identity or actor/target applicability is never repaired by mode projection. Selected actor removal retains its original evidence and requires verified absence.
+
+Allowed merge methods uses the shared UI/native membership mapping and an owned named full-list default. One unsupported member projects the entire acquired list; duplicate members, empty lists and malformed elements fail before projection. Exact raw order remains separate from canonical effective-policy ordering. Removing the selected PR container removes its owned additional-approval member as well; acknowledgment and independent GET must confirm absence.
+
+Correctly typed booleans have no out-of-UI value. Missing fields, invalid types, failed reads and incomplete pagination remain acquisition errors. These observation fallback values never fill omitted desired declarations. Existing whole-object declaration defaults are a separate contract: selected Rulesets own their rule lists, nil/false simple checkboxes leave a rule unselected, and selecting a parameterized rule uses the existing declared-object normalization. Required tool thresholds still require explicit values.
+
+## Ownership and complete acquisition
+
+`RulesetsDeclaration` preserves omitted versus empty collections and uses the existing constructor only for desired objects. IDs remain selectors; entries without IDs are create-only. Ordinary reconciliation creates/updates listed resources. Explicit `--prune rulesets` adds unlisted deletions for a present list; omission stays unmanaged and [] selects all candidates. The old `delete` member is rejected with retention-list migration guidance. Excluded inherited or other-source IDs remain separate inventory evidence, preventing an excluded resource from being interpreted as already absent.
+
+`RulesetsObservation` requires a complete acquisition, uses `RulesetState.ID` rather than a possibly absent policy ID, and returns stable name order. It never applies declaration defaults to observations or strips unsupported protection to manufacture success. Failure in any entry returns no partial UI collection. Existing transport rejects repository-owned Push Rulesets, excludes inherited organization/Enterprise policy and performs its complete pagination and ownership checks. The observed decoder projects copied, typed enforcement, present Required approvals, present Allowed merge methods, complete tool-bound Alerts and Security alerts strings, complete bypass-mode members before one strict complete validation; mutation verification keeps the original strict decoder. Selected normalized IDs force whole-object updates even at effective equality, and require fresh GET in addition to strict mutation-response checks. Scoped export/apply diagnostics preserve unlisted-ID privacy. The [public enforcement policy](../references/settings/rulesets.md#values-outside-the-ui-choices), [Required approvals policy](../references/settings/rulesets.md#values-outside-the-ui-choices), [Allowed merge methods policy](../references/settings/rulesets.md#values-outside-the-ui-choices), [scanning Alerts policy](../references/settings/rulesets.md#values-outside-the-ui-choices), [scanning Security alerts policy](../references/settings/rulesets.md#values-outside-the-ui-choices), [bypass-mode policy](../references/settings/rulesets.md#values-outside-the-ui-choices) own these active limits. Simultaneous supported provenance remains independent on one whole-object update.
+
+Inherited Rulesets, legacy branch protection and organization-wide policy remain outside this mapping. A present review-dismissal restriction is unsupported and stops acquisition; API omission does not establish disabled protection.
+
+See [the test specification](testing/settings.md#control-mappings-and-acquisition) for independent expectations and the limits of local evidence.
+
+[^ruleset-ui]: Existing Ruleset and unsaved new branch/tag forms inspected read-only or with local unsaved control reveals, then discarded, 2026-10-28.
+[^existing-bypass-ui]: Existing Repository admin / For pull requests only bypass inspected without editing its policy, 2026-10-28.
+[^role-identities]: Provider-maintained reference explicitly lists associated base repository role IDs: maintain 2, write 4, admin 5; retrieved 2026-10-28.
+
+Required approvals observes an actual integer separately from the UI range 0–10. Typed out-of-range counts project 0 with exact ID-bound integer evidence, while missing/null/fractional/overflow values remain acquisition errors. PR-rule absence stays absent and desired removal requires verified absence. The same observed decoder supplies export/plan/apply evidence, but mutation verification reads original raw responses. Native-valid 11 remains useful evidence of an API value outside the UI range; native validation has not been narrowed to a UI validator.
+
+Scanning Alerts uses one shared UI/native membership mapping. Complete unsupported strings project Errors and retain exact tool-name-bound evidence; names remain case-sensitive and are not trimmed. Canonical tools and Security alerts companions remain intact. Invalid identities, duplicate tools, missing/null/wrong-type fields and incomplete reads fail. Tool removal or replacement retains the original evidence and requires strict raw absence confirmation; Security alerts use an independent tool-bound record and High or higher fallback.
+
+Scanning Security alerts shares its five-choice mapping between UI conversion, native validation and observation projection. Complete unsupported strings retain exact raw evidence and project High or higher. Both threshold records can coexist for the same tool without replacing each other; both must pass independent closed validation. Missing or malformed values and identities remain errors, and original raw acknowledgment/readback must confirm each desired threshold or removal.
+
+`R.rules.require_deployments_to_succeed.required_deployment_environments` maps the selected deployment environment names to `required_deployments.parameters.required_deployment_environments`. The list is explicit, supports branch and tag Rulesets and is acquired completely; no environment or omitted value is synthesized. See the [configuration contract](../references/settings/rulesets.md#required-deployments).
+
+## Unsupported Push controls
+
+The public model has no Push target or file restriction controls. Complete acquisition rejects repository-owned Push targets and file restriction rules rather than dropping them during whole-object updates or deletion. See [unsupported Push Rulesets](../references/settings/rulesets.md#unsupported-push-rulesets).

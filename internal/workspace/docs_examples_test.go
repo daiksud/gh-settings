@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,19 +14,22 @@ import (
 )
 
 func TestSettingsReferenceYAMLExamples(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join("..", "..", "docs", "settings", "*.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	reference := os.DirFS(filepath.Join("..", "..", "docs", "references", "settings"))
 	fences := regexp.MustCompile("(?s)```yaml\\n(.*?)\\n```")
 	parsed, validated := 0, 0
-	for _, file := range files {
-		data, err := os.ReadFile(file)
+	err := fs.WalkDir(reference, ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
-			t.Fatal(err)
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".md") {
+			return nil
+		}
+		data, err := fs.ReadFile(reference, path)
+		if err != nil {
+			return err
 		}
 		for i, match := range fences.FindAllSubmatch(data, -1) {
-			t.Run(fmt.Sprintf("%s/%d", filepath.Base(file), i+1), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s/%d", path, i+1), func(t *testing.T) {
 				var document yaml.Node
 				if err := yaml.Unmarshal(match[1], &document); err != nil {
 					t.Fatal(err)
@@ -50,6 +54,10 @@ func TestSettingsReferenceYAMLExamples(t *testing.T) {
 				validated++
 			})
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	if parsed == 0 || validated == 0 {
 		t.Fatal("no settings examples checked")

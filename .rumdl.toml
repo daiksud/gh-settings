@@ -6,6 +6,10 @@ extend-enable = ["link-fragments", "existing-relative-links"]
 enabled = true
 style = "compact"
 
+[single-title]
+# GitHub shows YAML frontmatter as metadata. Count the visible Markdown title.
+front-matter-title = ""
+
 [list-item-spacing]
 style = "tight"
 allow-loose-continuation = true
