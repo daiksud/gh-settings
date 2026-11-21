@@ -35,7 +35,8 @@ func TestScanningAlertsProjectorAndCompleteReaderRetainExactNames(t *testing.T) 
 			var raw map[string]json.RawMessage
 			json.Unmarshal(encoded, &raw)
 			original := bytes.Clone(raw["rules"])
-			projected, records, err := prepareRulesetScanningAlertsRules(raw["rules"])
+			projected, evidence, err := projectObservedRules(raw["rules"], scanningAlertsProjection)
+			records := evidence.ScanningAlerts
 			if err != nil || !bytes.Equal(raw["rules"], original) {
 				t.Fatal(err)
 			}
@@ -178,5 +179,28 @@ func TestScanningAlertsAcquisitionRejectsPartialOrMalformedTools(t *testing.T) {
 	_, records, err := decodeObservedRulesetPolicy(raw)
 	if err != nil || len(records.ScanningAlerts) != 1 || records.ScanningAlerts[0].Tool != " CodeQL " {
 		t.Fatal(fmt.Sprint(records), err)
+	}
+}
+
+func TestRulesetObservationDiscardsProjectionsWhenScanningToolsAreIncomplete(t *testing.T) {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(basicRulesetJSON), &raw); err != nil {
+		t.Fatal(err)
+	}
+	const rules = `[
+		{"type":"code_quality","parameters":{"severity":"future"}},
+		{"type":"code_scanning","parameters":{"code_scanning_tools":[
+			{"tool":"first","alerts_threshold":"future"},
+			{"tool":"second","security_alerts_threshold":"all"}
+		]}}
+	]`
+	raw["rules"] = json.RawMessage(rules)
+	_, records, err := decodeObservedRulesetPolicy(raw)
+	// All alerts thresholds are checked before the first security threshold.
+	if err == nil || !strings.HasSuffix(err.Error(), " alerts_threshold") {
+		t.Fatalf("unexpected diagnostic: %v", err)
+	}
+	if !records.IsZero() || string(raw["rules"]) != rules {
+		t.Fatalf("failed observation retained evidence or changed the raw response: %+v", records)
 	}
 }

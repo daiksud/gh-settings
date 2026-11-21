@@ -29,7 +29,7 @@ func decodeUISettings(node *yaml.Node) (uimodel.RepositorySettings, error) {
 		return uimodel.RepositorySettings{}, fmt.Errorf("repository.settings.interaction_limits is no longer supported; use repository.settings.moderation.interaction_limits")
 	}
 	var document uiSettingsDocument
-	if err := decodeUIControl(node, reflect.ValueOf(&document).Elem(), "repository.settings"); err != nil {
+	if err := decodeUIFields(fields, reflect.ValueOf(&document).Elem(), "repository.settings"); err != nil {
 		return uimodel.RepositorySettings{}, err
 	}
 	return document.model(), nil
@@ -49,6 +49,23 @@ func uiControlName(name string) string {
 	name = strings.ReplaceAll(name, "CodeQL", "Codeql")
 	name = uiInitialismBoundary.ReplaceAllString(name, "${1}_${2}")
 	return strings.ToLower(uiWordBoundary.ReplaceAllString(name, "${1}_${2}"))
+}
+
+func decodeUIFields(fields map[string]yaml.Node, target reflect.Value, path string) error {
+	controls := make(map[string]reflect.Value, target.NumField())
+	for i := 0; i < target.NumField(); i++ {
+		controls[uiControlName(target.Type().Field(i).Name)] = target.Field(i)
+	}
+	for key, value := range fields {
+		control, ok := controls[key]
+		if !ok {
+			return fmt.Errorf("unknown %s key %q", path, key)
+		}
+		if err := decodeUIControl(&value, control, path+"."+key); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
@@ -114,21 +131,7 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 		if err != nil {
 			return err
 		}
-		for key, value := range fields {
-			index := -1
-			for i := 0; i < target.NumField(); i++ {
-				if uiControlName(target.Type().Field(i).Name) == key {
-					index = i
-					break
-				}
-			}
-			if index < 0 {
-				return fmt.Errorf("unknown %s key %q", path, key)
-			}
-			if err := decodeUIControl(&value, target.Field(index), path+"."+key); err != nil {
-				return err
-			}
-		}
+		return decodeUIFields(fields, target, path)
 	case reflect.String:
 		if node.Kind != yaml.ScalarNode || node.Tag != "!!str" {
 			return fmt.Errorf("%s must be a string", path)
