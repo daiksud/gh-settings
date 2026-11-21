@@ -1,0 +1,277 @@
+# Internal GitHub Actions interfaces
+
+The [composite Action](../../action.yml) installs one verified Go executable, reads the consumer checkout's identity and runs the selected command. For a plan, it renders a temporary report in a separate credential-free step and removes that report before publishing successful outputs. The interfaces below are private to the Action and CLI at the same revision. See the [public inputs and outputs](../references/action.md#inputs) and [published package selection](../guides/github-actions.md#published-package-and-consumer-pins) for the caller's contract.
+
+## Public export wiring
+
+The composite invokes the verified CLI's ordinary `export` operation directly;
+there is no separate internal `action export` protocol. Existing metadata already
+supports a committed checkout with no settings file. The CLI owns acquisition,
+existing-intent retention and guarded checkout-root file creation/replacement.
+
+Export requires the explicit command-step token, rejects prune and private-plan
+reporting before installation, unsets `GH_DEBUG`, and discards stdout. It creates
+no plan report or Summary. After success the result step publishes the fixed
+relative `config-path=.github/settings.yml` alongside the four identity outputs;
+other commands leave config-path empty. This output never publishes file contents
+or implies that HEAD contains the exported file.
+
+## Source Actions metadata
+
+The CLI provides `gh settings action metadata` for same-version CLI/Action wiring. This is separate from the four settings commands. The composite invokes it through the verified executable. It resolves the current consumer checkout, including subdirectories, using the shared Go origin rules and ignoring `GH_REPO`. Neither the executable directory nor an Action source directory selects the target; no `GITHUB_WORKSPACE` override mode is added. No settings file, token or API request is needed.
+
+Success emits exactly four single-line `key=value` records: `config-sha` is the checkout's resolved commit, `target` is its origin's owner/repository, `cli-version` is the injected executable version and `cli-sha256` is the SHA-256 of the actual executing binary. No binary-path or version argument selects a different identity. Missing identity or CR/LF in its components fails before output; output errors also return a nonzero status with a stderr diagnostic. Write failures can leave partial output. This interface adds no old-CLI fallback or multi-version protocol. See the [metadata behavior and tests](features/actions.feature.md#rule-identify-the-checkout-and-installed-cli).
+
+On the supported Linux runner, the digest reads the running image through `/proc/self/exe`, so replacement or deletion of its launch pathname does not select other bytes. Failure to read that reference fails the command. Other platforms use the executable pathname for native development checks and require that path to remain unchanged; this does not extend the Action's supported platforms.
+
+## Source Actions plan report
+
+The CLI provides `gh settings action plan REPORT_PATH [status-only]` for same-version Actions presentation. It runs shared application planning once and writes JSON instead of terminal plan text. Supply a caller-owned runner-temporary path with an existing parent; new files use mode 0600. Success is silent and exits zero. Missing arguments or unavailable storage fail visibly; a planning failure remains nonzero even after its report is written. Write failures can leave partial output.
+
+The [Go report type](../../internal/actions/plan.go) defines the full JSON schema. Common fields and selected resource entries are listed below.
+
+| Field | Meaning |
+| --- | --- |
+| `outcome` | `changed`, `no-difference`, `unmanaged`, `invalid-config`, `target-failure` or `read-failure`. |
+| `target` | Available origin owner/repository; omitted for unmanaged, validation or target-resolution failure. |
+| `managed` | Number of managed fields or collections in a successful comparison. Labels count once when entries are declared or the present list is selected for pruning. Zero on a failed comparison does not establish an unmanaged declaration. |
+| `changes` | Ordered repository/topic field/before/after entries; values remain native strings, booleans or topic string arrays. Field paths are `repository.FIELD` or `topics.names`. Empty comparisons, failures and label-only changes use an empty array. |
+| `oidc_subject` | Optional singleton configuration change at the fixed UI group path. `before` and `after` select identical active-template/immutable units; selected templates are complete unions and selected immutable values are native booleans. Reject unknown/null members, invalid unions, mismatched ownership, equal values and duplicates. Ordered keys remain ordered; counts as one scalar group and status-only output hides it. Replayed unselected companions and raw prefix evidence never enter the report. |
+| `copilot_mcp` | Optional singleton native boolean change with the fixed MCP UI `field`, `before` and `after`. Reconstruction rejects unsupported paths/types, equal values and duplicates; counts as one scalar. Status-only output hides it. |
+| `copilot_review_effort` | Optional singleton string change with fixed UI `field`, `before` and `after`, using `default`, `lite`, `balanced` or `max`. Default represents observable configured null, not raw override erasure. Reconstruction rejects unsupported paths/values, equal choices and duplicates; counts as one scalar. Status-only output hides it. |
+| `copilot_custom_instructions` | Optional singleton native boolean change with fixed UI `field`, `before` and `after`. Reconstruction rejects unknown paths, types, equal values and duplicate controls; counts as one scalar. Status-only output hides it. |
+| `environment_variables` | Optional scoped variable changes with flat `environment` identity, canonical `name`, optional string `before` and a nonempty `after` for a create or update. Deletions carry a before value and a null after value. The selected collection counts once independently of Environment policies. Plaintext details are escaped in Summary and hidden in status-only mode; never apply input. |
+| `variables` | Optional selected repository-variable changes: canonical `name`, optional string `before` for a create or update and a nonempty `after`. A delete has an explicit operation, acquired before value and null after value. Plaintext, never apply input. A nonempty managed selection counts once. |
+| `labels` | Typed create, update and explicit prune deletion operations. Operation shapes and ID requirements are described [below](#label-plan-entries). |
+| `diagnostic` | Static categorical failure text; omitted on success. No raw error, token, environment dump or request header is serialized. |
+| `resource` | Optional fixed UI resource path for a configuration or read failure; omitted from status-only output. |
+| `commit_message_contexts`, `actions_execution_context` | Same-version context for exact compound decisions, validated against native changes before Summary rendering. |
+
+Validation precedes target resolution and API access. The shared planner can return an unmanaged result locally. The composite resolves checkout metadata and requires its explicit plan token before invoking that planner. Read failures include the already-resolved target; ordinary stderr diagnostics retain their existing text. The report is ephemeral presentation data, never apply input. The composite calls this entry with the caller's explicit plan token, then passes the report to a separate credential-free Summary step. Shared planning owns validation; no separate CLI validation call, multi-version format or saved-plan execution is introduced. See the [report behavior](features/actions.feature.md#rule-publish-plan-results-after-summary-completion).
+
+### Actions policy entries
+
+The optional `actions` array carries the supported native policy fields and their typed `before` and `after` values. [Policy field validation](../../internal/settings/actions_policy.go) defines the allowed paths and value types. Each declared field counts once, including an empty patterns list. Only inactive selected fields may have `before: null`: it means unobservable, not YAML null or an observed default. All three unavailable fields must accompany a nonselected-to-selected policy change. Summary validates types, exact enums, counts, duplicates, no-op changes and this transition as a unit. Default workflow permissions require known read/write enums and approval booleans on both sides; they do not acquire nullable-before semantics. Pattern arrays preserve order and duplicates; they do not use topic-set canonicalization. This is same-version presentation data, never apply input.
+
+### Label plan entries
+
+The [labels report adapter](../../internal/actions/labels.go) keeps operation identity separate from attribute objects. Complete supported objects contain `name`, `color` and `description`, including the fixed empty description default. Without prune, only declared objects appear. Explicit prune also includes unlisted deletion candidates for present lists.
+
+| Operation | `before` | `after` |
+| --- | --- | --- |
+| `create` | Absent | Complete desired supported object; ID absent. |
+| `update` | Complete observed supported object | Complete desired supported object; positive matching ID required. |
+| `delete` | Complete observed supported object with positive ID | Absent |
+
+The application emits creates/updates in stable label identity order, then fixed explicit prune deletions in stable identity order. It never infers implicit deletion. Report validation rejects unknown/null attributes, malformed operation fields, duplicate names/IDs, incomplete objects, invalid colors/descriptions and no-op updates. ID-selected rename is supported; identity name refers to the prior name. Colors must be lowercase. When label operations exist, the managed count must be at least the number of repository/topic change entries plus one; the actual count includes all declared fields and collections. A changed outcome may contain label operations alone. This is ephemeral presentation data, never apply input.
+
+## Source Actions Summary
+
+The CLI provides `gh settings action summary REPORT_PATH SUMMARY_PATH [status-only]`. It reads the same-version typed report and explicit nonsecret run metadata, then appends review content to the caller-owned Summary path. It requires no checkout, settings file, credentials or API access and writes no GitHub outputs. The composite invokes this verified entry in a separate step with both token variables unset. Original nonzero plan status is preserved; otherwise Summary status determines success. The result step publishes the identity outputs after Summary and cleanup succeed. It also forwards the outcome of a successful status-only plan.
+
+The metadata allowlist is `SETTINGS_ACTOR`, `SETTINGS_TRIGGERING_ACTOR`, `SETTINGS_EVENT`, `SETTINGS_RUN_ID`, `SETTINGS_RUN_ATTEMPT`, `SETTINGS_WORKFLOW_REF`, `SETTINGS_WORKFLOW_SHA`, `SETTINGS_CONFIG_SHA`, `SETTINGS_TARGET`, `SETTINGS_CLI_VERSION` and `SETTINGS_CLI_SHA256`. All are required. `SETTINGS_ACTION_REPOSITORY` and `SETTINGS_ACTION_REF` must either both be present or both absent; absence displays an honest local-checkout identity. Other environment values are not inspected or included.
+
+Run ID and attempt must be positive integers, workflow/configuration revisions 40 hex characters and the CLI digest 64 hex characters. Workflow references contain an owner/repository/path and `@refs/` reference; target and optional Action repository contain owner/repository. The file entry requires an explicit non-null `managed` count within the bounds for supported fields and collections. The renderer rejects inconsistent report states, counts or targets, mismatched categorical failure diagnostics, unknown or duplicate fields, no-op changes and field/value-type mismatches for the supported fields. Topic arrays must be sorted, unique and valid, and equality is checked without comparing slices as interface values. Empty strings and false remain valid change values for their existing fields. Squash and normal merge commit title/message changes require supported string enums on both sides; empty, unknown or wrongly typed values are invalid. Workflow links use the workflow repository/revision; configuration links use the explicit target/configuration revision. Original and rerun actors, Action identity and CLI identity remain distinct.
+
+Repository field names, native types, enum policies, and the scalar field count come from the [static settings definitions](../../internal/settings/repository_fields.go). Report validation checks the managed count against the scalar and resource bounds and rejects a count that cannot accommodate the represented changes.
+
+The JSON DTO is converted once into a private validated report containing native `settings.Change` values and a `settings.LabelChanges` sequence. Validation retains the checked outcome, diagnostic, counts, topic arrays, and label attribute presence. Rendering consumes this result through typed visitors, without inferring types from JSON values or reconstructing label operations. Metadata validation and Summary file appending retain their separate boundaries.
+
+The [pure renderer](../../internal/actions/summary.go) classifies typed outcomes rather than terminal sentences. It quotes HTML and multiline data, rendering UI-named observed/desired values and the apply overwrite warning. Current-source label operations use explicit create/update/delete names and ID identity. Explicit prune deletions carry a complete before object and absent after object; validation reconstructs typed deletion and preserves the Issue/PR assignment-loss warning. No implicit deletion is inferred. Label membership is reconciled against fresh state during apply, so the report does not bind later operations. Missing/malformed input or required metadata fails before opening the destination, preserving existing content. A blank-line separator starts the appended section even when prior text has no trailing newline. New files use mode 0600; append, write and close failures return nonzero, without atomicity or rollback guarantees. Success is silent. A valid failed-plan report is rendered and appended but still exits nonzero. Rendering/writing does not prove that GitHub published the Summary; review it before separately authorizing apply. See the [Summary behavior](features/actions.feature.md#rule-publish-plan-results-after-summary-completion).
+
+## Status-only reporting and cleanup
+
+The Action supports status-only reporting. The internal capability entry `action private-reporting` returns `status-only-v1`; the composite checks it without credentials before using the optional `status-only` argument on `action plan` and `action summary`. Private plan failures replace raw error text with a fixed diagnostic. Private Summary validates the complete report, then publishes only its closed outcome and bounded managed count, without values, actor context or raw diagnostics. After a successful private Summary write, stdout carries only `plan-outcome=OUTCOME` for the step output. Detailed Summary keeps its existing silent interface and output.
+
+Detailed Ruleset presentation includes only declaration-owned fields. Its credential-free Summary may show declared non-secret values while omitted Ruleset conditions, bypass actors and rule attributes remain absent. The mutation path still retains the complete observed Ruleset separately.
+
+The Action removes ephemeral reports in an `always()` step after success or ordinary failure, before publishing any successful Action outputs. Cleanup failure withholds all public success outputs. File/report failures remain failures, and a nonzero original plan status takes precedence over presentation errors. Tests cover hidden Ruleset policy, canary diagnostics, malformed reports, output/storage failures, old-package refusal before authentication, all three successful outcomes and cleanup. Hosted candidate scenarios exercise private changed, read-failure and invalid-config paths through the real same-source composite. This is not publication or live credential evidence.
+
+## Normalization and compound fields
+
+Normalized workflow and public-fork approval changes carry optional `normalization` metadata with required string `path`, `raw_value` and `fallback` members. The closed field-specific Actions constructor validates the field, projected value, fallback and raw token before allowing effective-value equality to remain actionable. Metadata on unrelated comparisons is rejected. Detailed CLI/Summary display the UI field and choices with a projection warning and write-required note; status-only reduction retains only its existing outcome/count boundary. These observations are presentation data, never apply input.
+
+Normalized Issue/PR creation policies carry the same strict scalar metadata in their repository `changes` entries. The closed creation-policy constructor permits only those two native fields, matching YAML path/default, effective `ALL`, unsupported raw strings and supported desired values. Ordinary equal pairs remain invalid in reports. One policy counts as one native managed field. Normalized CLI/detailed Summary use UI choices and escaped raw warnings; status-only retains only outcome/counts. Metadata on unrelated fields/types/sections and forged evidence is rejected.
+
+Normalized Secret Protection and Push protection changes carry optional `security_status_normalization` in their `security` entries. Required `path` and `raw_value` are strings; required `fallback` is boolean, preserving explicit false and empty raw status. The closed constructor validates control identity/default/effective value and unsupported raw status before retaining equal booleans as actionable. Wrong sections, simultaneous string normalization, forged records, duplicates and inconsistent desired pairs fail. UI warnings escape raw strings; before/after/fallback stay unquoted booleans. Detailed Summary shares CLI decisions and status-only suppresses values. This same-version protocol never supplies apply intent.
+
+Normalized merge/squash observations use a separate `commit_messages` array with closed `menu`, UI `after` and paired `normalization` metadata (`path`, `raw_title`, `raw_message`, `fallback`). All metadata strings are required, including explicitly empty acquired raw members. Validation reconstructs one typed menu decision, rejects unsupported or inconsistent provenance, duplicates and overlapping native component changes, and counts two managed native members per menu. Equal effective before/after values remain actionable. Detailed Summary uses the same UI warning and decision as CLI, HTML-escaped; status-only exposes only its existing outcome/count boundary. This remains same-version presentation data.
+
+Exact merge and squash choices retain their original native `changes` entries and add `commit_message_contexts` with complete observed and desired title/message pairs. Summary checks that each context maps to a supported changed UI choice and matches every changed native component, including an unchanged companion where necessary. Exact Actions execution changes similarly carry an `actions_execution_context` with UI radio choices; validation binds it to the native changes and its retained native companion without disclosing a disabled policy's latent value in output. Normalized decisions continue to use their separate provenance records. A failure may carry only a closed `resource` path, never raw error text; status-only omits it. These fields are same-version presentation evidence, not public API or apply input.
+
+The native CodeQL report field `query_suite` renders at the public YAML path
+`codeql_analysis.query_suites`; its value remains one scalar. Native merge/squash
+menu identifiers and title/message fields are unchanged; their UI paths use
+`merge_commits.default_commit_message` and `squash_merging.default_commit_message`.
+
+## Actions execution, permissions and event policies
+
+Retention uses a native integer Actions comparison. Configured days remain known on both sides; null/unavailable values are forbidden. Reconstruction accepts bounded whole JSON numbers and normalizes them to native integers, rejecting strings, fractions, nonfinite/out-of-range values, no-ops and read-only maximum fields. No JSON decoding change is applied to unrelated report types.
+
+Public contributor approval uses its closed Actions enum path. Both sides must be correctly typed, with raw observation provenance validated independently of UI projection. Private-only native identities remain internal validation data, not public YAML controls or apply input. Supported public declarations never select private sharing or private fork workflow endpoints.
+
+Normalized execution radios use a separate `actions_execution` array with required UI `before`, `after` and scalar `normalization`. The closed constructor permits only genuine unknown-policy provenance and known Disable or projected Allow all before choices. Validation rejects duplicate radios, overlapping native enabled/allowed changes, forged provenance and incomplete selected transitions. Disable counts one native field; enabling counts two, plus three required unavailable selected companions on transition. A derived selected-policy component exists only in local validation, never as a duplicate rendered/serialized decision. Visible projections share escaped warnings and write-required output; known Disable before choices reveal no latent raw value or fallback label. Status-only remains value-free. This protocol is ephemeral presentation data, never apply input.
+
+Actions event policies use the separate `actions_policies` report array, independent of `actions` execution controls. Each create/update entry carries `operation` and complete `after`, with `before` required only for updates. Objects contain optional positive `id`, required `policy_name`, `enforcement_status`, and complete `restrict_events`/`restrict_actors` objects. Present rules carry their
+allowed lists; absent rules carry `enabled: false`. Empty actors remain a present
+rule. Actor entries are typed UI user IDs or verified role names. Creates omit IDs; updates retain the same positive ID on both sides and may rename. Closed reconstruction rejects null, unknown or incomplete values, unsupported events/status, duplicate names/IDs and no-op updates. Event and actor lists are copied into the validated domain model, preserving resolved removals rather than treating them as omitted update intent. The collection counts once toward managed resources; detailed CLI/Summary show supported whole-object changes, while status-only Summary suppresses policy names, IDs and values. The fixed failure resource is `repository.settings.actions.policies`. Reports remain same-version presentation data, never apply input.
+
+In the same array, a prune deletion requires a complete supported
+before object with positive ID and an omitted after object; explicit nulls,
+missing before state, nonempty after state and unsupported policy are invalid.
+The typed renderer shows deletion as absent.
+
+## Rulesets
+
+Ruleset operations use a separate `rulesets` array of create/update/delete operations and complete supported before/after objects. Creates have no ID; update objects both carry the same positive declared REST ID and may rename. Explicit prune deletions carry a complete before object with positive ID and absent after object. Validation rejects unsupported or normalized deletion policy, malformed/unknown/incomplete policy, no-op updates, duplicate names/IDs, incorrect ordering and inconsistent counts. CLI/Summary expose declared supported settings, fixed-default changes and explicitly requested unlisted prune deletions. This same-version ephemeral protocol is neither apply input nor a stable cross-version format; published older packages retain their documented projection contract.
+
+Normalized Ruleset updates carry optional `enforcement_normalization` on their existing `rulesets` entries. Required string metadata preserves empty acquired raw values. Closed reconstruction requires an update with consistent positive before/after ID. Enforcement metadata requires complete effective Disabled before-policy, a genuine out-of-UI enforcement token other than unsupported `evaluate` and canonical Active/Disabled desired status. Reject create/unbound/forged evidence, duplicates and equal ordinary objects without provenance. The writer retains selected whole effective policy; detailed Summary shares escaped ID/name warning, UI decision and explicit effective-policy label. Status-only suppresses raw/object context. Existing nonempty Rulesets collection counts once. Reports remain same-version presentation data, never apply or verification input.
+
+Normalized Required approvals uses a separate concrete integer record and optional `required_approvals_normalization` member. Decode required `path`, `raw_value` and `fallback` through typed pointers so missing/null differs from zero; reject fractions, strings, overflow and unknown members, assigning only after success. Closed reconstruction requires effective 0 before-policy, a genuinely out-of-range raw integer and a desired UI count 0–10. Each present zero metadata object is invalid even beside valid companions. The fixed aggregate retains independent supported records; presentation and independently optional typed warning sinks order enforcement then Required approvals. Strict original-response/fresh-GET verification confirms counts or actual rule absence; projection cannot supply successful verification values. Existing collection count one and status-only privacy remain. See the [Required approvals contract](../references/settings/rulesets.md#values-outside-the-ui-choices).
+
+Normalized Allowed merge methods use an Action-local `merge_methods_normalization` DTO with a string `path` and present typed string arrays `raw_value` and `fallback`. Reject missing/null/wrong-type members, case aliases and unknown keys at decoding; closed reconstruction rejects empty lists, duplicates, canonical-only raw values, altered defaults and ID/policy conflicts, independently of valid companion records. The writer and reconstructed display own both arrays. Raw order remains intact, desired choices render in named UI order, and PR-container removal retains its before evidence and must confirm absence of the owned rule. Metadata is presentation data only, never acquisition proof or apply input. Collection count one and status-only privacy remain unchanged. The [Allowed merge methods contract](../references/settings/rulesets.md#values-outside-the-ui-choices) owns product semantics.
+
+Normalized scanning Alerts use optional pointer-to-list `scanning_alerts_normalizations` metadata. Each record requires string `tool`, `path`, `raw_value` and `fallback`, retaining an explicitly empty raw string. Decode rejects missing/null/wrong-type members, case aliases and unknown keys. Closed reconstruction rejects empty lists, duplicate or mismatched tool identities, canonical raw values, altered defaults and Ruleset-ID conflicts even beside valid companion records. Before-policy must contain that exact tool with effective Errors; desired removal or a replacement identity remains explicit. Owned records and policy, tool-name ordering, escaped output and status-only privacy follow the [scanning Alerts contract](../references/settings/rulesets.md#values-outside-the-ui-choices). Records do not prove acquisition or supply apply input; collection count stays one.
+
+Normalized scanning Security alerts use a separate optional pointer-to-list `scanning_security_alerts_normalizations` with the same required string members (`tool`, `path`, `raw_value`, `fallback`) and strict decode/ownership rules as Alerts. Closed reconstruction requires exact tool identity and effective High or higher, genuine unsupported raw Security alerts and consistent selected Ruleset IDs. Both records can coexist on one tool and must validate independently; one valid record never masks forged evidence in the other. Detailed output orders Alerts records, then Security alerts records, each by tool name. Removal, privacy and strict raw confirmation follow the [Security alerts contract](../references/settings/rulesets.md#values-outside-the-ui-choices); these reports remain presentation evidence only.
+
+Normalized bypass modes use an Action-local `bypass_mode_normalizations` DTO on existing `rulesets` entries. The optional pointer-to-list distinguishes absence from present-empty evidence. Each record requires `actor_type` and closed string `normalization` (`path`, `raw_value`, `fallback`); numeric `actor_id` is omitted for nil identity. Recursive null/case-alias rejection and strict unknown-field decoding still apply. Domain reconstruction requires exact actor identity bound to effective `always` before-policy, unsupported raw mode, consistent selected Ruleset IDs and a valid desired whole object. Reject empty, forged or duplicate records even beside valid scalar companions. An empty raw string remains acquired evidence.
+
+The writer and validated display own their slices and ID pointers. Presentation and typed diagnostics use one owned ordering operation: enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), then actor type and numeric ID. Desired UI mode or actual actor removal stays write-required; detailed Summary escapes values and status-only hides all policy/provenance. Collection count remains one. Report consistency does not prove complete API acquisition and never supplies apply input or raw verification. See the [bypass-mode contract](../references/settings/rulesets.md#values-outside-the-ui-choices).
+
+## Environments and variables
+
+Environment operations use a separate `environments` array and name identity, without numeric Environment IDs. Create/update operations preserve the original partial request in `after`; updates retain complete supported `before` policy internally and render only owned differences. Explicit prune deletes require complete supported `before`, absent `after`, and no normalization/pattern-observation metadata. Explicit null branch policy is valid and required in complete before objects; missing required observations are not filled with YAML defaults. Validation rejects unknown operations, incomplete deletion policy, no-op updates, duplicate/unordered names, noncanonical/unknown keys and inconsistent outcomes/counts. CLI/Summary show requested changes and deletion consequences, without child variables or secret metadata. Status-only reporting hides identities and values after validating the same closed report.
+
+Normalized Environment mode entries carry optional concrete `deployment_mode_normalization` on the existing `environments` collection. Require string path/fallback and both nested boolean `raw_policy` members, preserving explicit false and rejecting null/missing/type/unknown members atomically. A present zero record fails closed. Reconstruction requires an update with exact existing name identity, complete effective declared-null before-policy, genuine equal raw booleans and explicit canonical mode request; acquisition completeness remains state-owned and is not reconstructed from the report. Private `before` is effective policy for all Environment entries; `after` stays the actual partial request with no invented defaults. Detailed output shows only before fields present in that request. Latent patterns remain outside report policy. Shared rendering keeps scoped warning/decision, effective-before label, existing-companion preservation or creation-omission note, HTML escaping and status-only privacy. Existing collection count remains one. Reports are never apply or raw-verification input.
+
+Normalized Environment ref-type updates carry optional `pattern_observations` on the same name-bound entry. When present, it is the complete owned acquired list, including canonical companions and positive unique pattern IDs; at least one entry has a genuine unsupported-string normalization. Each entry contains its effective `pattern` and an optional closed `ref_type_normalization` with required string `path`, `raw_value` and `fallback`. Empty raw strings remain valid; missing/null members, forged or zero records, wrong identities and duplicate raw pairs fail. Desired `after` must explicitly own the pattern list, including an empty list. Omitted lists carry no pattern evidence or warnings.
+
+Reconstruction requires canonical Selected before-mode and excludes `deployment_mode_normalization` on the same entry. A unique projection must match the complete effective before-list. A genuine projected collision requires that effective list to be absent while all distinct acquired identities remain in `pattern_observations`; absence is not interpreted as an empty collection. Serialized evidence validates presentation consistency but cannot prove that API acquisition was complete. Detailed output retains scoped warnings, one write-required collection decision and canonical companions; status-only hides the object and provenance. IDs and raw records never enter public YAML or apply input. See the [ref-type contract](../references/settings/environments.md#environment-ref-type-observation-normalization).
+
+Variable deletions use an explicit `operation: delete`, an acquired before value (including an empty string) and a null after value. Environment-variable entries also retain their parent name. Detailed output escapes plaintext values. Status-only validates the same report and hides identities and contents.
+
+## Classic branch protection
+
+Classic protection uses a same-version `branch_protection_rules` array with a
+complete supported `before` projection for updates and the original partial
+`after` request. Creates omit `before` and numeric ID. Prune deletions require
+complete supported `before` and absent `after`, including active PR-review,
+status-check, deployment and force-push groups, and show whole-rule removal
+consequences; private raw companions are never serialized. The closed report rejects
+null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
+updates; it contains no raw companion or hidden actor snapshots. The active
+force-push before-policy accepts known Team identities, while desired after-policy
+accepts only User/App. Nested nulls, unknown/case-variant or duplicate members,
+and duplicate actor identities are rejected. Declaration order is
+preserved because creation age affects priority. Update renderers show only
+requested values; deletions show absence and their whole-object effect. Status-only
+Summary suppresses identities and policy.
+
+The supported before-policy includes the six checkboxes and complete PR-review,
+deployment, status-check and force-push projections. Active status-check groups contain exact check names
+and App-node sources; inactive groups contain only `enabled: false`. Raw nullable context aliases, latent bindings
+and their ordering remain private. Status-only rendering suppresses the supported
+names and App IDs as well as rule identity. The group does not add another managed
+family count.
+
+Classic `allow_fork_syncing` is conditional: when present in Before or After it
+requires `lock_branch: true`. Missing Before sync can describe an inactive rule or
+a non-fork; reports cannot prove target applicability. Private acquired `isFork`
+and the complete native Boolean supply that evidence without entering the report.
+
+## Pages lifecycle reports
+
+The closed private `pages.lifecycle` comparison carries `absent`/`present` strings. It is not accepted YAML. Creation has one such comparison plus declared native configured leaves; each carries explicit `before_absent: true` and a null before value. The marker differs from domain-clearing null and workflow inactive source. Validation requires a complete creation source and rejects orphan markers, deletion companions, forged types and normalization beside absence. Deletion has a single lifecycle comparison. Pages bounds include the lifecycle leaf; detailed Summary shares CLI create/delete phrasing while status-only output suppresses values.
+
+Apply retains a confirmed `PagesCreate` operation when subsequent optional reconciliation fails, with a separate failed Pages operation. Unverified POST/DELETE/readback failures retain uncertain effects rather than claiming completion. No report is reusable apply input.
+
+Normalized Pages folders carry optional string `normalization` metadata on `pages.source.path` entries only. The closed constructor requires the exact Select folder UI path, `root` fallback, effective `/`, an unsupported raw folder and an active canonical desired folder. It rejects inactive source, unrelated fields, forged records, duplicates and invalid mode transitions. Required strings preserve explicitly empty acquired raw folders. An unchanged projected folder remains actionable. A source pair counts two managed native fields even when its branch is unchanged and absent from comparisons; report validation requires that minimum plus other entries, without counting a changed branch twice. Detailed Summary shares the escaped UI warning and write-required decision; status-only suppresses values. These same-version reports never supply apply intent.
+
+Normalized Pages mode entries use the same required string metadata on `pages.build_type`, through a separate closed constructor. Require the Source UI path, `deploy_from_a_branch` fallback, effective `legacy`, an unsupported raw mode and canonical desired `legacy/workflow`. Reject inactive or forged mode entries. Reconstruct actionable `legacy → legacy` without inventing inactive source; real `workflow → legacy` transitions still require both inactive source components. A mode counts one field. Mode plus source intent counts three native fields even if an unchanged source component is absent from comparisons; normalized-only minimum validation accounts for it without changing ordinary report contracts or double-counting both changed components. Mode and folder records remain independent. Detailed Summary retains exact escaped raw warnings, UI decisions and workflow deactivation; status-only suppresses both records' values.
+
+## Security and CodeQL
+
+Current-source Secret scanning and private vulnerability reporting comparisons use a separate optional `security` array of closed field identities and known native booleans. Reconstruction rejects unknown/candidate fields, null/wrong types, ordinary no-op/duplicate changes, inconsistent desired pairs and managed-count underflow. CLI and Summary share the security formatter; these ephemeral values never authorize apply.
+
+Current-source CodeQL default configuration uses the optional `codeql_configuration` report array with four closed fields: `languages`, `query_suite`, `runner` (owned type/label pair) and `threat_model` (`remote_sources` or `remote_and_local_sources`). Reconstruction rejects unknown/duplicate fields, invalid native types/choices, no-op changes, normalization metadata and insufficient counts. Values render at the UI configuration paths with escaped Summary output. Threat model counts only when declared and is projected into automatic export from complete acquired configuration. Raw API spellings and unknown threat-model choices are rejected; omitted configuration companions remain verified during apply. Reports never supply apply input.
+
+## Pull request exemptions
+
+The optional `pull_request_exemptions` report collection contains at most one
+whole-membership change with required non-null string-array `before` and `after`
+values, including empty arrays. Reconstruction validates canonical supported
+User logins, uniqueness, the 100-user limit and actual inequality. The collection
+counts once; detailed rendering shares the CLI path while status-only output
+omits membership. Reports never become apply input.
+
+## Collaborator presentation
+
+The same-version `collaborators` report array contains `username`, user `id`,
+`state` (`absent`, `pending`, `active`), `bind_identity` and private
+`invitation_id` evidence for pending rows. These are observations and proposed
+local bindings, never additional mutable YAML or apply input. Validation rejects
+unknown states, invalid or duplicate identities and contradictory pending IDs.
+The family counts once; matching pending entries do not make the outcome changed.
+Initial invitation or local identity binding does. Detailed Summary uses the same
+status text as CLI. Status-only publishes no recipient names or IDs; private
+report cleanup and output publication retain their existing boundaries.
+
+The separate `collaborator_deletions` array contains only `operation`
+(`cancel-invitation` or `remove-collaborator`), `username`, user `id`, and a positive
+`invitation_id` only for cancellation. It shares the single collaborator managed
+count and makes the plan actionable. Validation rejects unknown operations,
+invalid IDs, duplicate people/invitations and overlap with retained selections.
+No operator identity, inviter evidence, private email, raw inventory or creation
+metadata enters this projection. Detailed Summary uses the CLI's two deletion
+labels; status-only hides all people and IDs. Apply retains attempted/acknowledged/
+verified deletion evidence through later errors, without a mutable deletion journal.
+
+## Deploy keys
+
+The report supports `deploy_keys` create/delete report entries. A create has only
+`after` with required title, SHA256 fingerprint and native `allow_write_access`; a
+delete has only `before` with those fields and a positive ID. There is no update
+operation or raw-key/private-snapshot representation. Strict reconstruction rejects
+missing/native-type violations, unknown fields, duplicate IDs/fingerprints and
+invalid operation shapes; integer IDs retain exact precision. Mixed creation and
+deletion count the family once. See [Deploy keys](../references/settings/deploy-keys.md#deploy-keys).
+
+## Autolink report boundary
+
+The same-version `autolinks` report array contains exactly one `before` or `after` configuration per operation. A deletion has a complete positive-ID `before`; a creation has a complete IDless `after`. Each configuration contains `reference_prefix`, `target_url` and `reference_format`. There is no update operation. Closed decoding rejects null/unknown members; model validation rejects collisions, invalid URLs, missing controls and invalid identities. Mixed create/delete changes count one family. Private acquisition timestamps and target snapshots never enter reports. Detailed rendering quotes these non-secret controls; status-only projects only outcome/count metadata.
+
+## Runner report boundary
+
+The optional `runners` array contains one typed change per changed selected ID,
+with the fixed `repository.settings.actions.runners` field and complete
+`before`/`after` objects containing only `id` and `custom_labels`. Numeric IDs
+retain exact integer precision through decoding. Reconstruction
+rejects unknown or noncanonical keys, nulls, invalid/duplicate IDs or label
+identities, cross-ID changes, no-ops, normalization metadata and insufficient
+managed counts. The optional `runner_deletions` array contains a fixed field,
+complete `before` object (`id`, `name`, `os`, `custom_labels`) and explicit null
+`after`. It rejects unknown, missing or null members, duplicate IDs, and overlap
+with an updated ID. Updates and deletions together count as one family. Detailed
+presentation shares the CLI formatter and escapes values; status-only hides them.
+Operational and readonly snapshots, optional raw label IDs and raw API metadata
+never enter this report or become apply input.
+
+## Webhook report boundary
+
+`webhooks` contains closed optional `before`/`after` projections. A creation has no
+Before and an IDless After containing URL, Content type, optional SSL verification, Active and events. An
+update has the same positive ID and selected shape on both sides, with a changed
+URL/Content type/SSL verification and matching selected parent guards.
+Unknown/case-mismatched/duplicate/null members, mismatched identities, unsupported
+parent mutations, incomplete/no-change projections and duplicate/colliding entries
+fail validation. Exact integer IDs avoid floating-point loss; event sets compare
+without ordering or guessed expansion. URL bytes are escaped for CLI/HTML display.
+Omitted controls, raw SSL evidence, creation timestamps, delivery and secret evidence stay
+private. Detailed creation plans state automatic ping and no supplied Secret.
+A deletion has a complete positive-ID Before (URL, Content type, SSL verification, Active and events)
+and no After. Unknown/private fields, duplicate IDs and overlap with an updated ID
+fail reconstruction. Detailed deletion plans show irreversible whole-object Secret
+loss; timestamps, raw SSL and private evidence never enter reports. The family counts
+once across creation, updates and deletion. Status-only hides identities and values;
+failure reports retain only bounded resource/progress information.

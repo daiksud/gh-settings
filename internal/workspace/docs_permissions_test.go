@@ -35,7 +35,7 @@ func permissionControlPaths(typ reflect.Type, prefix string) []string {
 }
 
 func TestSettingsPermissionMatrixCoversPublicCodec(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "docs", "settings", "permissions.md"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "docs", "references", "settings", "permissions.md"))
 	if err != nil {
 		t.Fatal(err)
 	}

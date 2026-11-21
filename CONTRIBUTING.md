@@ -4,13 +4,11 @@ This guide is for people changing gh-settings itself: its code, tests, documenta
 
 ## Getting started
 
-1. Read the relevant [public contract](docs/README.md#for-users) before changing behavior.
-2. Follow the [development guide](docs/contributing/development.md) to install the pinned tools, build, and run from source.
-3. Use the [architecture guide](docs/contributing/architecture.md) and [model glossary](docs/contributing/glossary.md) to find the code that owns the change.
-4. Validate the affected behavior using the [testing guide](docs/contributing/testing.md). It explains local checks, acceptance tests, CI, and the limits of each kind of evidence.
-5. Open a PR explaining the problem, the resulting behavior, and how you verified it. Apply the [code-review policy](.agents/skills/code-review/SKILL.md), address review feedback, and let the required checks finish before merging.
-
-The repository's `pr` workflow runs a single `screening` job when a PR is opened, updated with commits, or reopened. It leaves the PR's Draft or Ready state unchanged. Its review automation and settings workflows are described in [repository automation](docs/contributing/repository-automation.md); a successful bot workflow alone does not establish a current approval.
+1. Install the development tools, build the CLI and run it locally with the [setup guide](docs/development/setup.md).
+2. Find the relevant [public contract](docs/README.md#for-users) and [behavior specification](docs/development/features/README.md). For a new setting or a change to an existing interface, check the [development policies](docs/development/policies.md).
+3. Locate the code that owns the change in the [architecture guide](docs/development/architecture.md). The [model glossary](docs/development/glossary.md) explains terms used across packages.
+4. Use the [testing guide](docs/development/testing.md) to choose checks for the affected behavior.
+5. Submit a focused PR to `main`. Describe the problem, change and verification, and address findings under the [code-review policy](.agents/skills/code-review/SKILL.md). See [PR validation](docs/development/pr-validation.md) for the checks and [repository automation](docs/development/repository-automation.md#codex-approval-control) for how an approving review is recorded.
 
 ## Issues and pull requests
 
@@ -22,75 +20,28 @@ When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose
 
 Blank issues remain available for questions or work that does not fit these forms. Use the same information structure when submitting through the web, CLI, or API. Add constraints or references to the relevant answer only when they affect the work.
 
-Dependabot checks Go modules and GitHub Actions weekly using [the dependency update configuration](.github/dependabot.yml). Its Go updates use `build` and its Actions updates use `ci` in their proposed Conventional Commit messages. These PRs require normal review and merge decisions; no workflow enables auto-merge for them automatically. The repository-level auto-merge option remains available.
-
 ### Branch names and change classification
 
-Use topic branches and PRs targeting `main`. Branch names identify work, not its semantic type. A name may contain `feat/` or `fix/`, but no classification depends on that prefix. Correct a mistaken PR title directly; do not rename the branch or open a replacement PR just to change its classification.
-
-Authors propose the PR's Conventional Commits type, and reviewers check it against the actual effect on CLI and public Action users. Tests, documentation, and necessary wiring for one product change belong to that same coherent PR, not separate changes merely because they touch different paths. A source path alone cannot decide whether a change is a feature, fix, performance improvement, refactor, or compatibility break.
-
-Before merging, reconcile the final title, body, and compatibility information with the final diff and preserve them in the squash commit. Retain the single-purpose PR policy and either Conventional Commits breaking-change marker under the [code-review policy](.agents/skills/code-review/SKILL.md). Release notes and versions read the actual committed messages; editing a PR after merge does not rewrite that source.
+Use a topic branch to identify the work. Choose the Conventional Commits type and any compatibility markers from the final effect on CLI or public Action users. Correct the PR title directly if that classification changes. Keep the code, tests, documentation and wiring for one behavior together. The [code-review policy](.agents/skills/code-review/SKILL.md) defines PR scope, breaking markers and squash requirements.
 
 ### Write PR bodies for the Git history
 
-The PR body is intended to become the squash commit message. Use the [PR template](.github/pull_request_template.md) to leave a durable explanation that is understandable from `git log` alone:
+The reviewed title and body become the squash commit. Use the [PR template](.github/pull_request_template.md) to write a message that a maintainer can understand from `git log`.
 
-- **Why**: state the concrete problem and its impact, including the essential background even when an Issue already describes it.
-- **What changed**: explain the resulting behavior and how it solves the problem. Include non-obvious design reasons and material behavioral or operational effects.
-- **Verification**: summarize the behavior or cases checked, the method, and observed results. State any gap that limits the claimed outcome. The [testing guide](docs/contributing/testing.md) helps select appropriate checks.
+- **Why** the change is needed. Describe the concrete problem and its impact. Include enough background to explain it even if the linked issue becomes unavailable.
+- **What changed** for the caller or maintainer. Explain how the change solves the problem and why you chose the approach. Include compatibility or operational effects when relevant.
+- **Verification** of the result. Name the behavior you checked, how you checked it, what you observed and any gap that limits your conclusion.
 
-Issue, test, and CI links supplement this explanation; the problem, decisions, and verification results must remain understandable if those links are unavailable. Use `Closes #123` only when the PR completes the issue.
-
-Keep routine CI command lists, full logs, file-by-file diff narration, unrelated unchanged areas, and agent work history out of the body. Use PR comments or GitHub's review/check records for temporary progress, review requests, and approval status. Include the specific evidence and consequences that explain this change.
-
-Before merging, update the body to match the final diff and results, remove template comments and temporary notes, and confirm the final squash message contains that body. The repository declaration selects `squash_merge_commit_message: PR_BODY`; this default takes effect after the settings workflow applies it.
+Use `Closes #123` when the PR completes the issue. Put review requests, temporary status, and detailed logs in comments or check records. Before merging, remove template comments, reconcile the message with the final diff and confirm that the squash commit contains the reviewed title and body.
 
 ## Where documentation belongs
 
-Choose the reader and the question first. Use one authoritative page for a detailed explanation, and link to it from other documents.
+Start with the [documentation index](docs/README.md) to find the page that owns the subject.
 
-| Content | Authoritative home |
-| --- | --- |
-| What the product does, installation, and a first successful use | [README](README.md) |
-| Navigation by audience and task | [Documentation index](docs/README.md) |
-| Public CLI syntax, target selection, output, and errors | [Command reference](docs/commands.md) |
-| Supported settings, YAML schema, omission, and value semantics | [Configuration reference](docs/settings/README.md) |
-| Public Action inputs/outputs, prerequisites, caller setup, and recovery | [GitHub Actions guide](docs/github-actions.md) |
-| Copyable consumer workflows and instructions specific to those files | [Examples](examples/github-actions/README.md) |
-| Tool setup, building, and making a code change | [Development guide](docs/contributing/development.md) |
-| Current design, code ownership, terminology, and future design boundaries | [Architecture](docs/contributing/architecture.md) and [glossary](docs/contributing/glossary.md) |
-| Target UI inventory, API feasibility, implementation coverage and evidence limits | [Settings coverage](docs/contributing/settings-coverage.md) |
-| Test ownership, local/CI checks, and verification boundaries | [Testing guide](docs/contributing/testing.md) |
-| PR scope, squash-message requirements, compatibility review, and actionable findings | [Code-review policy](.agents/skills/code-review/SKILL.md) |
-| Internal metadata, plan-report, and Summary interfaces | [Actions internals](docs/contributing/actions-internals.md) |
-| This repository's PR controls, settings workflows, Environment, and App bindings | [Repository automation](docs/contributing/repository-automation.md) |
-| Maintainer automatic version calculation, publication, and recovery | [Release guide](docs/contributing/releases.md) |
-| Why an architectural decision was accepted or superseded | [Architecture decision records](docs/adr/README.md) |
-| Detailed behavior scenarios and their existing Go test mappings | [Behavior specifications](docs/features/README.md) |
-| Proposed work, implementation progress, and release-specific changes | [Issues](https://github.com/daiksud/gh-settings/issues), PRs, and [release notes](https://github.com/daiksud/gh-settings/releases) |
-
-### Keep the audience boundary clear
-
-User documentation explains how to use the published interface and understand its effects. Keep operational constraints users need, such as direct-apply behavior, partial failure, supported runners, and credential requirements, alongside the relevant instructions.
-
-Contributor documentation explains how the implementation works and how this project is developed and maintained. Internal report schemas, fixture wiring, this repository's credential names, and release publication procedures belong under `docs/contributing/`.
-
-Keep current behavior specifications and useful accepted architectural decisions accurate. Remove retired feature documentation instead of preserving a v0 archive. Distinguish current source behavior from capabilities of a pinned published Action where that affects execution; do not maintain release-by-release comparisons.
-
-### Keep each contract in one place
-
-During v0.x, maintain documentation for current contracts only. Do not add
-previous-release feature matrices, compatibility histories, retired feature
-guides, or upgrade/migration instructions for obsolete formats. Git history
-and immutable published releases preserve the past; the source documentation
-does not. Keep the selected Action pin and CLI identity as operational facts.
-
-- Link to the detailed reference from quick starts and examples instead of copying its full explanation.
-- Update user references and affected behavior specifications with a behavior change; do not require users to infer the contract from test code or ADRs.
-- Keep `examples/github-actions/README.md` focused on its adjacent workflow files; the Action guide owns general setup and recovery.
-- Use [Action metadata](action.yml), the [release tags](https://github.com/daiksud/gh-settings/releases), and workflow pins as the source for implementation/version facts. Avoid repeating release digests, rollout progress, or the active repository's deployment state across guides.
-- Describe external GitHub settings as prerequisites or things to verify unless their current state has been checked; workflow YAML alone cannot establish Environment protection or live token revocation.
+- For someone using gh-settings, put the exact CLI, Action or YAML contract in `docs/references/`. Use the tutorial for a first successful run, a guide for an operational task and the concepts page for how settings management works. Keep copyable workflows and instructions specific to those files together in [examples](examples/github-actions/README.md).
+- For someone changing gh-settings, put setup, implementation, testing and maintenance guidance under `docs/development/`. Record current project constraints in the [development policies](docs/development/policies.md).
+- When observable product behavior changes, update its public reference and [feature specification](docs/development/features/README.md) together. Write the expected result and identify the tests that exercise it. Describe internal workflow or release checks in the corresponding maintainer guide.
+- Record proposed work in issues and the reasons for a particular change in the PR. Release-specific changes belong in [release notes](https://github.com/daiksud/gh-settings/releases).
 
 ## Documentation checks
 
@@ -101,10 +52,14 @@ mise exec -- bun run lint:markdown
 git diff --check
 ```
 
-The existing Markdown check validates relative files and heading fragments. When moving a page or heading, update links in Markdown, frontmatter source references, and any plain-text commands or paths. When adding a root document, include it in the [CI Markdown check](.github/actions/lint/action.yml).
+The Markdown check validates relative file links and heading fragments. When moving a page or heading, update those links, frontmatter source paths and plain-text references. If you add a root document, include it in the [lint:markdown script](package.json) used by CI.
+
+When changing the [settings reference](docs/references/settings/README.md), run the tests that parse its YAML examples and check permission matrix coverage against the public configuration fields.
+
+```sh
+mise exec -- go test -count=1 ./internal/workspace -run 'TestSettings(ReferenceYAMLExamples|PermissionMatrixCoversPublicCodec)$'
+```
 
 ## Releases
 
-Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers automatic version preparation, tested binary identity, and immutable release recovery.
-
-Release dispatch calculates the version from the frozen main Git history with the shared Python script; no preparation PR or version-file change is needed. Release notes classify the committed squash messages in that same fixed interval and preserve compatibility guidance and commit links. Later PR edits affect neither result. Manual publication still requires acceptance checks; the release guide owns categories, retries, and full policy.
+Publication requires an explicit release request after merge. Follow the [maintainer release guide](docs/development/releases.md) for version calculation, acceptance, immutable publication and recovery.

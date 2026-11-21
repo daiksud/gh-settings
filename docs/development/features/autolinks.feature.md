@@ -1,0 +1,94 @@
+# Feature: Manage immutable Autolink references
+
+These scenarios cover the existing v0 implementation. Autolinks fall outside the [v1 support policy](../../references/settings/scope.md#feature-adoption-scope) under the confirmed Free-plan scope.
+
+The [Autolinks reference](../../references/settings/legacy-autolinks.md#autolink-references) owns the public
+fields, identity, permissions, explicit replacement and failure contract.
+These scenarios use local fixtures; they do not establish live API persistence,
+an authenticated form observation, or external-link rendering.
+
+## Rule: Identify existing references by ID and detect collisions
+
+- Literal YAML requires prefix, target URL and numeric/alphanumeric format. Exact
+  URL bytes survive export and payloads. Nulls, wrong types, unknown keys,
+  overlapping prefixes and duplicate/nonpositive IDs fail locally.
+- Absolute HTTP(S), no userinfo and literal `<num>` are explicit product
+  constraints. Parsing substitutes the placeholder locally without fetching URLs.
+- Required API fields, personal-public target/owner identity and the complete
+  list must be known. A missing value cannot become a default. Optional timestamp
+  presence is private evidence. Unavailable export retains prior valid intent;
+  first export omits it; confirmed empty state exports `[]`.
+- ID-bound matching configuration is unchanged. Missing/differing bound entries
+  and IDless collisions fail before mutation, including collisions with candidates
+  the same apply would prune. No automatic update or replacement exists.
+- An archived repository with `archived: true` permits non-prune matching only
+  for selected positive IDs with all three fields equal on two complete reads.
+  Repository, owner and archive identity must remain consistent; unselected
+  entries remain unmanaged. Missing, ambiguous or differing evidence fails with
+  no write or ID recording. Independent reads do not constitute an atomic snapshot.
+  Live archived-repository readability remains unverified.
+
+### Scenario: A prefix already belongs to another reference
+
+- Given the repository has a reference with prefix `TICKET-` and ID 42
+- When the owner plans an ID-less declaration with that prefix
+- Then plan reports the collision and the existing ID
+- And the reference keeps its original URL and format
+
+## Rule: Create verified references and prune unlisted IDs explicitly
+
+- POST contains all native controls. Exact 201, new positive ACK identity,
+  independent GET-by-ID and complete inventory verification precede ID recording.
+  Only a positive unseen ID in the intended successful response can be recovery
+  evidence; malformed or unverified evidence is not a completed creation.
+- Prune freezes every candidate before any remote write. Its expected inventory
+  changes only for verified own creations/deletions and successful unarchive.
+  Retained and candidate changes, unknown additions, and metadata drift fail.
+- Finish declared creations and required local recording before fixed deletions.
+  A file error stops deletion. Each delete rechecks both inventory and candidate,
+  then requires empty 204 plus independent complete absence and retained state.
+- Omission remains unmanaged with any scope. Empty lists retain resources without
+  prune and remove all acquired entries with explicit `autolinks` or `all`.
+  Comma-separated scopes use the common grammar. No tombstones are accepted.
+- Earlier confirmed work remains partial progress when a later operation fails.
+  Pre-attempt errors do not claim uncertain deletion; post-attempt failures do.
+  There is no transactional rollback, retry or lock against later races.
+
+### Scenario: An empty list deletes references only with the selected prune scope
+
+- Given the repository has two supported references and the declaration contains `autolinks: []`
+- When the owner runs ordinary apply
+- Then both references remain
+- When the owner runs plan with `--prune autolinks`
+- Then the plan lists both references for deletion
+
+## Rule: Report new IDs so callers can bind the next apply
+
+- Supplied CLI lifecycle covers plan/create/ID recording/prune/repeat no-op,
+  ordinary retention, omission/all, immutable collisions, readback failure and
+  own unarchive ordering under a host `GITHUB_ACTIONS=true` environment.
+- The actual composite uses explicit installation-token fixtures and current
+  product bytes. It covers export, detailed/status-only plan, create/prune,
+  matching repeat, empty/all and failed readback with no success outputs.
+- Action apply preserves YAML and HEAD. Repeating an unbound successful creation
+  fails collision; the user must record confirmed IDs through the documented
+  follow-up procedure. Detailed reports may contain non-secret URLs; status-only
+  hides them. Upstream/debug canaries do not reach logs.
+
+### Scenario: A workflow creates a reference
+
+- Given the workflow declares a new reference without an ID
+- When the Action successfully creates and verifies the reference
+- Then the caller receives its ID and the checked-out declaration stays unchanged
+- And repeating the same ID-less declaration reports a collision
+
+## Verification mapping
+
+Model ownership, strict URL/identity constraints and expected inventory
+transitions are in `internal/settings/autolinks_test.go`. REST ACK/readback,
+unknown observations, recovery and fixed deletion checks belong to
+`internal/github/autolinks_test.go`. App tests own export isolation, global
+preflight, unarchive, recording and partial progress. Workspace tests own literal
+YAML and guarded identity insertion; Action report tests own closed presentation
+and privacy. Supplied product checks are `tests/acceptance/autolinks_test.go` and
+`tests/github-actions/autolinks_acceptance_test.go`.
