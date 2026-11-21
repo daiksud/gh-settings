@@ -4,6 +4,15 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      gomod:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+      gomod-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     commit-message:
       prefix: "build"
       include: "scope"
@@ -12,6 +21,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      bun:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
     commit-message:
       prefix: "build"
       include: "scope"
@@ -22,6 +36,15 @@ updates:
       - "/.github/actions/*"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     commit-message:
       prefix: "ci"
       include: "scope"
