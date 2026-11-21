@@ -17,7 +17,8 @@ func TestRulesetRequiredApprovalsProjectorOwnsOnlyAcquiredInteger(t *testing.T) 
 		json.Unmarshal([]byte(fullReviewRulesetJSON), &policy)
 		raw := json.RawMessage(strings.ReplaceAll(string(policy["rules"]), `"required_approving_review_count":1`, `"required_approving_review_count":`+strconv.Itoa(count)))
 		before := bytes.Clone(raw)
-		got, record, err := prepareRulesetRequiredApprovalsRules(raw)
+		got, evidence, err := projectObservedRules(raw, requiredApprovalsProjection)
+		record := evidence.RequiredApprovals
 		effective := count
 		want := settings.RulesetRequiredApprovalsNormalization{}
 		if count < 0 || count > 10 {
@@ -50,7 +51,8 @@ func TestRulesetRequiredApprovalsProjectorOwnsOnlyAcquiredInteger(t *testing.T) 
 		}
 	}
 	for _, raw := range []string{`[]`, `[{"type":"deletion"}]`} {
-		got, record, err := prepareRulesetRequiredApprovalsRules(json.RawMessage(raw))
+		got, evidence, err := projectObservedRules(json.RawMessage(raw), requiredApprovalsProjection)
+		record := evidence.RequiredApprovals
 		var before, after any
 		json.Unmarshal([]byte(raw), &before)
 		json.Unmarshal(got, &after)
@@ -73,7 +75,8 @@ func TestRulesetRequiredApprovalsProjectorRejectsMalformedAcquisition(t *testing
 	} {
 		input := json.RawMessage(raw)
 		before := bytes.Clone(input)
-		got, record, err := prepareRulesetRequiredApprovalsRules(input)
+		got, evidence, err := projectObservedRules(input, requiredApprovalsProjection)
+		record := evidence.RequiredApprovals
 		if err == nil || got != nil || record != (settings.RulesetRequiredApprovalsNormalization{}) || !bytes.Equal(input, before) {
 			t.Fatal("partial/invalid count escaped", raw, string(got), record, err)
 		}
@@ -82,7 +85,8 @@ func TestRulesetRequiredApprovalsProjectorRejectsMalformedAcquisition(t *testing
 	var policy map[string]json.RawMessage
 	json.Unmarshal([]byte(fullReviewRulesetJSON), &policy)
 	raw := strings.Replace(string(policy["rules"]), `"required_approving_review_count":1`, `"required_approving_review_count":11,"future":true`, 1)
-	got, record, err := prepareRulesetRequiredApprovalsRules(json.RawMessage(raw))
+	got, evidence, err := projectObservedRules(json.RawMessage(raw), requiredApprovalsProjection)
+	record := evidence.RequiredApprovals
 	if err != nil || record.RawValue != 11 {
 		t.Fatal(record, err)
 	}

@@ -6,13 +6,6 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func readCollaborators(repo repository.Repository) (settings.CollaboratorObservation, error) {
-	client, err := github.NewCollaboratorsClient(repo.Host)
-	if err != nil {
-		return settings.CollaboratorObservation{}, err
-	}
-	return client.ReadCollaborators(repo)
-}
 func resolveCollaborator(repo repository.Repository, person settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error) {
 	client, err := github.NewCollaboratorsClient(repo.Host)
 	if err != nil {
