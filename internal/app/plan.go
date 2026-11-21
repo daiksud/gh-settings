@@ -132,17 +132,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Labels = labels.Labels
 	}
 	if settings.CollectionSelected(desired.Variables, prune.Has("actions-variables")) {
-		var changes []settings.VariableChange
-		var err error
-		if prune.Has("actions-variables") {
-			inventory, readErr := read.Variables(repo)
-			if readErr != nil {
-				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: readErr}
-			}
-			changes, err = planVariablePrune(repo, *desired.Variables, read.Variable, inventory)
-		} else {
-			changes, err = planVariables(repo, *desired.Variables, read.Variable)
-		}
+		changes, err := planRepositoryVariables(repo, *desired.Variables, prune.Has("actions-variables"), read.Variable, read.Variables)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: err}
 		}
@@ -150,17 +140,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Variables = changes
 	}
 	if settings.CollectionSelected(desired.AgentsVariables, prune.Has("agents-variables")) {
-		var changes []settings.VariableChange
-		var err error
-		if prune.Has("agents-variables") {
-			inventory, readErr := read.AgentVariables(repo)
-			if readErr != nil {
-				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.agents.variables", Target: repo, Err: readErr}
-			}
-			changes, err = planVariablePrune(repo, *desired.AgentsVariables, read.AgentVariable, inventory)
-		} else {
-			changes, err = planVariables(repo, *desired.AgentsVariables, read.AgentVariable)
-		}
+		changes, err := planRepositoryVariables(repo, *desired.AgentsVariables, prune.Has("agents-variables"), read.AgentVariable, read.AgentVariables)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.agents.variables", Target: repo, Err: err}
 		}

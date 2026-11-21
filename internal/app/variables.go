@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -27,6 +28,31 @@ func applyVariables(result *ApplyResult, repo repository.Repository, desired set
 		}
 	}
 	return wroteAny, nil
+}
+
+func planRepositoryVariables(
+	repo repository.Repository,
+	desired settings.VariableDeclarations,
+	prune bool,
+	read func(repository.Repository, string) (settings.VariableObservation, error),
+	readInventory func(repository.Repository) (settings.VariableInventory, error),
+) ([]settings.VariableChange, error) {
+	if !prune {
+		return planVariables(repo, desired, read)
+	}
+	inventory, err := readInventory(repo)
+	if err != nil {
+		return nil, err
+	}
+	changes, err := planVariables(repo, desired, read)
+	if err != nil {
+		return nil, err
+	}
+	deletions, err := settings.PrunedVariableChanges(inventory, &desired)
+	if err != nil {
+		return nil, err
+	}
+	return append(changes, deletions...), nil
 }
 
 func planVariables(repo repository.Repository, desired settings.VariableDeclarations, read func(repository.Repository, string) (settings.VariableObservation, error)) ([]settings.VariableChange, error) {
