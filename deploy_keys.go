@@ -6,13 +6,6 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func readDeployKeys(repo repository.Repository) (settings.DeployKeyObservation, error) {
-	client, err := github.NewDeployKeysClient(repo.Host)
-	if err != nil {
-		return settings.DeployKeyObservation{}, err
-	}
-	return client.ReadDeployKeys(repo)
-}
 func createDeployKey(repo repository.Repository, expected settings.DeployKeyObservation, desired settings.DeployKeyDeclaration) (settings.DeployKeyWriteResult, error) {
 	client, err := github.NewDeployKeysClient(repo.Host)
 	if err != nil {
