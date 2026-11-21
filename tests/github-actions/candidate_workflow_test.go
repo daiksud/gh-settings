@@ -34,7 +34,7 @@ func TestPRScreeningOnly(t *testing.T) {
 	want := []string{
 		"oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6",
 		"",
-		"actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+		"actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5",
 		"./.github/actions/lint",
 		"./.github/actions/unit-test",
 		"./.github/actions/build",
