@@ -1,4 +1,5 @@
-package main
+// Package bindings connects application operations to clients for the selected GitHub host.
+package bindings
 
 import (
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -37,7 +38,8 @@ func bindInput[Client, Input, Result any](
 	}
 }
 
-func githubReader() app.Reader {
+// Reader binds the GitHub clients used to observe repository settings.
+func Reader() app.Reader {
 	return app.Reader{
 		ObserveRepository: github.ObserveRepository,
 		// Lifecycle reads use the redirect-rejecting write client.
@@ -99,7 +101,8 @@ func githubReader() app.Reader {
 	}
 }
 
-func githubWriter(read app.Reader, desired settings.Declaration, record func(string, string, int64) error) app.Writer {
+// Writer binds the GitHub clients used to apply the declaration and record created IDs.
+func Writer(read app.Reader, desired settings.Declaration, record func(string, string, int64) error) app.Writer {
 	var bind func(string, int64) error
 	if record != nil {
 		bind = func(username string, id int64) error { return record("collaborators", username, id) }
@@ -221,3 +224,7 @@ func githubWriter(read app.Reader, desired settings.Declaration, record func(str
 		Pages: writePages,
 	}
 }
+
+type clientPreWriteFailure struct{ error }
+
+func (*clientPreWriteFailure) ReadFailedBeforeWrite() {}

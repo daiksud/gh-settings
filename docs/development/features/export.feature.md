@@ -33,7 +33,7 @@ This feature assumes an owner-controlled checkout whose directory and link entri
   produce no new warning. Successful bounded info still permits partial export.
 
 Test mapping: [application save prevention](../../../internal/app/export_warning_failure_test.go),
-[fallible output adapters](../../../export_warnings_test.go) and
+[fallible output adapters](../../../internal/command/export_test.go) and
 [real stderr failure](../../../tests/acceptance/export_warning_output_test.go). The
 process controls distinguish required warning failure from existing info failures
 and allow a silent canonical export with the same unwritable stderr.
@@ -293,7 +293,7 @@ strict and require complete observations for declared settings.
 - Raw latent conditional state is not replayed as selected UI controls. Enabled unknown execution policies warn and export the named Allow all fallback; disabled unknown policy exports known Disable without a warning. Execution fallback equality remains actionable, while hidden Disable matches remain unchanged. Missing/null/type failures never supply either choice.
 - Export success does not prove future drift protection or writable access.
 
-Test mapping: [UI export aggregation](../../../internal/github/ui_export_test.go), [root deferred save](../../../checkout_config_test.go), and the independent current-YAML maps/string goldens in the process files above.
+Test mapping: [UI export aggregation](../../../internal/github/ui_export_test.go), [deferred checkout save](../../../internal/command/checkout_config_test.go), and the independent current-YAML maps/string goldens in the process files above.
 
 ### Scenario: Reject an invalid final projection
 

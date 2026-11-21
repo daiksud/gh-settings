@@ -205,8 +205,8 @@ The supplied-binary [validation scenarios](../../../tests/acceptance/scenarios_v
 | Ruleset nested controls/identities | [Ruleset UI codec](../../../internal/workspace/ui_rulesets_test.go), [independent HTTP requests](../../../internal/github/ui_config_rulesets_test.go) |
 | Page/section grouping and old-shape rejection | [Literal page/section schema](../../../internal/workspace/ui_page_sections_test.go) |
 | Actions, Security, Pages, Environment types | [Actions](../../../internal/workspace/ui_actions_test.go), [Security](../../../internal/workspace/ui_security_test.go), [Pages](../../../internal/workspace/ui_pages_test.go), [Environments](../../../internal/workspace/ui_environments_test.go) |
-| No partial semantic intent and snapshot composition | [Root composition](../../../checkout_config_test.go) |
+| No partial semantic intent and snapshot composition | [Checkout adapters](../../../internal/command/checkout_config_test.go) |
 | File, checkout and injected application failures | [Files](../../../internal/workspace/config_file_test.go), [Checkout](../../../internal/workspace/checkout_test.go), [application](../../../internal/app/validate_test.go) |
 | Resource semantics beyond YAML types | [Topics model](../../../internal/settings/topics_test.go) and each linked family specification |
 
-`TestUIConfigYAMLUnsafeShapesReturnNoPartialValues` owns the parser safety matrix. `TestCheckoutUICompositionNoOpDocuments` and `TestCheckoutUIInvalidDomainReturnsNoPartialIntent` cover root wiring. There is one current public codec; no retained legacy parser is an alternate contract. Validation success does not establish live grants, effective protection, applicability or published availability.
+`TestUIConfigYAMLUnsafeShapesReturnNoPartialValues` owns the parser safety matrix. `TestCheckoutUICompositionNoOpDocuments` and `TestCheckoutUIInvalidDomainReturnsNoPartialIntent` cover command and checkout integration. There is one current public codec; no retained legacy parser is an alternate contract. Validation success does not establish live grants, effective protection, applicability or published availability.
