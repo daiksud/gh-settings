@@ -127,7 +127,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Actions.ForkApprovalPolicy = nil
 	remaining.Security = settings.SecurityDeclaration{}
 	remaining.Pages = settings.PagesDeclaration{}
-	return !archiveConflictsWithOtherManaged(remaining)
+	return remaining.Empty()
 }
 
 func archivedSchemaCompatible() bool {
@@ -191,7 +191,7 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 			return fmt.Errorf("archived repository topics differ")
 		}
 	}
-	if desired.Labels != nil && desired.Labels.Len() > 0 {
+	if settings.CollectionSelected(desired.Labels, false) {
 		if read.ReadLabels == nil {
 			return fmt.Errorf("verify archived labels: reader unavailable")
 		}
@@ -216,7 +216,7 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 	if err := verifyArchivedAutolinks(repo, desired.Autolinks, initial, read.ReadAutolinks); err != nil {
 		return err
 	}
-	if desired.Runners != nil && len(*desired.Runners) > 0 {
+	if settings.SliceSelected(desired.Runners, false) {
 		if read.VerifyArchivedRunners == nil {
 			return fmt.Errorf("verify archived runners: reader unavailable")
 		}

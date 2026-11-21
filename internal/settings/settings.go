@@ -36,8 +36,38 @@ type Declaration struct {
 // TopicsDeclaration distinguishes omitted names from an explicitly empty list.
 type TopicsDeclaration struct{ Names *[]string }
 
+// CollectionSelected reports whether entries in a declared collection need
+// reconciliation. A present empty collection selects work only with prune.
+func CollectionSelected[T interface{ Len() int }](entries *T, prune bool) bool {
+	return entries != nil && (prune || (*entries).Len() > 0)
+}
+
+// SliceSelected applies the same selection to slice-backed declarations.
+func SliceSelected[T any](entries *[]T, prune bool) bool {
+	return entries != nil && (prune || len(*entries) > 0)
+}
+
+// Empty reports whether the declaration selects no work without pruning.
+// Topics and pull request exemptions own their full list, even when empty.
 func (d Declaration) Empty() bool {
-	return (d.Runners == nil || len(*d.Runners) == 0) && (d.Webhooks == nil || len(*d.Webhooks) == 0) && (d.DeployKeys == nil || d.DeployKeys.Len() == 0) && (d.Autolinks == nil || len(*d.Autolinks) == 0) && d.OIDCSubject == nil && (d.Collaborators == nil || d.Collaborators.Len() == 0) && (d.BranchProtectionRules == nil || len(*d.BranchProtectionRules) == 0) && d.PullRequestExemptions == nil && EnvironmentVariablesEmpty(d.EnvironmentVariables) && d.CopilotReviewEffort == nil && d.PullRequestLimits.Empty() && d.CopilotMCP == nil && d.CopilotInstructions == nil && (d.Variables == nil || d.Variables.Len() == 0) && (d.AgentsVariables == nil || d.AgentsVariables.Len() == 0) && d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && (d.ActionsPolicies == nil || d.ActionsPolicies.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
+	return d.Repository.Empty() &&
+		d.Topics.Names == nil && d.PullRequestExemptions == nil &&
+		d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty() &&
+		d.OIDCSubject == nil && d.PullRequestLimits.Empty() &&
+		d.CopilotReviewEffort == nil && d.CopilotMCP == nil && d.CopilotInstructions == nil &&
+		!CollectionSelected(d.Collaborators, false) &&
+		!CollectionSelected(d.DeployKeys, false) &&
+		!CollectionSelected(d.Labels, false) &&
+		!CollectionSelected(d.Rulesets, false) &&
+		!CollectionSelected(d.ActionsPolicies, false) &&
+		!CollectionSelected(d.Variables, false) &&
+		!CollectionSelected(d.AgentsVariables, false) &&
+		!CollectionSelected(d.Environments, false) &&
+		EnvironmentVariablesEmpty(d.EnvironmentVariables) &&
+		!SliceSelected(d.Runners, false) &&
+		!SliceSelected(d.Webhooks, false) &&
+		!SliceSelected(d.Autolinks, false) &&
+		!SliceSelected(d.BranchProtectionRules, false)
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.

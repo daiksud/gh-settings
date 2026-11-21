@@ -96,7 +96,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += topics.Managed
 		comparison.Changes = append(comparison.Changes, topics.Changes...)
 	}
-	if desired.Collaborators != nil && (desired.Collaborators.Len() > 0 || prune.Has("collaborators")) {
+	if settings.CollectionSelected(desired.Collaborators, prune.Has("collaborators")) {
 		var selected []settings.CollaboratorSelection
 		var err error
 		if prune.Has("collaborators") {
@@ -119,7 +119,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.Collaborators = selected
 	}
-	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
+	if settings.CollectionSelected(desired.Labels, prune.Has("labels")) {
 		current, err := read.Labels(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.labels", Target: repo, Err: err}
@@ -131,7 +131,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += labels.Managed
 		comparison.Labels = labels.Labels
 	}
-	if desired.Variables != nil && (desired.Variables.Len() > 0 || prune.Has("actions-variables")) {
+	if settings.CollectionSelected(desired.Variables, prune.Has("actions-variables")) {
 		var changes []settings.VariableChange
 		var err error
 		if prune.Has("actions-variables") {
@@ -149,7 +149,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.Variables = changes
 	}
-	if desired.AgentsVariables != nil && (desired.AgentsVariables.Len() > 0 || prune.Has("agents-variables")) {
+	if settings.CollectionSelected(desired.AgentsVariables, prune.Has("agents-variables")) {
 		var changes []settings.VariableChange
 		var err error
 		if prune.Has("agents-variables") {
@@ -167,7 +167,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.AgentsVariables = changes
 	}
-	if desired.Webhooks != nil && (len(*desired.Webhooks) > 0 || prune.Has("webhooks")) {
+	if settings.SliceSelected(desired.Webhooks, prune.Has("webhooks")) {
 		var observed settings.WebhookObservation
 		var prepared settings.WebhookPruneObservation
 		var err error
@@ -215,7 +215,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.Webhooks = changes
 	}
-	if desired.DeployKeys != nil && (desired.DeployKeys.Len() > 0 || prune.Has("deploy-keys")) {
+	if settings.CollectionSelected(desired.DeployKeys, prune.Has("deploy-keys")) {
 		observed, err := read.DeployKeys(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.DeployKeysPath, Target: repo, Err: err}
@@ -239,7 +239,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.CopilotInstructions = changes
 	}
-	if desired.Runners != nil && (len(*desired.Runners) > 0 || prune.Has("runners")) {
+	if settings.SliceSelected(desired.Runners, prune.Has("runners")) {
 		var observed settings.RunnerObservation
 		var err error
 		if prune.Has("runners") {
@@ -332,7 +332,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.CopilotReviewEffort = changes
 	}
-	if desired.ActionsPolicies != nil && (desired.ActionsPolicies.Len() > 0 || prune.Has("actions-policies")) {
+	if settings.CollectionSelected(desired.ActionsPolicies, prune.Has("actions-policies")) {
 		observed, err := read.ActionsPolicies(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: repo, Err: err}
@@ -344,7 +344,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += policies.Managed
 		comparison.ActionsPolicies = policies.ActionsPolicies
 	}
-	if desired.Autolinks != nil && (len(*desired.Autolinks) > 0 || prune.Has("autolinks")) {
+	if settings.SliceSelected(desired.Autolinks, prune.Has("autolinks")) {
 		observed, err := read.Autolinks(repo)
 		var changes []settings.AutolinkChange
 		if err == nil {
@@ -356,7 +356,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.Autolinks = changes
 	}
-	if desired.BranchProtectionRules != nil && (len(*desired.BranchProtectionRules) > 0 || prune.Has("branch-protection-rules")) {
+	if settings.SliceSelected(desired.BranchProtectionRules, prune.Has("branch-protection-rules")) {
 		observed, err := read.BranchProtectionRules(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.ClassicProtectionPath, Target: repo, Err: err}
@@ -368,7 +368,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.BranchProtectionRules = changes
 	}
-	if desired.Rulesets != nil && (desired.Rulesets.Len() > 0 || prune.Has("rulesets")) {
+	if settings.CollectionSelected(desired.Rulesets, prune.Has("rulesets")) {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.rulesets", Target: repo, Err: err}
@@ -380,7 +380,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.Rulesets = changes
 	}
-	if desired.Environments != nil && desired.Environments.Len() > 0 {
+	if settings.CollectionSelected(desired.Environments, false) {
 		observed, err := read.Environments(repo, environmentNames(desired.Environments))
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments", Target: repo, Err: err}
