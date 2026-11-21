@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
@@ -30,89 +31,40 @@ func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string
 	return desired, createdIDRecorder(root, data), nil
 }
 
+// ID writeback targets a literal object in the same YAML document that was applied.
+type idCollection struct {
+	path    string
+	nameKey string
+}
+
+var idCollections = map[string]idCollection{
+	"labels":                  {"repository.labels", "name"},
+	"rulesets":                {"repository.settings.rulesets", "ruleset_name"},
+	"actions_policies":        {"repository.settings.actions.policies", "policy_name"},
+	"collaborators":           {"repository.settings.collaborators", "username"},
+	"webhooks":                {settings.WebhooksPath, "payload_url"},
+	"deploy_keys":             {settings.DeployKeysPath, "key"},
+	"autolinks":               {settings.AutolinksPath, "reference_prefix"},
+	"branch_protection_rules": {settings.ClassicProtectionPath, "branch_name_pattern"},
+}
+
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "webhooks" && collection != "deploy_keys" && collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules" && collection != "autolinks") {
+		target, ok := idCollections[collection]
+		if !ok || id <= 0 {
 			return fmt.Errorf("invalid object identity")
 		}
 		var document yaml.Node
 		if err := yaml.Unmarshal(expected, &document); err != nil {
 			return fmt.Errorf("decode original settings for ID writeback: %w", err)
 		}
-		mappingValue := func(node *yaml.Node, key string) *yaml.Node {
-			if node == nil || node.Kind != yaml.MappingNode {
-				return nil
-			}
-			for i := 0; i < len(node.Content); i += 2 {
-				if node.Content[i].Value == key {
-					return node.Content[i+1]
-				}
-			}
-			return nil
-		}
 		if len(document.Content) != 1 {
 			return fmt.Errorf("invalid original settings document")
 		}
-		repository := mappingValue(document.Content[0], "repository")
-		entries := mappingValue(repository, "labels")
-		nameKey, path := "name", "repository.labels"
-		if collection == "webhooks" {
-			entries = mappingValue(mappingValue(repository, "settings"), "webhooks")
-			nameKey, path = "payload_url", settings.WebhooksPath
-		}
-		if collection == "deploy_keys" {
-			entries = mappingValue(mappingValue(repository, "settings"), "deploy_keys")
-			nameKey, path = "key", settings.DeployKeysPath
-		}
-		if collection == "collaborators" {
-			entries = mappingValue(mappingValue(repository, "settings"), "collaborators")
-			nameKey, path = "username", "repository.settings.collaborators"
-		}
-		if collection == "rulesets" {
-			entries = mappingValue(mappingValue(repository, "settings"), "rulesets")
-			nameKey, path = "ruleset_name", "repository.settings.rulesets"
-		}
-		if collection == "autolinks" {
-			entries = mappingValue(mappingValue(repository, "settings"), "autolinks")
-			nameKey, path = "reference_prefix", "repository.settings.autolinks"
-		}
-		if collection == "branch_protection_rules" {
-			entries = mappingValue(mappingValue(repository, "settings"), "branch_protection_rules")
-			nameKey, path = "branch_name_pattern", "repository.settings.branch_protection_rules"
-		}
-		if collection == "actions_policies" {
-			entries = mappingValue(mappingValue(mappingValue(repository, "settings"), "actions"), "policies")
-			nameKey, path = "policy_name", "repository.settings.actions.policies"
-		}
-		if entries == nil || entries.Kind != yaml.SequenceNode {
-			return fmt.Errorf("cannot write ID into aliased or missing %s", path)
-		}
-		var selected *yaml.Node
-		for _, entry := range entries.Content {
-			if entry.Kind != yaml.MappingNode {
-				return fmt.Errorf("cannot write IDs into aliased collection entries")
-			}
-			for i := 0; i < len(entry.Content); i += 2 {
-				if entry.Content[i].Value == "<<" {
-					return fmt.Errorf("cannot write IDs into merged collection entries")
-				}
-			}
-			n := mappingValue(entry, nameKey)
-			matches := n != nil && n.Kind == yaml.ScalarNode && n.Value == name
-			if collection == "deploy_keys" && n != nil && n.Kind == yaml.ScalarNode {
-				key, err := settings.ParseDeployPublicKey(n.Value)
-				matches = err == nil && key.Fingerprint() == name
-			}
-			if matches {
-				if selected != nil {
-					return fmt.Errorf("ambiguous selected object %q", name)
-				}
-				selected = entry
-			}
-		}
-		if selected == nil {
-			return fmt.Errorf("selected object %q is missing from original settings", name)
+		selected, err := target.entry(document.Content[0], name)
+		if err != nil {
+			return err
 		}
 		if mappingValue(selected, "id") != nil {
 			return fmt.Errorf("refusing to replace an existing ID for %q", name)
@@ -132,9 +84,61 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		if err := replaceSettingsSnapshot(root, expected, encoded.Bytes()); err != nil {
 			return err
 		}
-		expected = bytes.Clone(encoded.Bytes())
+		expected = encoded.Bytes()
 		return nil
 	}
+}
+
+func mappingValue(node *yaml.Node, key string) *yaml.Node {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
+}
+
+func (collection idCollection) entry(node *yaml.Node, name string) (*yaml.Node, error) {
+	for key := range strings.SplitSeq(collection.path, ".") {
+		node = mappingValue(node, key)
+	}
+	if node == nil || node.Kind != yaml.SequenceNode {
+		return nil, fmt.Errorf("cannot write ID into aliased or missing %s", collection.path)
+	}
+	var selected *yaml.Node
+	for _, entry := range node.Content {
+		if entry.Kind != yaml.MappingNode {
+			return nil, fmt.Errorf("cannot write IDs into aliased collection entries")
+		}
+		if mappingValue(entry, "<<") != nil {
+			return nil, fmt.Errorf("cannot write IDs into merged collection entries")
+		}
+		key := mappingValue(entry, collection.nameKey)
+		if key == nil || key.Kind != yaml.ScalarNode {
+			continue
+		}
+		identity := key.Value
+		if collection.path == settings.DeployKeysPath {
+			publicKey, err := settings.ParseDeployPublicKey(identity)
+			if err != nil {
+				continue
+			}
+			identity = publicKey.Fingerprint()
+		}
+		if identity == name {
+			if selected != nil {
+				return nil, fmt.Errorf("ambiguous selected object %q", name)
+			}
+			selected = entry
+		}
+	}
+	if selected == nil {
+		return nil, fmt.Errorf("selected object %q is missing from original settings", name)
+	}
+	return selected, nil
 }
 
 // This is an atomic file replacement, not a concurrent-editor lock. Recheck the
