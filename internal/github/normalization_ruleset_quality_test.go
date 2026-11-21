@@ -14,7 +14,8 @@ func TestRulesetQualityRulesProjectionOwnsOnlyPresentSeverity(t *testing.T) {
 		inputRules := []any{map[string]any{"type": "deletion"}, map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": raw, "unrelated": true}}, map[string]any{"type": "non_fast_forward"}}
 		input, _ := json.Marshal(inputRules)
 		original := bytes.Clone(input)
-		output, record, err := prepareRulesetQualityRules(input)
+		output, evidence, err := projectObservedRules(input, qualitySeverityProjection)
+		record := evidence.QualitySeverity
 		wantSeverity := raw
 		wantRecord := settings.ObservationNormalization{}
 		if raw != "errors" && raw != "warnings" && raw != "notes" && raw != "all" {
@@ -33,7 +34,7 @@ func TestRulesetQualityRulesProjectionOwnsOnlyPresentSeverity(t *testing.T) {
 		// This scalar projector does not approve unrelated writable fields.
 		var policy map[string]json.RawMessage
 		json.Unmarshal([]byte(basicRulesetJSON), &policy)
-		validOutput, _, err := prepareRulesetQualityRules(input)
+		validOutput, _, err := projectObservedRules(input, qualitySeverityProjection)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +45,8 @@ func TestRulesetQualityRulesProjectionOwnsOnlyPresentSeverity(t *testing.T) {
 	}
 	for _, raw := range []string{`[]`, `[{"type":"deletion"}]`} {
 		input := []byte(raw)
-		output, record, err := prepareRulesetQualityRules(input)
+		output, evidence, err := projectObservedRules(input, qualitySeverityProjection)
+		record := evidence.QualitySeverity
 		if err != nil || record != (settings.ObservationNormalization{}) || !bytes.Equal(input, output) {
 			t.Fatal("absent rule invented", string(output), record, err)
 		}
@@ -64,7 +66,8 @@ func TestRulesetQualityRulesProjectionRejectsMissingOrAmbiguousValues(t *testing
 	} {
 		input := []byte(raw)
 		original := bytes.Clone(input)
-		output, record, err := prepareRulesetQualityRules(input)
+		output, evidence, err := projectObservedRules(input, qualitySeverityProjection)
+		record := evidence.QualitySeverity
 		if err == nil || output != nil || record != (settings.ObservationNormalization{}) || !bytes.Equal(input, original) {
 			t.Fatal("invalid projection escaped", raw, string(output), record, err)
 		}
