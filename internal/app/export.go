@@ -33,6 +33,9 @@ type ExportCheckout struct {
 	PrepareSave                                       func() (func(settings.Declaration) error, error)
 }
 
+// An exportAssignment copies only the values acquired by one family.
+type exportAssignment func(*settings.Declaration)
+
 // Export saves acquired and retained settings after independent family reads.
 func Export(checkout ExportCheckout, read Reader) error {
 	repo, err := checkout.Repository()
@@ -48,18 +51,15 @@ func Export(checkout ExportCheckout, read Reader) error {
 	// Delivery failures must bypass observe's unavailable-family retention path.
 	// A projection is never saved after its required diagnostic could not be sent.
 	diagnosticError := err
-	observe := func(path string, available bool, acquire func(*settings.Declaration) error) {
-		candidate := declaration
+	observe := func(path string, available bool, acquire func() (exportAssignment, error)) {
+		var assign exportAssignment
 		err := fmt.Errorf("reader unavailable")
 		if available {
-			err = acquire(&candidate)
+			assign, err = acquire()
 			if err == nil && checkout.Check != nil {
-				family, familyErr := exportAcquiredFamily(path, candidate)
-				if familyErr != nil {
-					err = familyErr
-				} else {
-					err = checkout.Check(family)
-				}
+				var acquired settings.Declaration
+				assign(&acquired)
+				err = checkout.Check(acquired)
 			}
 		}
 		if err != nil {
@@ -68,61 +68,48 @@ func Export(checkout ExportCheckout, read Reader) error {
 			}
 			return
 		}
-		declaration = candidate
+		assign(&declaration)
 	}
-	observe("repository.about.topics", read.Topics != nil, func(candidate *settings.Declaration) error {
+	observe("repository.about.topics", read.Topics != nil, func() (exportAssignment, error) {
 		names, err := read.Topics(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		names = settings.SortedTopics(names)
-		candidate.Topics.Names = &names
-		return nil
+		return func(d *settings.Declaration) { d.Topics.Names = &names }, nil
 	})
-	observe(settings.WebhooksPath, read.Webhooks != nil, func(candidate *settings.Declaration) error {
+	observe(settings.WebhooksPath, read.Webhooks != nil, func() (exportAssignment, error) {
 		observed, err := read.Webhooks(repo, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		value, err := observed.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.Webhooks = &value
-		return nil
+		return func(d *settings.Declaration) { d.Webhooks = &value }, err
 	})
-	observe(settings.DeployKeysPath, read.DeployKeys != nil, func(candidate *settings.Declaration) error {
+	observe(settings.DeployKeysPath, read.DeployKeys != nil, func() (exportAssignment, error) {
 		observed, err := read.DeployKeys(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		value, err := observed.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.DeployKeys = &value
-		return nil
+		return func(d *settings.Declaration) { d.DeployKeys = &value }, err
 	})
-	observe("repository.settings.collaborators", read.Collaborators != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.collaborators", read.Collaborators != nil, func() (exportAssignment, error) {
 		observed, err := read.Collaborators(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		desired, err := observed.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.Collaborators = &desired
-		return nil
+		return func(d *settings.Declaration) { d.Collaborators = &desired }, err
 	})
-	observe("repository.labels", read.Labels != nil, func(candidate *settings.Declaration) error {
+	observe("repository.labels", read.Labels != nil, func() (exportAssignment, error) {
 		labelObservation, err := read.Labels(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		labels, err := labelObservation.Values()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		labelDeclarations := make([]settings.LabelDeclaration, 0, len(labels))
 		for _, label := range labels {
@@ -130,62 +117,48 @@ func Export(checkout ExportCheckout, read Reader) error {
 			labelDeclarations = append(labelDeclarations, settings.LabelDeclaration{ID: &id, Name: label.Name, Color: &color, Description: &description})
 		}
 		validated, err := settings.NewLabelDeclarations(labelDeclarations)
-		if err != nil {
-			return err
-		}
-		candidate.Labels = &validated
-		return nil
+		return func(d *settings.Declaration) { d.Labels = &validated }, err
 	})
-	observe("repository.settings.actions.policies", read.ActionsPolicies != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.policies", read.ActionsPolicies != nil, func() (exportAssignment, error) {
 		observed, err := read.ActionsPolicies(repo)
 		if err != nil {
-			return fmt.Errorf("read Actions policies: %w", err)
+			return nil, fmt.Errorf("read Actions policies: %w", err)
 		}
 		policies, err := settings.ExportActionsPolicies(observed)
 		if err != nil {
-			return fmt.Errorf("export Actions policies: %w", err)
+			return nil, fmt.Errorf("export Actions policies: %w", err)
 		}
-		candidate.ActionsPolicies = &policies
-		return nil
+		return func(d *settings.Declaration) { d.ActionsPolicies = &policies }, nil
 	})
-	observe(settings.AutolinksPath, read.Autolinks != nil, func(candidate *settings.Declaration) error {
+	observe(settings.AutolinksPath, read.Autolinks != nil, func() (exportAssignment, error) {
 		observed, err := read.Autolinks(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		values, err := settings.ExportAutolinks(observed)
-		if err != nil {
-			return err
-		}
-		candidate.Autolinks = &values
-		return nil
+		return func(d *settings.Declaration) { d.Autolinks = &values }, err
 	})
-	observe(settings.ClassicProtectionPath, read.BranchProtectionRules != nil, func(candidate *settings.Declaration) error {
+	observe(settings.ClassicProtectionPath, read.BranchProtectionRules != nil, func() (exportAssignment, error) {
 		observed, err := read.BranchProtectionRules(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rules, err := settings.ExportClassicRules(observed)
-		if err != nil {
-			return err
-		}
-		candidate.BranchProtectionRules = &rules
-		return nil
+		return func(d *settings.Declaration) { d.BranchProtectionRules = &rules }, err
 	})
-	observe("repository.settings.rulesets", read.Rulesets != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.rulesets", read.Rulesets != nil, func() (exportAssignment, error) {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		desired, err := observed.ExportDeclarations()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		candidate.Rulesets = &desired
 		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil || checkout.RulesetMergeMethodsNormalizationWarning != nil || checkout.RulesetTeamApprovalsNormalizationWarning != nil || checkout.RulesetScanningAlertsNormalizationWarning != nil || checkout.RulesetScanningSecurityAlertsNormalizationWarning != nil {
 			values, err := observed.Values()
 			if err != nil {
-				return err
+				return nil, err
 			}
 			slices.SortFunc(values, func(a, b settings.RulesetState) int { return strings.Compare(a.Policy.Name, b.Policy.Name) })
 			for _, value := range values {
@@ -223,16 +196,16 @@ func Export(checkout ExportCheckout, read Reader) error {
 				}
 			}
 		}
-		return nil
+		return func(d *settings.Declaration) { d.Rulesets = &desired }, nil
 	})
-	observe("repository.settings.environments", read.Environments != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.environments", read.Environments != nil, func() (exportAssignment, error) {
 		observed, err := read.Environments(repo, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		values, err := observed.Values()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		slices.SortFunc(values, func(a, b settings.EnvironmentState) int {
 			return strings.Compare(settings.EnvironmentIdentity(a.Policy.Name), settings.EnvironmentIdentity(b.Policy.Name))
@@ -257,201 +230,168 @@ func Export(checkout ExportCheckout, read Reader) error {
 		for _, value := range values {
 			policy, err := value.EffectivePolicy()
 			if err != nil {
-				return err
+				return nil, err
 			}
 			entries = append(entries, policy)
 		}
-		d, err := settings.NewEnvironmentDeclarations(entries)
-		if err != nil {
-			return err
-		}
-		candidate.Environments = &d
-		return nil
+		environments, err := settings.NewEnvironmentDeclarations(entries)
+		return func(d *settings.Declaration) { d.Environments = &environments }, err
 	})
-	observe("repository.settings.actions.general.actions_permissions", read.Actions != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.general.actions_permissions", read.Actions != nil, func() (exportAssignment, error) {
 		observed, err := read.Actions(repo, true)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		d, err := observed.Declaration()
+		values, err := observed.Declaration()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		candidate.Actions.Enabled, candidate.Actions.AllowedActions, candidate.Actions.SHAPinningRequired, candidate.Actions.SelectedActions = d.Enabled, d.AllowedActions, d.SHAPinningRequired, d.SelectedActions
 		if observed.Enabled && observed.AllowedActionsNormalization != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
 			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(observed.AllowedActionsNormalization))
 		}
-		return nil
+		return func(d *settings.Declaration) {
+			d.Actions.Enabled = values.Enabled
+			d.Actions.AllowedActions = values.AllowedActions
+			d.Actions.SHAPinningRequired = values.SHAPinningRequired
+			d.Actions.SelectedActions = values.SelectedActions
+		}, nil
 	})
-	observe("repository.settings.actions.general.workflow_permissions", read.WorkflowPermissions != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.general.workflow_permissions", read.WorkflowPermissions != nil, func() (exportAssignment, error) {
 		state, err := read.WorkflowPermissions(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		candidate.Actions, err = candidate.Actions.WithWorkflowPermissions(state)
+		values, err := (settings.ActionsPolicyDeclaration{}).WithWorkflowPermissions(state)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if state.Normalization.Path != "" && checkout.NormalizationWarning != nil {
 			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(state.Normalization))
 		}
-		return nil
+		return func(d *settings.Declaration) {
+			d.Actions.DefaultWorkflowPermissions = values.DefaultWorkflowPermissions
+			d.Actions.CanApprovePullRequestReviews = values.CanApprovePullRequestReviews
+		}, nil
 	})
-	observe("repository.settings.actions.general.artifact_and_log_retention", read.Retention != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.general.artifact_and_log_retention", read.Retention != nil, func() (exportAssignment, error) {
 		observed, err := read.Retention(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		retention, err := observed.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.Actions.RetentionDays = retention.RetentionDays
-		return nil
+		return func(d *settings.Declaration) { d.Actions.RetentionDays = retention.RetentionDays }, err
 	})
-	observe("repository.settings.actions.general.cache_retention", read.CacheRetention != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.general.cache_retention", read.CacheRetention != nil, func() (exportAssignment, error) {
 		observed, err := read.CacheRetention(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		d, err := observed.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.Actions.CacheRetentionDays = d.CacheRetentionDays
-		return nil
+		values, err := observed.Declaration()
+		return func(d *settings.Declaration) { d.Actions.CacheRetentionDays = values.CacheRetentionDays }, err
 	})
-	observe("repository.settings.actions.general.cache_storage", read.CacheStorage != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.general.cache_storage", read.CacheStorage != nil, func() (exportAssignment, error) {
 		observed, err := read.CacheStorage(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		d, err := observed.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.Actions.CacheSizeGB = d.CacheSizeGB
-		return nil
+		values, err := observed.Declaration()
+		return func(d *settings.Declaration) { d.Actions.CacheSizeGB = values.CacheSizeGB }, err
 	})
 
-	observe("repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors", read.ForkApproval != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors", read.ForkApproval != nil, func() (exportAssignment, error) {
 		o, err := read.ForkApproval(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		v, err := o.Value()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		candidate.Actions.ForkApprovalPolicy = &v
 		if normalization := o.Normalization(); normalization.Path != "" && checkout.NormalizationWarning != nil {
 			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(normalization))
 		}
-		return nil
+		return func(d *settings.Declaration) { d.Actions.ForkApprovalPolicy = &v }, nil
 	})
 
-	observe("repository.settings.copilot.code_review.use_custom_instructions", read.CopilotInstructions != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.copilot.code_review.use_custom_instructions", read.CopilotInstructions != nil, func() (exportAssignment, error) {
 		observed, err := read.CopilotInstructions(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		enabled, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		candidate.CopilotInstructions = &enabled
-		return nil
+		return func(d *settings.Declaration) { d.CopilotInstructions = &enabled }, err
 	})
-	observe(settings.RunnersPath, read.AllRunners != nil, func(candidate *settings.Declaration) error {
+	observe(settings.RunnersPath, read.AllRunners != nil, func() (exportAssignment, error) {
 		observed, err := read.AllRunners(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		values, err := observed.Values()
-		if err != nil {
-			return err
-		}
-		candidate.Runners = &values
-		return nil
+		return func(d *settings.Declaration) { d.Runners = &values }, err
 	})
 	declaration.OIDCSubject, err = exportOIDCSubject(checkout, read, repo, declaration.OIDCSubject)
 	diagnosticError = errors.Join(diagnosticError, err)
-	observe("repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests", read.CopilotMCP != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests", read.CopilotMCP != nil, func() (exportAssignment, error) {
 		observed, err := read.CopilotMCP(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		enabled, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		candidate.CopilotMCP = &enabled
-		return nil
+		return func(d *settings.Declaration) { d.CopilotMCP = &enabled }, err
 	})
-	observe(settings.PullRequestExemptionsPath, read.PullRequestExemptions != nil, func(candidate *settings.Declaration) error {
+	observe(settings.PullRequestExemptionsPath, read.PullRequestExemptions != nil, func() (exportAssignment, error) {
 		observed, err := read.PullRequestExemptions(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		logins, err := observed.Logins()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		desired, err := settings.NewPullRequestExemptionsDeclaration(logins)
-		if err != nil {
-			return err
-		}
-		candidate.PullRequestExemptions = &desired
-		return nil
+		return func(d *settings.Declaration) { d.PullRequestExemptions = &desired }, err
 	})
-	observe(settings.PullRequestLimitsPath, read.PullRequestLimits != nil, func(candidate *settings.Declaration) error {
+	observe(settings.PullRequestLimitsPath, read.PullRequestLimits != nil, func() (exportAssignment, error) {
 		observed, err := read.PullRequestLimits(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		values, err := observed.Values()
-		if err != nil {
-			return err
-		}
-		candidate.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: &values.Enabled, Maximum: &values.Maximum, IncludeDrafts: &values.IncludeDrafts}
-		return nil
+		return func(d *settings.Declaration) {
+			d.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: &values.Enabled, Maximum: &values.Maximum, IncludeDrafts: &values.IncludeDrafts}
+		}, err
 	})
-	observe("repository.settings.copilot.code_review.review_effort_level", read.CopilotReviewEffort != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.copilot.code_review.review_effort_level", read.CopilotReviewEffort != nil, func() (exportAssignment, error) {
 		observed, err := read.CopilotReviewEffort(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		enabled, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		candidate.CopilotReviewEffort = &enabled
-		return nil
+		return func(d *settings.Declaration) { d.CopilotReviewEffort = &enabled }, err
 	})
 	declaration.Security, err = exportSecurity(checkout, read, repo)
 	if err != nil {
 		return errors.Join(diagnosticError, err)
 	}
-	observe("repository.settings.general.danger_zone.archive_this_repository", read.Archive != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.general.danger_zone.archive_this_repository", read.Archive != nil, func() (exportAssignment, error) {
 		state, err := read.Archive(repo)
 		if err == nil {
 			err = state.Validate(repo)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		desired := state.Archived
-		candidate.Repository.Archived = &desired
-		return nil
+		return func(d *settings.Declaration) { d.Repository.Archived = &desired }, nil
 	})
-	observe("repository.settings.pages", read.Pages != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.pages", read.Pages != nil, func() (exportAssignment, error) {
 		o, err := read.Pages(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		candidate.Pages, err = o.Declaration()
+		pages, err := o.Declaration()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if record := o.ModeNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
 			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(record))
@@ -459,32 +399,24 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if record := o.FolderNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
 			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(record))
 		}
-		return nil
+		return func(d *settings.Declaration) { d.Pages = pages }, nil
 	})
 
-	observe("repository.settings.actions.variables", read.Variables != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.actions.variables", read.Variables != nil, func() (exportAssignment, error) {
 		inventory, err := read.Variables(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		d, err := exportVariableInventory(inventory)
-		if err != nil {
-			return err
-		}
-		candidate.Variables = &d
-		return nil
+		values, err := exportVariableInventory(inventory)
+		return func(d *settings.Declaration) { d.Variables = &values }, err
 	})
-	observe("repository.settings.agents.variables", read.AgentVariables != nil, func(candidate *settings.Declaration) error {
+	observe("repository.settings.agents.variables", read.AgentVariables != nil, func() (exportAssignment, error) {
 		inventory, err := read.AgentVariables(repo)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		d, err := exportVariableInventory(inventory)
-		if err != nil {
-			return err
-		}
-		candidate.AgentsVariables = &d
-		return nil
+		values, err := exportVariableInventory(inventory)
+		return func(d *settings.Declaration) { d.AgentsVariables = &values }, err
 	})
 	declaration.EnvironmentVariables, err = exportAllEnvironmentVariables(checkout, read, repo)
 	diagnosticError = errors.Join(diagnosticError, err)
