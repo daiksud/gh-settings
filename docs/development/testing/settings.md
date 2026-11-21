@@ -13,7 +13,7 @@ Find the fixtures that check the changed setting from decoded YAML through API r
 | [Current codec](../../../internal/workspace/ui_config_test.go), [strict YAML safety](../../../internal/workspace/ui_yaml_safety_test.go) and family `ui_*_test.go` files | Exact marker, obsolete/API aliases rejected, independent literal inventories, null/false/zero/empty/omitted values, aliases/merges and zero partial decoding |
 | [Desired composition](../../../internal/github/ui_declaration_test.go) | Desired fields translated into independently expected native values, semantic failure returns zero whole declaration |
 | [Export composition](../../../internal/github/ui_export_test.go) | Actual acquired data only, pure policy projections, hidden/raw distinctions, no metadata replay, stable Labels and no partial UI output |
-| [Root composition](../../../checkout_config_test.go) | Deferred bound saver before reads, UI/native conversion, current-schema snapshot ID recording, no-op documents and failure-before-recorder behavior |
+| [Checkout adapters](../../../internal/command/checkout_config_test.go) | Deferred bound saver before reads, UI/native conversion, current-schema snapshot ID recording, no-op documents and failure-before-recorder behavior |
 | [Ruleset HTTP fixture](../../../internal/github/ui_config_rulesets_test.go) | Literal UI YAML through decode/conversion/reconcile to exact independently authored POST/PUT and ID-bound paths |
 | [Process suite](../../../tests/acceptance) | A supplied binary executes user-facing operations against local API fixtures with independently expected YAML, responses and writes |
 | [Candidate Action fixture](../../../tests/github-actions/candidate-plan.sh) and [composite tests](../../../tests/github-actions/composite_test.go) | Current literal UI consumer configs with unchanged installer/token/identity/escaping boundaries; actual hosted `uses` expansion remains separate evidence |
@@ -31,7 +31,7 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../../internal/actions/metada
 [Application tests](../../../internal/app/export_warning_failure_test.go) verify
 that warning failures in Repository, direct families and Security prevent saving,
 retain their error identity and cannot become ordinary unavailable-family info.
-[Root adapters](../../../export_warnings_test.go) cover every typed warning writer;
+[Export warning adapters](../../../internal/command/export_test.go) cover every typed warning writer;
 Team-reviewer normalization remains behind the existing personal-repository
 policy rejection, with no new eligibility implied by its callback.
 

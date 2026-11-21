@@ -107,10 +107,10 @@ These fixtures verify modeled payloads, ordering, readback and uncertainty; they
 - The current YAML marker and UI fields convert through the prepared family adapters before application work.
 - A UI menu sends its complete API pair and an Actions allow radio explicitly declares enabled state plus its policy.
 - Old envelopes and API-shaped YAML aliases fail before origin/authentication/network access.
-- Root snapshot-bound ID recording targets `repository.labels` and `repository.settings.rulesets`, selecting Rulesets by `ruleset_name`.
+- Snapshot-bound ID recording targets `repository.labels` and `repository.settings.rulesets`, selecting Rulesets by `ruleset_name`.
 - Earlier/uncertain writes and failed local ID persistence remain distinct; conversion does not add rollback or live deployment.
 
-Test mapping: [root composition](../../../checkout_config_test.go), [independent Ruleset requests](../../../internal/github/ui_config_rulesets_test.go), and supplied-binary family tests. Current-source fixture success does not publish a release or upgrade an Action pin.
+Test mapping: [checkout adapters](../../../internal/command/checkout_config_test.go), [independent Ruleset requests](../../../internal/github/ui_config_rulesets_test.go), and supplied-binary family tests. Current-source fixture success does not publish a release or upgrade an Action pin.
 
 ### Scenario: An unsupported native API key fails locally
 
