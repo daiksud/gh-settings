@@ -11,9 +11,20 @@ github_actions:
           - .github/workflows/**
           - .github/actions/**
           - .github/scripts/**
-          - .github/labeler*.yml
+          - .github/labeler.yml
           - action.yml
           - action/**
           - internal/actions/**
           - tests/github-actions/**
           - 'examples/github-actions/**/*.{yml,yaml}'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - go.mod
+          - go.sum
+          - package.json
+          - bun.lock
+          - .github/dependabot.yml
+          - .github/workflows/actions.lock
+          - .github/actions/lock-workspace-dependencies/action.yml
