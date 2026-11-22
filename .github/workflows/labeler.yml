@@ -19,10 +19,18 @@ jobs:
     steps:
       # Read the trusted base branch's rules. Never check out or execute PR
       # code in this write-capable pull_request_target workflow.
-      - name: Sync documentation triage
+      - name: Sync documentation and GitHub Actions labels
         # v7.0.0 uses whole-list replacement: concurrent external label updates
         # can be lost or restored despite its pre-write refresh.
         uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13
         with:
           sync-labels: true
+          dot: true
+
+      - name: Label dependency changes
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13
+        with:
+          configuration-path: .github/labeler-dependencies.yml
+          # Dependabot can update a uses: pin without changing a lockfile.
+          sync-labels: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
           dot: true

@@ -1,0 +1,10 @@
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - go.mod
+          - go.sum
+          - package.json
+          - bun.lock
+          - .github/dependabot.yml
+          - .github/workflows/actions.lock
+          - .github/actions/lock-workspace-dependencies/action.yml
