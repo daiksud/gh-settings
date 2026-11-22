@@ -1,9 +1,19 @@
 documentation:
   - changed-files:
       - any-glob-to-any-file:
-          - README.md
-          - CONTRIBUTING.md
-          - AGENTS.md
+          - '**/*.md'
           - docs/**
-          - .agents/skills/**/SKILL.md
-          - .github/pull_request_template.md
+          - examples/**
+
+github_actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+          - .github/actions/**
+          - .github/scripts/**
+          - .github/labeler*.yml
+          - action.yml
+          - action/**
+          - internal/actions/**
+          - tests/github-actions/**
+          - 'examples/github-actions/**/*.{yml,yaml}'

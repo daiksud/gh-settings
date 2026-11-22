@@ -63,6 +63,22 @@ resource-specific behavior.
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
 
+### Pull request labels
+
+Labeler checks each changed path against the rules on the base branch. A PR
+that edits a guide, a workflow and `go.mod` gets all three labels.
+
+| Label | Matching changes |
+| --- | --- |
+| [`documentation`](../../.github/labeler.yml) | Markdown files anywhere in the repository and all files under `docs/` or `examples/` |
+| [`github_actions`](../../.github/labeler.yml) | Workflows, local and public Actions, their supporting scripts and tests, Labeler rules and example workflows |
+| [`dependencies`](../../.github/labeler-dependencies.yml) | Go or Bun manifests and lockfiles, Dependabot configuration, the Actions lockfile and the composite Action that inventories dependency pins |
+
+As long as the PR still has changed files, Labeler removes a label when
+its last matching file drops out of the diff. On Dependabot PRs it preserves `dependencies` because
+Dependabot can update a `uses:` pin in a workflow or composite Action alone.
+Maintainers choose labels such as `bug` and `enhancement` during triage.
+
 ## Workflow dependency lockfile
 
 [The generated lockfile](../../.github/workflows/actions.lock) covers
