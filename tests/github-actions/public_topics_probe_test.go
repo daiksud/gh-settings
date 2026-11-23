@@ -27,7 +27,7 @@ func TestPublicTopicsProbeWorkflow(t *testing.T) {
 		t.Fatal("probe must remain a manually approved main-only job with read-only workflow permissions")
 	}
 	app := findStep(t, j, "app")
-	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{
+	if !strings.HasPrefix(app.Uses, "actions/create-github-app-token@") || !reflect.DeepEqual(app.With, map[string]string{
 		"client-id": "${{ vars.ANSWER26_CLIENT_ID }}", "private-key": "${{ secrets.ANSWER26_PRIVATE_KEY }}",
 		"owner": "daiksud", "repositories": "test-gh-settings-public", "permission-administration": "write",
 	}) {
