@@ -6,15 +6,15 @@ Use the [local testing guide](../testing.md) to choose a package or run the nati
 
 [PR screening](../pr-validation.md#pr-screening) runs lint, race and offline tests, then builds a Linux CLI reporting `dev`. Its build ends in the PR job.
 
-The [main workflow](../../../.github/workflows/ci-push.yml) runs full Screening
-and Inspection. It resolves the release version for the exact `main` SHA,
-builds Linux amd64 and macOS arm64 natively using the shared
-[build](../../../.github/actions/build/action.yml) Action, then packages and
-uploads each product in separate workflow steps. It tests those same
-binaries and the public Action through
-[release-acceptance](../../../.github/actions/release-acceptance/action.yml).
-Each artifact has a source/version/target/SHA-256 manifest and is retained
-for seven days for use by the manual release workflow.
+The [main workflow](../../../.github/workflows/push.yml) resolves the version for the
+exact `main` SHA. The [candidate workflow](../../../.github/workflows/candidate.yml)
+runs screening on Linux amd64 and builds macOS arm64 on its native runner.
+It uploads each binary and a source/version/target/SHA-256 manifest. Three
+inspection lanes use those artifact IDs to test the two native binaries and the
+candidate public Action. After all three pass, `deployment` records their
+IDs and digests. The binaries and deployment record are retained for seven days.
+The [release guide](../releases.md#cross-run-artifact-reuse) describes how a manual
+release selects them.
 
 The candidate public Action inspection runs every `TestBuilt*` test in
 `tests/github-actions` with the `acceptance` build tag and the supplied binary.
@@ -26,7 +26,7 @@ so a new supplied-product fixture does not need a separate allowlist entry.
 Main CI concurrency is grouped by source SHA. A later merge therefore keeps
 earlier commits' build and acceptance runs active; only duplicate runs for the
 same SHA share a cancelling group. Implementation can continue while those runs
-execute. Track each merged commit through its own aggregate result, and repair
+execute. Track each merged commit through its own deployment result, and repair
 failed CI before continuing implementation. Runner availability can still delay
 individual jobs; a queued or cancelled job is not successful verification.
 

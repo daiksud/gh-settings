@@ -7,9 +7,9 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -95,14 +95,14 @@ def select_ci_run(repo, source):
     query = urllib.parse.urlencode({
         "head_sha": source, "branch": "main", "event": "push", "per_page": 100
     })
-    route = f"repos/{repo}/actions/workflows/ci-push.yml/runs?{query}"
+    route = f"repos/{repo}/actions/workflows/push.yml/runs?{query}"
     candidates = api_items(route, "workflow_runs")
     if not candidates:
         return None
     for run in candidates:
         nested = run.get("repository")
         if (
-            run.get("path") != ".github/workflows/ci-push.yml"
+            run.get("path") != ".github/workflows/push.yml"
             or run.get("event") != "push"
             or run.get("head_branch") != "main"
             or run.get("head_sha") != source
@@ -116,25 +116,38 @@ def select_ci_run(repo, source):
     latest = max(candidates, key=lambda r: (r["run_number"], r["id"]))
     if latest.get("status") != "completed" or latest.get("conclusion") != "success":
         raise Fatal(
-            f"ci-push run {latest['id']} attempt {latest['run_attempt']} is "
+            f"push run {latest['id']} attempt {latest['run_attempt']} is "
             f"{latest.get('status')}/{latest.get('conclusion')}; fix CI before releasing"
         )
+    attempt_route = f"repos/{repo}/actions/runs/{latest['id']}/attempts/{latest['run_attempt']}"
+    jobs = api_items(attempt_route + "/jobs?per_page=100", "jobs")
+    deployments = [job for job in jobs if job.get("name") == "deployment"]
+    if len(deployments) != 1 or deployments[0].get("status") != "completed" or deployments[0].get("conclusion") != "success":
+        raise Fatal("required deployment did not complete successfully in the selected attempt")
     return latest
 
 
-def status(expected=""):
+def run_identity(run):
+    return (str(run["id"]), str(run["run_attempt"])) if run else ("", "")
+
+
+def require_selected_run(repo, source, expected):
+    run = select_ci_run(repo, source)
+    if expected is not None and run_identity(run) != expected:
+        raise Fatal("CI run or attempt changed since release resolution")
+    return run
+
+
+def status(expected=None):
     repo, source = identity()
-    latest = select_ci_run(repo, source)
-    if expected and (latest is None or str(latest["id"]) != expected):
-        raise Fatal("CI run changed since release resolution")
-    if latest is None:
-        if expected:
-            raise Fatal("previously selected CI run is unavailable")
-        output("ci-run-id", "")
-        note("No matching ci-push run; fresh Screening and Inspection are required")
+    run = require_selected_run(repo, source, expected)
+    run_id, attempt = run_identity(run)
+    output("ci-run-id", run_id)
+    output("ci-run-attempt", attempt)
+    if run:
+        note(f"Verified successful push run {run_id}, attempt {attempt}")
     else:
-        output("ci-run-id", str(latest["id"]))
-        note(f"Verified successful ci-push run {latest['id']}, attempt {latest['run_attempt']}")
+        note("No matching push run; fresh Screening and Inspection are required", True)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -227,78 +240,132 @@ def verify_product(target, version, source, directory):
     check_output.unlink(missing_ok=True)
 
 
-def reuse(run_id, version):
+def checked_artifact(items, run, source, description):
+    if len(items) != 1:
+        raise Unusable(f"{description} is missing or duplicated")
+    item = items[0]
+    if item.get("expired") is True:
+        raise Unusable(f"{description} expired")
+    if item.get("expired") is not False or type(item.get("id")) is not int or item["id"] < 1:
+        raise Fatal(f"invalid {description} metadata")
+    context = item.get("workflow_run")
+    if context is not None and (
+        not isinstance(context, dict) or context.get("id") != run["id"] or context.get("head_sha") != source
+    ):
+        raise Fatal(f"unexpected {description} producer")
+    if not isinstance(item.get("digest"), str) or not DIGEST.fullmatch(item["digest"]):
+        raise Unusable(f"{description} has no valid archive SHA-256 digest")
+    return item
+
+
+def checked_archive(repo, item):
+    archive = fetch_archive(repo, item["id"], field("GH_TOKEN"))
+    digest = "sha256:" + hashlib.sha256(archive).hexdigest()
+    if digest != item["digest"]:
+        raise Unusable(f"{item['name']} archive SHA-256 mismatch")
+    return archive
+
+
+def deployment_record(data):
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            if archive.namelist() != ["deployment.json"]:
+                raise Unusable("invalid deployment archive inventory")
+            info = archive.getinfo("deployment.json")
+            if info.file_size > 16384 or (info.external_attr >> 16) & 0o170000 == 0o120000:
+                raise Unusable("invalid deployment record entry")
+            with archive.open(info) as stream:
+                record = json.loads(stream.read(16385))
+        if not isinstance(record, dict):
+            raise Unusable("invalid deployment record")
+        return record
+    except (ValueError, UnicodeError, zipfile.BadZipFile, EOFError, RuntimeError, RecursionError) as error:
+        raise Unusable("unreadable deployment record") from error
+
+
+def deployed_products(repo, source, run, version=None, targets=TARGETS):
+    items = api_items(f"repos/{repo}/actions/runs/{run['id']}/artifacts?per_page=100", "artifacts")
+    name = f"deployment-{run['run_attempt']}"
+    index = checked_artifact([item for item in items if item.get("name") == name], run, source, name)
+    record = deployment_record(checked_archive(repo, index))
+    expected = {
+        "repository": repo, "workflow": ".github/workflows/push.yml", "event": "push",
+        "source_sha": source, "run_id": run["id"], "run_attempt": run["run_attempt"],
+    }
+    if any(type(record.get(key)) is not type(value) or record[key] != value for key, value in expected.items()):
+        raise Unusable("deployment identity differs from the selected source or run attempt")
+    observed = record.get("version")
+    if not isinstance(observed, str) or not VERSION.fullmatch(observed):
+        raise Unusable("invalid deployed version")
+    if version is not None and observed != version:
+        raise Unusable(f"deployment version mismatch (expected {version}, observed {observed})")
+    entries = record.get("artifacts")
+    if not isinstance(entries, dict) or set(entries) != set(TARGETS):
+        raise Unusable("incomplete deployment target inventory")
+    products = {}
+    for target in targets:
+        entry = entries[target]
+        if not isinstance(entry, dict) or type(entry.get("id")) is not int or entry["id"] < 1:
+            raise Unusable(f"invalid deployed {target} ID")
+        product = checked_artifact([item for item in items if item.get("id") == entry["id"]], run, source, target)
+        producer = re.fullmatch(rf"candidate-{target}-([1-9][0-9]*)", str(product.get("name")))
+        if not producer or int(producer[1]) > run["run_attempt"] or product["digest"] != entry.get("digest"):
+            raise Unusable(f"{target} artifact differs from inspected deployment")
+        products[target] = product
+    return observed, products
+
+
+def reuse(run_id, attempt, version):
     repo, source = identity()
     if not VERSION.fullmatch(version):
         raise Fatal("invalid intended release version")
-    if not run_id:
+    run = require_selected_run(repo, source, (run_id, attempt))
+    if run is None:
         output("reused", "false")
-        note("No CI artifacts to reuse; run full Screening and Inspection")
+        note("No push run; run full Screening and Inspection", True)
         return
-    if not run_id.isdecimal() or int(run_id) < 1:
-        raise Fatal("invalid source run ID")
-    token = field("GH_TOKEN")
-    # Recheck provenance, not merely a run-id supplied by a different job.
-    current = select_ci_run(repo, source)
-    if current is None or str(current["id"]) != run_id:
-        raise Fatal("CI run changed before artifact reuse")
-    route = f"repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
-    artifacts = api_items(route, "artifacts")
-    base = Path(field("RUNNER_TEMP")) / "reused-release"
-    if base.exists():
-        raise Fatal("artifact staging directory already exists")
-    base.mkdir(parents=True)
     try:
-        for target in TARGETS:
-            name = "release-" + target
-            matches = [item for item in artifacts if item.get("name") == name]
-            if len(matches) != 1:
-                raise Unusable(f"{name} is missing or duplicated in ci-push run {run_id}")
-            item = matches[0]
-            if item.get("expired") is True:
-                raise Unusable(f"{name} expired in ci-push run {run_id}")
-            if item.get("expired") is not False:
-                raise Fatal(f"{name} expiration metadata is invalid")
-            digest = item.get("digest")
-            match = DIGEST.fullmatch(digest) if isinstance(digest, str) else None
-            if match is None:
-                raise Unusable(f"{name} has no valid archive SHA-256 digest")
-            if type(item.get("id")) is not int or item["id"] <= 0:
-                raise Fatal(f"{name} has invalid artifact ID")
-            context = item.get("workflow_run")
-            if context is not None and (
-                not isinstance(context, dict)
-                or context.get("id") != int(run_id)
-                or context.get("head_sha") != source
-            ):
-                raise Fatal(f"{name} has unexpected producer provenance")
-            archive = fetch_archive(repo, item["id"], token)
-            observed = hashlib.sha256(archive).hexdigest()
-            if observed != match.group(1):
-                raise Unusable(
-                    f"{name} archive SHA-256 mismatch "
-                    f"(expected {match.group(1)}, observed {observed})"
-                )
-            target_dir = base / target
-            extract_product(archive, target, target_dir)
-            verify_product(target, version, source, target_dir)
+        _, products = deployed_products(repo, source, run, version)
+        with tempfile.TemporaryDirectory(dir=field("RUNNER_TEMP")) as stage:
+            for target, item in products.items():
+                directory = Path(stage) / target
+                extract_product(checked_archive(repo, item), target, directory)
+                verify_product(target, version, source, directory)
+        output("linux-id", products["linux-amd64"]["id"])
+        output("macos-id", products["darwin-arm64"]["id"])
         output("reused", "true")
-        note(f"Reusing verified Linux and macOS artifacts from ci-push run {run_id}")
+        note(f"Verified inspected products from push run {run_id}, attempt {attempt}")
     except Unusable as error:
-        shutil.rmtree(base, ignore_errors=True)
         output("reused", "false")
-        note(f"Cannot reuse ci-push run {run_id}: {error}; full Screening and Inspection", True)
+        note(f"Cannot reuse push run {run_id}, attempt {attempt}: {error}; full Screening and Inspection", True)
+
+
+def probe():
+    repo, source = identity()
+    run = select_ci_run(repo, source)
+    if not run:
+        raise Fatal("the live probe requires a successful exact-SHA push deployment")
+    version, products = deployed_products(repo, source, run, targets=("linux-amd64",))
+    output("ci-run-id", run["id"])
+    output("ci-run-attempt", run["run_attempt"])
+    output("linux-id", products["linux-amd64"]["id"])
+    output("version", version)
 
 
 def main():
+    args = sys.argv[1:]
     try:
-        if len(sys.argv) >= 2 and sys.argv[1] == "status" and len(sys.argv) in (2, 3):
-            status(sys.argv[2] if len(sys.argv) == 3 else "")
-        elif len(sys.argv) == 4 and sys.argv[1] == "reuse":
-            reuse(sys.argv[2], sys.argv[3])
+        if args == ["status"]:
+            status()
+        elif len(args) == 3 and args[0] == "status":
+            status(tuple(args[1:]))
+        elif len(args) == 4 and args[0] == "reuse":
+            reuse(*args[1:])
+        elif args == ["probe"]:
+            probe()
         else:
-            raise Fatal("usage: release-ci.py status [EXPECTED_RUN_ID] | reuse RUN_ID VERSION")
-    except Fatal as error:
+            raise Fatal("usage: release-ci.py status [RUN_ID ATTEMPT] | reuse RUN_ID ATTEMPT VERSION | probe")
+    except (Fatal, Unusable) as error:
         print(f"::error::{error}", file=sys.stderr)
         return 1
     return 0

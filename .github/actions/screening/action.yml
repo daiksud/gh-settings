@@ -1,0 +1,23 @@
+name: Screen the Linux CLI
+description: Lint, run unit and offline fixtures, and build the checked-out CLI.
+inputs:
+  version:
+    description: Version to embed when preparing a release candidate.
+    required: false
+    default: ''
+outputs:
+  binary-path:
+    description: Path to the built Linux CLI.
+    value: ${{ steps.build.outputs.binary-path }}
+runs:
+  using: composite
+  steps:
+    - name: Lint source and Markdown
+      uses: ./.github/actions/lint
+    - name: Run unit tests and offline fixtures
+      uses: ./.github/actions/unit-test
+    - name: Build the native executable
+      id: build
+      uses: ./.github/actions/build
+      with:
+        version: ${{ inputs.version }}

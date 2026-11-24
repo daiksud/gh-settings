@@ -7,7 +7,8 @@ These YAML files define the events, jobs and permissions for gh-settings itself.
 | --- | --- |
 | Change PR screening, the squash-message check or settings validation | [pr.yml](pr.yml), [prlint.yml](prlint.yml), [settings-pr.yml](settings-pr.yml) |
 | Label a PR or record the result of a Codex review | [labeler.yml](labeler.yml), [approve-codex-review.yml](approve-codex-review.yml) |
-| Build and test the exact commit pushed to `main` | [ci-push.yml](ci-push.yml) |
+| Deploy the inspected binaries for each commit pushed to `main` | [push.yml](push.yml) |
+| Change the native builds and inspections shared by main and release | [candidate.yml](candidate.yml) |
 | Publish a release, apply reviewed repository settings or verify a candidate Action against live Topics | Manual workflows for [release](release.yml), [settings apply](settings-apply.yml) and [Topics verification](verify-public-action.yml) |
 
 The generated [actions.lock](actions.lock) records dependencies by workflow. Follow the

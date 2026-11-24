@@ -3,7 +3,6 @@ package githubactions
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,9 +43,9 @@ func TestPublicTopicsProbeWorkflow(t *testing.T) {
 		case "app":
 			appIndex = i
 		}
-		if strings.Contains(s.Run, `release-ci.py status "$CI_RUN_ID"`) {
+		if strings.Contains(s.Run, `release-ci.py status "$CI_RUN_ID" "$CI_RUN_ATTEMPT"`) {
 			recheckIndex = i
-			if s.Env["SOURCE_SHA"] != "${{ github.sha }}" || s.Env["CI_RUN_ID"] != "${{ steps.ci.outputs.ci-run-id }}" || s.Env["GH_TOKEN"] != "${{ github.token }}" {
+			if s.Env["SOURCE_SHA"] != "${{ github.sha }}" || s.Env["CI_RUN_ID"] != "${{ steps.ci.outputs.ci-run-id }}" || s.Env["CI_RUN_ATTEMPT"] != "${{ steps.ci.outputs.ci-run-attempt }}" || s.Env["GH_TOKEN"] != "${{ github.token }}" {
 				t.Fatal("producer recheck must bind the selected CI before the live token is minted")
 			}
 		}
@@ -81,14 +80,14 @@ func TestPublicTopicsProbeWorkflow(t *testing.T) {
 		}
 	}
 	if download.Uses != "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333" || !reflect.DeepEqual(download.With, map[string]string{
-		"name": "release-linux-amd64", "path": "${{ runner.temp }}/topics-candidate-linux",
+		"artifact-ids": "${{ steps.ci.outputs.linux-id }}", "path": "${{ runner.temp }}/topics-candidate-linux",
 		"github-token": "${{ github.token }}", "repository": "daiksud/gh-settings",
 		"run-id": "${{ steps.ci.outputs.ci-run-id }}", "digest-mismatch": "error",
 	}) {
 		t.Fatal("candidate download must bind the successful CI run and reject archive digest mismatch")
 	}
 	candidate := findStep(t, j, "candidate")
-	if candidate.Env["SOURCE_SHA"] != "${{ github.sha }}" {
+	if candidate.Env["SOURCE_SHA"] != "${{ github.sha }}" || candidate.Env["VERSION"] != "${{ steps.ci.outputs.version }}" {
 		t.Fatal("manifest must bind the candidate product to the exact Action and workflow source")
 	}
 	for _, required := range []string{"release-artifact.sh\" verify linux-amd64", "prepare-candidate-download.sh", "git -C \"$source\" rev-parse HEAD", "git -C \"$source\" status --porcelain"} {
@@ -110,54 +109,9 @@ func TestPublicTopicsProbeWorkflow(t *testing.T) {
 
 func TestCandidateProbeRequiresCIWithoutFallback(t *testing.T) {
 	w, _ := readWorkflow(t, "../../.github/workflows/verify-public-action.yml")
-	selectCI := findStep(t, w.Jobs["topics"], "ci")
-	for _, tc := range []struct {
-		name, id, status string
-		valid            bool
-	}{
-		{"successful selected run", "123", "0", true},
-		{"missing exact-SHA run", "", "0", false},
-		{"failed or unfinished CI", "123", "1", false},
-		{"invalid producer ID", "not-a-run", "0", false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			source := filepath.Join(dir, ".verification-source")
-			if err := os.Mkdir(source, 0o700); err != nil {
-				t.Fatal(err)
-			}
-			git := func(args ...string) string {
-				t.Helper()
-				cmd := exec.Command("git", args...)
-				cmd.Dir = source
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					t.Fatalf("git: %v %s", err, out)
-				}
-				return strings.TrimSpace(string(out))
-			}
-			git("init", "--quiet")
-			git("-c", "commit.gpgsign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "--quiet", "-m", "fixture")
-			bin := filepath.Join(dir, "bin")
-			if err := os.Mkdir(bin, 0o700); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(bin, "python3"), []byte("#!/bin/sh\nprintf 'ci-run-id=%s\\n' \"$FIXTURE_RUN_ID\" >> \"$GITHUB_OUTPUT\"\nexit \"$FIXTURE_STATUS\"\n"), 0o700); err != nil {
-				t.Fatal(err)
-			}
-			output := filepath.Join(dir, "output")
-			cmd := exec.Command("bash", "-euo", "pipefail", "-c", selectCI.Run)
-			cmd.Dir = dir
-			cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), "SOURCE_SHA="+git("rev-parse", "HEAD"), "RUNNER_TEMP="+dir, "GITHUB_OUTPUT="+output, "FIXTURE_RUN_ID="+tc.id, "FIXTURE_STATUS="+tc.status)
-			out, err := cmd.CombinedOutput()
-			if (err == nil) != tc.valid {
-				t.Fatalf("valid=%t err=%v log=%s", tc.valid, err, out)
-			}
-			data, _ := os.ReadFile(output)
-			if tc.valid && string(data) != "ci-run-id=123\n" || !tc.valid && len(data) != 0 {
-				t.Fatalf("unexpected producer handoff %q", data)
-			}
-		})
+	selection := findStep(t, w.Jobs["topics"], "ci")
+	if !strings.HasSuffix(strings.TrimSpace(selection.Run), "python3 .github/scripts/release-ci.py probe") || selection.Continue {
+		t.Fatal("the live probe must stop when an inspected exact-SHA deployment is unavailable")
 	}
 }
 

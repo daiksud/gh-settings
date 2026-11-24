@@ -18,113 +18,66 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var release struct{ Jobs map[string]yaml.Node }
-	if err := yaml.Unmarshal(data, &release); err != nil {
-		t.Fatal(err)
-	}
-	wantJobs := []string{"resolve", "reuse", "commit-stage", "acceptance-stage", "delivery-gate", "release", "verify-release"}
-	if len(release.Jobs) != len(wantJobs) {
-		t.Fatalf("release job inventory changed: %v", release.Jobs)
-	}
-	for _, name := range wantJobs {
-		if _, ok := release.Jobs[name]; !ok {
-			t.Fatalf("release is missing %s", name)
+	var w struct {
+		Jobs map[string]struct {
+			Needs       yaml.Node         `yaml:"needs"`
+			If          string            `yaml:"if"`
+			Uses        string            `yaml:"uses"`
+			Permissions map[string]string `yaml:"permissions"`
+			With        map[string]string `yaml:"with"`
+			Steps       []step            `yaml:"steps"`
 		}
 	}
-	type releaseJob struct {
-		Needs       yaml.Node         `yaml:"needs"`
-		Runner      string            `yaml:"runs-on"`
-		Permissions map[string]string `yaml:"permissions"`
-		If          string            `yaml:"if"`
-		Continue    bool              `yaml:"continue-on-error"`
-		Strategy    struct {
-			FailFast bool   `yaml:"fail-fast"`
-			Matrix   string `yaml:"matrix"`
-		} `yaml:"strategy"`
-		Steps []step `yaml:"steps"`
+	if err := yaml.Unmarshal(data, &w); err != nil {
+		t.Fatal(err)
 	}
-	needs := func(t *testing.T, node yaml.Node) []string {
+
+	candidate := w.Jobs["candidate"]
+	if candidate.Uses != "./.github/workflows/candidate.yml" || candidate.Needs.Value != "resolve" ||
+		candidate.If != "needs.resolve.outputs.release-needed == 'true' && needs.resolve.outputs.reused == 'false'" ||
+		candidate.With["source-sha"] != "${{ github.sha }}" || candidate.With["version"] != "${{ needs.resolve.outputs.version }}" {
+		t.Fatal("fresh release candidates must come from the shared workflow at the frozen source and version")
+	}
+	resolve := w.Jobs["resolve"]
+	stepID := func(id string) step { return findStep(t, job{Steps: resolve.Steps}, id) }
+	if stepID("ci").If != "steps.metadata.outputs.release-needed == 'true'" ||
+		stepID("reuse").If != stepID("ci").If || stepID("reuse").With["ci-run-attempt"] != "${{ steps.ci.outputs.ci-run-attempt }}" {
+		t.Fatal("reuse must follow version resolution and select the checked attempt")
+	}
+	checkNeeds := func(name string, expected ...string) {
 		t.Helper()
-		if node.Kind == yaml.ScalarNode {
-			return []string{node.Value}
-		}
-		var result []string
-		if err := node.Decode(&result); err != nil {
-			t.Fatal(err)
-		}
-		return result
-	}
-	var build releaseJob
-	buildNode := release.Jobs["commit-stage"]
-	if err := buildNode.Decode(&build); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(needs(t, build.Needs), []string{"resolve", "reuse"}) || build.Runner != "${{ matrix.runner }}" || !reflect.DeepEqual(build.Permissions, map[string]string{"contents": "read"}) || build.If != "needs.reuse.outputs.reused != 'true'" || build.Continue || build.Strategy.FailFast || build.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.build-matrix) }}" {
-		t.Fatalf("matrix build gate changed: %+v", build)
-	}
-	var buildAction, packageStep, uploadStep step
-	for _, s := range build.Steps {
-		switch {
-		case s.Uses == "./.github/actions/build":
-			buildAction = s
-		case strings.Contains(s.Run, "release-artifact.sh write"):
-			packageStep = s
-		case strings.HasPrefix(s.Uses, "actions/upload-artifact@"):
-			uploadStep = s
+		var actual []string
+		n := w.Jobs[name].Needs
+		if err := n.Decode(&actual); err != nil || !reflect.DeepEqual(actual, expected) {
+			t.Fatalf("%s dependencies: got %v, want %v", name, actual, expected)
 		}
 	}
-	if !reflect.DeepEqual(buildAction.With, map[string]string{
-		"binary-name": "gh-settings-${{ matrix.target }}",
-		"version":     "${{ needs.resolve.outputs.version }}",
-	}) || packageStep.ID != "package" ||
-		!strings.Contains(packageStep.Run, "built binary source differs from frozen commit") ||
-		uploadStep.With["name"] != "release-${{ matrix.target }}" ||
-		uploadStep.With["path"] != "${{ steps.package.outputs.artifact-dir }}" ||
-		uploadStep.With["overwrite"] != "true" {
-		t.Fatalf("native build and packaging must be separate source-bound steps: %+v", build.Steps)
+	checkNeeds("select", "resolve", "candidate")
+	checkNeeds("release", "resolve", "select")
+	checkNeeds("verify-release", "resolve", "select", "release")
+	if w.Jobs["select"].If != "${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.release-needed == 'true' }}" ||
+		w.Jobs["release"].If != "${{ !cancelled() && needs.resolve.result == 'success' && needs.select.result == 'success' }}" ||
+		w.Jobs["verify-release"].If != "${{ !cancelled() && needs.release.result == 'success' }}" {
+		t.Fatal("release and post-publication checks must require their successful, uncancelled prerequisites")
 	}
-	var acceptance releaseJob
-	acceptanceNode := release.Jobs["acceptance-stage"]
-	if err := acceptanceNode.Decode(&acceptance); err != nil {
-		t.Fatal(err)
+	for name, j := range w.Jobs {
+		if (j.Permissions["contents"] == "write") != (name == "release") {
+			t.Fatalf("unexpected contents permission in %s", name)
+		}
 	}
-	if !reflect.DeepEqual(needs(t, acceptance.Needs), []string{"resolve", "reuse", "commit-stage"}) || acceptance.Runner != "${{ matrix.runner }}" || acceptance.Strategy.FailFast || acceptance.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}" || !reflect.DeepEqual(acceptance.Permissions, map[string]string{"contents": "read"}) || acceptance.If != "needs.reuse.outputs.reused != 'true'" || acceptance.Continue {
-		t.Fatalf("matrix acceptance gate changed: %+v", acceptance)
-	}
-	acceptAction := acceptance.Steps[len(acceptance.Steps)-1]
-	if acceptAction.Uses != "./.action/.github/actions/release-acceptance" || !reflect.DeepEqual(acceptAction.With, map[string]string{
-		"target": "${{ matrix.target }}", "version": "${{ needs.resolve.outputs.version }}", "source-sha": "${{ github.sha }}",
-	}) {
-		t.Fatalf("acceptance does not delegate the frozen target identity: %+v", acceptAction)
-	}
-	var publish releaseJob
-	publishNode := release.Jobs["release"]
-	if err := publishNode.Decode(&publish); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(needs(t, publish.Needs), []string{"resolve", "delivery-gate"}) || !reflect.DeepEqual(publish.Permissions, map[string]string{"contents": "write", "actions": "read"}) || publish.If != "always() && needs.resolve.result == 'success' && needs.delivery-gate.result == 'success'" || publish.Continue {
-		t.Fatalf("publication overrides the ordinary accepted-product gate: %+v", publish)
-	}
-	publishAction := publish.Steps[len(publish.Steps)-1]
-	if publishAction.Uses != "./.github/actions/release-publish" || publishAction.Env["GH_TOKEN"] != "${{ github.token }}" || !reflect.DeepEqual(publishAction.With, map[string]string{
-		"source-sha": "${{ github.sha }}", "version": "${{ needs.resolve.outputs.version }}",
-		"previous-tag": "${{ needs.resolve.outputs.previous-tag }}", "previous-sha": "${{ needs.resolve.outputs.previous-sha }}",
-	}) {
-		t.Fatalf("publication does not delegate the accepted immutable identity: %+v", publishAction)
-	}
-	var verify releaseJob
-	verifyNode := release.Jobs["verify-release"]
-	if err := verifyNode.Decode(&verify); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(needs(t, verify.Needs), []string{"resolve", "release"}) || !reflect.DeepEqual(verify.Permissions, map[string]string{"contents": "read"}) || verify.If != "always() && needs.resolve.result == 'success' && needs.release.result == 'success'" || verify.Continue {
-		t.Fatalf("published verification gate changed: %+v", verify)
-	}
-	verifyAction := verify.Steps[len(verify.Steps)-1]
-	if verifyAction.Uses != "./.action/.github/actions/release-verify" || len(verifyAction.Env) != 0 || !reflect.DeepEqual(verifyAction.With, map[string]string{
-		"source-sha": "${{ github.sha }}", "version": "${{ needs.resolve.outputs.version }}",
-	}) {
-		t.Fatalf("published verification does not remain token-free and source-bound: %+v", verifyAction)
+	for name, action := range map[string]string{"release": "./.github/actions/release-publish", "verify-release": "./.action/.github/actions/release-verify"} {
+		j := w.Jobs[name]
+		last := j.Steps[len(j.Steps)-1]
+		if last.Uses != action || j.Permissions["actions"] != "read" ||
+			last.With["run-id"] != "${{ needs.select.outputs.run-id }}" ||
+			last.With["linux-artifact-id"] != "${{ needs.select.outputs.linux-id }}" ||
+			last.With["macos-artifact-id"] != "${{ needs.select.outputs.macos-id }}" ||
+			last.With["source-sha"] != "${{ github.sha }}" || last.With["version"] != "${{ needs.resolve.outputs.version }}" {
+			t.Fatalf("%s must use the selected producer, accepted IDs and frozen version", name)
+		}
+		if name == "verify-release" && len(last.Env) > 0 {
+			t.Fatal("public release verification must run without ambient credentials")
+		}
 	}
 }
 

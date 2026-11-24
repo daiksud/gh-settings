@@ -10,84 +10,93 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// PR validation composes checks directly without transferring artifacts.
 func TestPRScreeningOnly(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/pr.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var workflow struct {
-		Jobs map[string]struct {
-			Steps []step `yaml:"steps"`
-		} `yaml:"jobs"`
-	}
-	if err := yaml.Unmarshal(data, &workflow); err != nil {
-		t.Fatal(err)
-	}
-	var actions []string
-	for _, s := range workflow.Jobs["screening"].Steps {
-		if strings.HasPrefix(s.Uses, "actions/checkout@") {
-			continue
+	w, _ := readWorkflow(t, "../../.github/workflows/pr.yml")
+	var local []step
+	for _, step := range w.Jobs["verify"].Steps {
+		if strings.Contains(step.Uses, "artifact") || strings.Contains(step.Run, "upload") {
+			t.Fatal("PR screening must not upload deployable artifacts")
 		}
-		actions = append(actions, s.Uses)
+		if strings.HasPrefix(step.Uses, "./") {
+			local = append(local, step)
+		}
 	}
-	want := []string{
-		"oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6",
-		"",
-		"actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5",
-		"./.github/actions/lint",
-		"./.github/actions/unit-test",
-		"./.github/actions/build",
+	if len(local) != 1 || local[0].Uses != "./.github/actions/screening" || len(local[0].With) != 0 {
+		t.Fatal("PR screening must build the CLI with its development version")
 	}
-	if !reflect.DeepEqual(actions, want) {
-		t.Fatalf("screening must run independent source checks and build without artifact upload: %v", actions)
+	screening, _ := readReleaseAction(t, "screening")
+	var actions []string
+	for _, step := range screening.Runs.Steps {
+		if step.If != "" || step.Continue {
+			t.Fatal("every screening check must report its result")
+		}
+		actions = append(actions, step.Uses)
+	}
+	if !reflect.DeepEqual(actions, []string{"./.github/actions/lint", "./.github/actions/unit-test", "./.github/actions/build"}) {
+		t.Fatalf("screening must lint, test and then build once: %v", actions)
 	}
 }
 
-// Main produces release-ready artifacts after native and public-Action
-// inspection. PR development candidates do not establish release readiness.
-func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-push.yml"))
+func TestCandidateWorkflowInspectsNativeBuildsByID(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/candidate.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := string(data)
-	for _, required := range []string{
-		"name: ci-push",
-		"branches: [main]",
-		"fetch-depth: 0",
-		"uses: ./.github/actions/release-metadata",
-		"uses: ./.github/actions/lint",
-		"uses: ./.github/actions/unit-test",
-		"uses: ./.github/actions/build",
-		"release-artifact.sh write",
-		"uses: actions/upload-artifact@",
-		"uses: ./.action/.github/actions/release-acceptance",
-		"needs.resolve.outputs.version",
-		"needs.resolve.outputs.build-matrix",
-		"needs.resolve.outputs.acceptance-matrix",
-		"matrix.target",
-		"source-sha:",
-		"always() && !cancelled()",
-		"len(d)==3",
-	} {
-		if !strings.Contains(source, required) {
-			t.Fatalf("main release-ready validation lacks %q", required)
-		}
-	}
 	var w struct {
-		Jobs map[string]yaml.Node
+		On   map[string]yaml.Node
+		Jobs map[string]struct {
+			Needs       []string
+			Permissions map[string]string
+			Steps       []step
+			Strategy    struct {
+				Matrix struct{ Include []map[string]string }
+			}
+		}
 	}
 	if err := yaml.Unmarshal(data, &w); err != nil {
 		t.Fatal(err)
 	}
-	if len(w.Jobs) != 4 {
-		t.Fatalf("want exact resolve/build/inspection/gate jobs, got %v", w.Jobs)
+	if len(w.On) != 1 || w.On["workflow_call"].Kind != yaml.MappingNode {
+		t.Fatal("candidates must be built only through an explicit workflow call")
 	}
-	for _, name := range []string{"resolve", "commit-stage", "acceptance-stage", "ci-push"} {
-		if _, exists := w.Jobs[name]; !exists {
-			t.Fatalf("missing %s", name)
+	for osName, target := range map[string]string{"linux": "linux-amd64", "macos": "darwin-arm64"} {
+		job := w.Jobs["screening-"+osName]
+		if len(job.Steps) < 3 {
+			t.Fatalf("missing native %s build", osName)
 		}
+		checkout, build, transfer := job.Steps[0], job.Steps[len(job.Steps)-2], job.Steps[len(job.Steps)-1]
+		action := "./.github/actions/build"
+		if osName == "linux" {
+			action = "./.github/actions/screening"
+		}
+		if !reflect.DeepEqual(job.Permissions, map[string]string{"contents": "read"}) ||
+			checkout.With["ref"] != "${{ inputs.source-sha }}" || checkout.With["persist-credentials"] != "false" ||
+			build.Uses != action || build.With["version"] != "${{ inputs.version }}" || build.Continue || build.If != "" ||
+			transfer.Uses != "./.github/actions/package-candidate" || transfer.With["binary-path"] != "${{ steps.build.outputs.binary-path }}" ||
+			transfer.With["target"] != target || transfer.With["source-sha"] != "${{ inputs.source-sha }}" || transfer.With["version"] != "${{ inputs.version }}" {
+			t.Fatalf("native %s screening must package the frozen versioned build", osName)
+		}
+	}
+	inspect := w.Jobs["inspection"]
+	lanes := []map[string]string{
+		{"target": "linux-amd64", "runner": "ubuntu-slim", "artifact-id": "${{ needs.screening-linux.outputs.artifact-id }}"},
+		{"target": "darwin-arm64", "runner": "macos-15", "artifact-id": "${{ needs.screening-macos.outputs.artifact-id }}"},
+		{"target": "candidate-action", "runner": "ubuntu-24.04", "artifact-id": "${{ needs.screening-linux.outputs.artifact-id }}"},
+	}
+	if !reflect.DeepEqual(inspect.Needs, []string{"screening-linux", "screening-macos"}) || !reflect.DeepEqual(inspect.Strategy.Matrix.Include, lanes) ||
+		len(inspect.Steps) != 2 || inspect.Steps[0].With["path"] != ".action" ||
+		inspect.Steps[1].Uses != "./.action/.github/actions/release-acceptance" || inspect.Steps[1].With["artifact-id"] != "${{ matrix.artifact-id }}" {
+		t.Fatal("each native and public Action inspection must consume its own producer's artifact ID")
+	}
+	acceptance, _ := readReleaseAction(t, "release-acceptance")
+	var downloads []step
+	for _, s := range acceptance.Runs.Steps {
+		if strings.HasPrefix(s.Uses, "actions/download-artifact@") {
+			downloads = append(downloads, s)
+		}
+	}
+	if len(downloads) != 1 || downloads[0].With["artifact-ids"] != "${{ inputs.artifact-id }}" || downloads[0].With["digest-mismatch"] != "error" || downloads[0].With["name"] != "" {
+		t.Fatal("inspection must retrieve an immutable candidate and fail on archive digest mismatch")
 	}
 }
 

@@ -182,6 +182,7 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
         raise ReleaseError("initial release requires a separately chosen baseline")
     latest = max(candidates, key=lambda release: (release["published_at"], release["id"]))
     previous_tag = latest["tag_name"]
+    version_components(previous_tag)
     previous_sha = resolve_tag(previous_tag)
     if not SHA.fullmatch(previous_sha):
         raise ReleaseError("previous release does not resolve to a commit")
@@ -191,9 +192,7 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
     logs = command("git", "-c", "log.showSignature=false", "log", "--reverse", "--topo-order", "--no-decorate",
                    "--no-notes", "--no-color", "--encoding=UTF-8", "-z", "--format=%H%x00%B",
                    f"{previous_sha}..{source}", "--")
-    if not logs:
-        raise ReleaseError("no substantive changes since previous release")
-    fields = logs.removesuffix(b"\x00").split(b"\x00")
+    fields = logs.removesuffix(b"\x00").split(b"\x00") if logs else []
     if len(fields) % 2:
         raise ReleaseError("invalid Git log record")
     tier = -1
@@ -205,11 +204,17 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
         _, _, breaking, minor = classify(message)
         # Empty commits do not change the source; every tree change counts.
         parents = git("rev-list", "--parents", "-n", "1", sha).split()
-        if len(parents) == 2 and subprocess.run(["git", "diff-tree", "--quiet", parents[1], sha], check=False).returncode == 0:
-            continue
+        if len(parents) == 2:
+            difference = subprocess.run(["git", "diff-tree", "--quiet", parents[1], sha], check=False).returncode
+            if difference == 0:
+                continue
+            if difference != 1:
+                raise ReleaseError("cannot compare the committed trees")
         tier = max(tier, 2 if breaking else 1 if minor else 0)
     if tier < 0:
-        raise ReleaseError("no substantive changes since previous release")
+        if allow_retry and source == previous_sha:
+            raise ReleaseError("existing release at this source lacks a valid immutable identity")
+        return previous_tag, previous_tag, previous_sha
     version = next_version(previous_tag, tier, graduate_to_v1)
     if graduate_to_v1 and any(
             version_components(version) <= version_components(release["tag_name"])
@@ -231,8 +236,15 @@ def main():
         if not REPOSITORY.fullmatch(repository):
             raise ReleaseError("invalid repository identity")
         version, previous_tag, previous_sha = calculate(source, read_releases(repository), allow_retry, graduate_to_v1)
-        print(f"version={version}\nprevious-tag={previous_tag}\nprevious-sha={previous_sha}")
-    except (ReleaseError, UnicodeError, ValueError, OverflowError) as error:
+        version_components(version)
+        if previous_tag or previous_sha:
+            version_components(previous_tag)
+            if not SHA.fullmatch(previous_sha):
+                raise ReleaseError("invalid resolved predecessor source")
+        release_needed = "false" if version == previous_tag else "true"
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+            print(f"version={version}\nprevious-tag={previous_tag}\nprevious-sha={previous_sha}\nrelease-needed={release_needed}", file=output)
+    except (ReleaseError, KeyError, OSError, UnicodeError, ValueError, OverflowError) as error:
         print(f"release-version: {error}", file=sys.stderr)
         sys.exit(1)
 

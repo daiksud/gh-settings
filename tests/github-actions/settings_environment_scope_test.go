@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -21,6 +22,9 @@ const (
 	retiredSettingsPlanPath   = ".github/workflows/settings-plan.yml"
 	settingsPlanEnvironment   = "gh-settings-plan"
 	settingsValidateCheckName = "settings-pr"
+	candidateEventCondition   = "github.event.action != 'edited' || github.event.changes.base"
+	screeningCheckName        = "${{ (" + candidateEventCondition + ") && 'screening' || 'pr-metadata' }}"
+	validationCheckName       = "${{ (" + candidateEventCondition + ") && 'settings-pr' || 'settings-metadata' }}"
 )
 
 // The screening check runs this test with the rest of the Go suite.
@@ -101,13 +105,22 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			// Candidate-controlled tests cannot establish trusted check identity.
 			checkName := jobName
 			if node, exists := job["name"]; exists {
-				if node.Kind != yaml.ScalarNode || strings.Contains(node.Value, "${{") {
-					return fmt.Errorf("%s: jobs.%s.name: dynamic or non-scalar job names are not permitted", path, jobName)
+				if node.Kind != yaml.ScalarNode {
+					return fmt.Errorf("%s: jobs.%s.name must be a scalar", path, jobName)
 				}
-				checkName = node.Value
+				switch {
+				case path == settingsPRWorkflowPath && jobName == "validate" && node.Value == validationCheckName:
+					checkName = settingsValidateCheckName
+				case path == ".github/workflows/pr.yml" && jobName == "verify" && node.Value == screeningCheckName:
+					checkName = "screening"
+				case strings.Contains(node.Value, "${{"):
+					return fmt.Errorf("%s: jobs.%s.name may not dynamically choose a reserved check name", path, jobName)
+				default:
+					checkName = node.Value
+				}
 			}
 			if jobName == settingsValidateCheckName || checkName == settingsValidateCheckName {
-				if path != settingsPRWorkflowPath || jobName != settingsValidateCheckName || checkName != settingsValidateCheckName {
+				if path != settingsPRWorkflowPath || jobName != "validate" || checkName != settingsValidateCheckName {
 					return fmt.Errorf("%s: jobs.%s: check name %q is reserved", path, jobName, settingsValidateCheckName)
 				}
 				planChecks++
@@ -115,10 +128,18 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if jobName == "settings-validate" || checkName == "settings-validate" || jobName == settingsGuardCheckName || checkName == settingsGuardCheckName || jobName == "settings-plan" || checkName == "settings-plan" {
 				return fmt.Errorf("%s: retired check %q must not be recreated", path, checkName)
 			}
-			// Called workflows can select this repository's Environment and
-			// inherit its secrets. Reject calls rather than trusting unseen code.
-			if _, reusable := job["uses"]; reusable {
-				return fmt.Errorf("%s: jobs.%s: reusable workflow jobs are not permitted", path, jobName)
+			if target := job["uses"]; target != nil {
+				const candidate = ".github/workflows/candidate.yml"
+				_, tracked := workflows[candidate]
+				allowedCaller := path == ".github/workflows/push.yml" || path == ".github/workflows/release.yml"
+				if !allowedCaller || jobName != "candidate" || target.Kind != yaml.ScalarNode ||
+					target.Value != "./"+candidate || !tracked || job["secrets"] != nil || job["environment"] != nil {
+					return fmt.Errorf("%s: jobs.%s: only the reviewed local candidate workflow can be called without secrets", path, jobName)
+				}
+				permissions, err := settingsYAMLMap(job["permissions"])
+				if err != nil || len(permissions) != 1 || permissions["contents"] == nil || permissions["contents"].Value != "read" {
+					return fmt.Errorf("%s: jobs.%s: candidate call requires contents: read", path, jobName)
+				}
 			}
 			environment, present := job["environment"]
 			if !present {
@@ -156,7 +177,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	return nil
 }
 
-// The default pull_request activities validate all updates to the merge candidate.
+// Retargeting a PR changes its merge candidate and must rerun configuration validation.
 func checkSettingsPRTrigger(node *yaml.Node) error {
 	if node == nil {
 		return fmt.Errorf("expected pull_request to main")
@@ -173,8 +194,10 @@ func checkSettingsPRTrigger(node *yaml.Node) error {
 	if err != nil {
 		return err
 	}
-	if len(filters) != 1 || filters["branches"] == nil {
-		return fmt.Errorf("required PR validation must use default event types and main only")
+	var types []string
+	if len(filters) != 2 || filters["branches"] == nil || filters["types"] == nil || filters["types"].Decode(&types) != nil ||
+		!slices.Equal(types, []string{"opened", "synchronize", "reopened", "edited"}) {
+		return fmt.Errorf("required PR validation must run for all candidate changes, including retargets")
 	}
 	branches := filters["branches"]
 	if branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||

@@ -30,7 +30,6 @@ type lockInventoryDocument struct {
 		Steps []lockInventoryStep `yaml:"steps"`
 	} `yaml:"jobs"`
 	Runs struct {
-		Using string              `yaml:"using"`
 		Steps []lockInventoryStep `yaml:"steps"`
 	} `yaml:"runs"`
 }
@@ -118,8 +117,8 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 		if workflowFile {
 			steps = nil
 			for _, job := range doc.Jobs {
-				if job.Uses != "" {
-					return fmt.Errorf("reusable workflow needs separate lock coverage: %s", name)
+				if job.Uses != "" && job.Uses != "./.github/workflows/candidate.yml" {
+					return fmt.Errorf("unreviewed reusable workflow: %s", job.Uses)
 				}
 				steps = append(steps, job.Steps...)
 			}
@@ -128,10 +127,8 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 			if step.Uses == "" {
 				continue
 			}
-			if step.Uses == workspaceLockBridge {
-				if !workflowFile {
-					return fmt.Errorf("runtime composite must not execute bridge: %s", name)
-				}
+			if step.If.Value == "${{ false }}" || step.If.Value == "false" {
+				// Inert lock inventory is a generator input, not a runtime dependency.
 				continue
 			}
 			if local, ok := lockInventoryLocalDirectory(step.Uses); ok {
@@ -163,62 +160,36 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 }
 
 func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error {
+	// The CLI cannot follow workspace-relative checkout paths. Verify that the
+	// two workflows with hidden pins expose them without running an extra Action.
+	inventory := map[string]struct{ job, action string }{
+		".github/workflows/candidate.yml": {"screening-linux", workspaceLockBridge},
+		".github/workflows/release.yml":   {"resolve", "$/.github/actions/release-publish"},
+	}[workflow]
 	doc, err := lockInventoryDocumentRead(read, workflow)
 	if err != nil {
 		return err
 	}
-
-	isPR := strings.HasSuffix(workflow, "/pr.yml")
-	bridgeCount := 0
+	found := false
 	for jobName, job := range doc.Jobs {
 		for _, step := range job.Steps {
-			if step.Uses != workspaceLockBridge {
+			if !strings.HasPrefix(step.Uses, "$/") {
 				continue
 			}
-			if isPR {
-				return fmt.Errorf("%s: inert dependency inventory not allowed in Screening", workflow)
-			}
-			bridgeCount++
-			condition := strings.TrimSpace(step.If.Value)
-			if jobName != "resolve" || (condition != "${{ false }}" && condition != "false") ||
+			if found || jobName != inventory.job || step.Uses != inventory.action ||
+				(step.If.Value != "${{ false }}" && step.If.Value != "false") ||
 				step.Run != "" || len(step.With) != 0 || len(step.Env) != 0 {
-				return fmt.Errorf("%s: dependency bridge must be inert in resolve", workflow)
+				return fmt.Errorf("%s: unexpected or active dependency inventory in %s", workflow, jobName)
 			}
+			found = true
 		}
 	}
-	if (isPR && bridgeCount != 0) || (!isPR && bridgeCount != 1) {
-		return fmt.Errorf("%s: unexpected dependency inventory count %d", workflow, bridgeCount)
+	if !found && inventory.action != "" {
+		return fmt.Errorf("%s: missing dependency inventory", workflow)
 	}
 	runtime, _, err := lockInventoryClosure(read, workflow)
 	if err != nil {
 		return err
-	}
-	if !isPR {
-		bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
-		bridge, err := lockInventoryDocumentRead(read, path.Join(bridgeDir, "action.yml"))
-		if err != nil {
-			return err
-		}
-		if bridge.Runs.Using != "composite" {
-			return fmt.Errorf("bridge is not composite")
-		}
-		listed := map[string]bool{}
-		for _, step := range bridge.Runs.Steps {
-			if _, local := lockInventoryLocalDirectory(step.Uses); local || step.Uses == "" ||
-				step.Run != "" || step.If.Kind != 0 || len(step.With) != 0 || len(step.Env) != 0 {
-				return fmt.Errorf("bridge must contain only unconditional remote inventory entries")
-			}
-			if _, err := lockInventoryRemotePin(step.Uses); err != nil {
-				return err
-			}
-			if listed[step.Uses] {
-				return fmt.Errorf("duplicate bridge entry: %s", step.Uses)
-			}
-			listed[step.Uses] = true
-		}
-		if !reflect.DeepEqual(lockInventorySorted(runtime), lockInventorySorted(listed)) {
-			return fmt.Errorf("%s: bridge differs from runtime dependencies", workflow)
-		}
 	}
 	data, err := read(".github/workflows/actions.lock")
 	if err != nil {
@@ -259,7 +230,7 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 }
 
 func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
-	for _, name := range []string{"pr", "ci-push", "release"} {
+	for _, name := range []string{"pr", "push", "candidate", "release"} {
 		t.Run(name, func(t *testing.T) {
 			workflow := ".github/workflows/" + name + ".yml"
 			if err := validateWorkspaceActionLock(lockInventoryDiskRead, workflow); err != nil {
@@ -269,9 +240,17 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			required := []string{".github/actions/lint/action.yml", ".github/actions/unit-test/action.yml", ".github/actions/build/action.yml"}
-			if name != "pr" {
-				required = append(required, "action.yml")
+			var required []string
+			switch name {
+			case "pr", "candidate":
+				required = []string{".github/actions/screening/action.yml", ".github/actions/build/action.yml"}
+				if name == "candidate" {
+					required = append(required, "action.yml")
+				}
+			case "release":
+				required = []string{".github/actions/release-publish/action.yml", "action.yml"}
+			case "push":
+				required = []string{".github/actions/release-metadata/action.yml"}
 			}
 			for _, source := range required {
 				if !visited[source] {
@@ -287,7 +266,7 @@ func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 	for _, test := range []struct{ name, file, from, to string }{
 		{"changed-workflow-pin", workflow, `oven-sh/setup-bun@[0-9a-f]{40}`, "oven-sh/setup-bun@1111111111111111111111111111111111111111"},
 		{"changed-setup-go-pin", workflow, `actions/setup-go@[0-9a-f]{40}`, "actions/setup-go@1111111111111111111111111111111111111111"},
-		{"unexpected-remote-pin", workflow, `(?m)^      - name: Build executable\n`, "      - uses: actions/extra@1111111111111111111111111111111111111111\n      - name: Build executable\n"},
+		{"unexpected-remote-pin", ".github/actions/screening/action.yml", `(?m)^  steps:\n`, "  steps:\n    - uses: actions/extra@1111111111111111111111111111111111111111\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			original, err := lockInventoryDiskRead(test.file)

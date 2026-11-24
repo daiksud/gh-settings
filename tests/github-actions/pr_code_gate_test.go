@@ -1,76 +1,38 @@
 package githubactions
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
-
-	"go.yaml.in/yaml/v4"
 )
 
 func TestPRWorkflowScreeningCheck(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join(root(), ".github/workflows/pr.yml"))
-	if err != nil {
-		t.Fatal(err)
+	w, source := readWorkflow(t, "../../.github/workflows/pr.yml")
+	pullRequest := w.On["pull_request"]
+	var filters map[string][]string
+	if w.Name != "pr" || len(w.On) != 1 || pullRequest.Decode(&filters) != nil ||
+		!reflect.DeepEqual(filters, map[string][]string{"types": {"opened", "synchronize", "reopened", "edited"}}) {
+		t.Fatal("PR screening must run for candidate updates, including base changes")
 	}
-	var w struct {
-		Name        string               `yaml:"name"`
-		On          map[string]yaml.Node `yaml:"on"`
-		Permissions map[string]string    `yaml:"permissions"`
-		Jobs        map[string]yaml.Node `yaml:"jobs"`
-		Concurrency struct {
-			Group  string `yaml:"group"`
-			Cancel bool   `yaml:"cancel-in-progress"`
-		} `yaml:"concurrency"`
+	check := w.Jobs["verify"]
+	if len(w.Jobs) != 1 || len(w.Permissions) != 0 || check.Name != screeningCheckName || check.If != candidateEventCondition ||
+		check.Needs != "" || check.Continue || check.Environment != "" || check.Runner != "ubuntu-slim" ||
+		!reflect.DeepEqual(check.Permissions, map[string]string{"contents": "read"}) {
+		t.Fatal("the read-only screening check must report its result for each candidate")
 	}
-	if err := yaml.Unmarshal(source, &w); err != nil {
-		t.Fatal(err)
+	if w.Concurrency.Group != "" || check.Concurrency.Group != "pr-${{ github.event.pull_request.number }}" || !check.Concurrency.Cancel {
+		t.Fatal("only a new candidate may cancel active screening")
 	}
-	if w.Name != "pr" || len(w.On) != 1 || w.On["pull_request"].Tag != "!!null" {
-		t.Fatal("pr must use default pull_request events without filters or extra event types")
-	}
-	if w.Concurrency.Group != "pr-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
-		t.Fatal("each PR must validate only its current candidate")
-	}
-	if len(w.Jobs) != 1 || len(w.Permissions) != 0 {
-		t.Fatal("PR validation must contain only screening with no workflow write permissions")
-	}
-	if strings.Contains(string(source), "/statuses/") || strings.Contains(string(source), "gh pr ready") {
-		t.Fatal("screening must use its native job result without publishing statuses or changing PR state")
-	}
-	var check struct {
-		Name        string            `yaml:"name"`
-		Needs       yaml.Node         `yaml:"needs"`
-		If          string            `yaml:"if"`
-		Runner      string            `yaml:"runs-on"`
-		Strategy    yaml.Node         `yaml:"strategy"`
-		Continue    bool              `yaml:"continue-on-error"`
-		Permissions map[string]string `yaml:"permissions"`
-		Steps       []step            `yaml:"steps"`
-	}
-	checkNode, ok := w.Jobs["screening"]
-	if !ok {
-		t.Fatal("the native required check must be named screening")
-	}
-	if err := checkNode.Decode(&check); err != nil {
-		t.Fatal(err)
-	}
-	if check.Name != "" || check.Needs.Kind != 0 || check.If != "" || check.Strategy.Kind != 0 || check.Continue ||
-		check.Runner != "ubuntu-slim" || !reflect.DeepEqual(check.Permissions, map[string]string{"contents": "read"}) {
-		t.Fatal("screening must run unconditionally as one read-only job and preserve failures")
+	if strings.Contains(source, "/statuses/") || strings.Contains(source, "gh pr ready") {
+		t.Fatal("PR screening cannot publish a separate status or change the PR state")
 	}
 	for _, s := range check.Steps {
-		if s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
-			t.Fatalf("screening must not supply privileged credentials: %+v", s)
-		}
-		if s.If != "" || s.Continue {
-			t.Fatalf("source checks must preserve failures: %+v", s)
+		if s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" || s.If != "" || s.Continue {
+			t.Fatalf("PR checks must preserve failures and isolate credentials: %+v", s)
 		}
 	}
 	if len(check.Steps) == 0 || !strings.HasPrefix(check.Steps[0].Uses, "actions/checkout@") ||
-		len(check.Steps[0].With) != 0 {
-		t.Fatal("screening must check out the pull request candidate using default inputs")
+		!reflect.DeepEqual(check.Steps[0].With, map[string]string{"persist-credentials": "false"}) {
+		t.Fatal("screening must check out the merge candidate without persisting credentials")
 	}
 }

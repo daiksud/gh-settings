@@ -1,0 +1,127 @@
+name: candidate
+on:
+  workflow_call:
+    inputs:
+      source-sha:
+        description: Exact main commit to build and inspect.
+        type: string
+        required: true
+      version:
+        description: Resolved version to embed before inspection.
+        type: string
+        required: true
+    outputs:
+      linux-id:
+        description: Linux candidate artifact ID.
+        value: ${{ jobs.screening-linux.outputs.artifact-id }}
+      linux-digest:
+        description: Linux candidate archive SHA-256.
+        value: ${{ jobs.screening-linux.outputs.artifact-digest }}
+      macos-id:
+        description: macOS candidate artifact ID.
+        value: ${{ jobs.screening-macos.outputs.artifact-id }}
+      macos-digest:
+        description: macOS candidate archive SHA-256.
+        value: ${{ jobs.screening-macos.outputs.artifact-digest }}
+permissions: {}
+defaults:
+  run:
+    shell: bash
+jobs:
+  screening-linux:
+    runs-on: ubuntu-slim
+    timeout-minutes: 20
+    permissions: {contents: read}
+    outputs:
+      artifact-id: ${{ steps.package.outputs.artifact-id }}
+      artifact-digest: ${{ steps.package.outputs.artifact-digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      # Include dependencies of the frozen workspace composites in actions.lock.
+      - if: ${{ false }}
+        uses: $/.github/actions/lock-workspace-dependencies
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Screen and build the Linux CLI
+        id: build
+        uses: ./.github/actions/screening
+        with:
+          version: ${{ inputs.version }}
+      - name: Package the Linux candidate
+        id: package
+        uses: ./.github/actions/package-candidate
+        with:
+          target: linux-amd64
+          version: ${{ inputs.version }}
+          source-sha: ${{ inputs.source-sha }}
+          binary-path: ${{ steps.build.outputs.binary-path }}
+  screening-macos:
+    runs-on: macos-15
+    timeout-minutes: 20
+    permissions: {contents: read}
+    outputs:
+      artifact-id: ${{ steps.package.outputs.artifact-id }}
+      artifact-digest: ${{ steps.package.outputs.artifact-digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Build the native macOS CLI
+        id: build
+        uses: ./.github/actions/build
+        with:
+          version: ${{ inputs.version }}
+      - name: Package the macOS candidate
+        id: package
+        uses: ./.github/actions/package-candidate
+        with:
+          target: darwin-arm64
+          version: ${{ inputs.version }}
+          source-sha: ${{ inputs.source-sha }}
+          binary-path: ${{ steps.build.outputs.binary-path }}
+  inspection:
+    needs: [screening-linux, screening-macos]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions: {contents: read}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-amd64
+            runner: ubuntu-slim
+            artifact-id: ${{ needs.screening-linux.outputs.artifact-id }}
+          - target: darwin-arm64
+            runner: macos-15
+            artifact-id: ${{ needs.screening-macos.outputs.artifact-id }}
+          - target: candidate-action
+            runner: ubuntu-24.04
+            artifact-id: ${{ needs.screening-linux.outputs.artifact-id }}
+    steps:
+      - name: Check out the producer separately from the consumer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-sha }}
+          path: .action
+          persist-credentials: false
+      - name: Inspect the transferred candidate
+        uses: ./.action/.github/actions/release-acceptance
+        with:
+          target: ${{ matrix.target }}
+          version: ${{ inputs.version }}
+          source-sha: ${{ inputs.source-sha }}
+          artifact-id: ${{ matrix.artifact-id }}

@@ -1,0 +1,70 @@
+name: push
+on:
+  push:
+    branches: [main]
+permissions: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: push-${{ github.sha }}
+  cancel-in-progress: true
+jobs:
+  resolve:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions: {contents: read}
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - name: Checkout frozen main and history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve the candidate version for this commit
+        id: metadata
+        uses: ./.github/actions/release-metadata
+        with:
+          source-sha: ${{ github.sha }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+  candidate:
+    needs: resolve
+    permissions: {contents: read}
+    uses: ./.github/workflows/candidate.yml
+    with:
+      source-sha: ${{ github.sha }}
+      version: ${{ needs.resolve.outputs.version }}
+  deployment:
+    needs: [resolve, candidate]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions: {contents: read}
+    steps:
+      - name: Require successful screening and inspection
+        env:
+          RESOLUTION: ${{ needs.resolve.result }}
+          CANDIDATE: ${{ needs.candidate.result }}
+        run: '[[ "$RESOLUTION" == success && "$CANDIDATE" == success ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Record the inspected artifact IDs and archive digests
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          LINUX_ID: ${{ needs.candidate.outputs.linux-id }}
+          MACOS_ID: ${{ needs.candidate.outputs.macos-id }}
+          LINUX_DIGEST: ${{ needs.candidate.outputs.linux-digest }}
+          MACOS_DIGEST: ${{ needs.candidate.outputs.macos-digest }}
+        run: python3 .github/scripts/deployment-manifest.py > "$RUNNER_TEMP/deployment.json"
+      - name: Save the deployment record
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deployment-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/deployment.json
+          if-no-files-found: error
+          retention-days: 7
