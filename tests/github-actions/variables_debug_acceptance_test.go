@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -19,12 +18,10 @@ import (
 
 // Exercise the shipped composite action and its binary against a fake GitHub API.
 func TestBuiltCompositeVariablesTransportPrivacy(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
 	f.base["GITHUB_ACTIONS"] = "true"
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 	f.write(filepath.Join(f.caller, ".github/settings.yml"), `version: daiksud/gh-settings@v0
 repository:
   settings:
@@ -140,7 +137,7 @@ repository:
 		f.base[key] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	options := map[string]string{"github.action_ref": version, "inputs.prune": "actions-variables,agents-variables,environment-variables", "inputs.plan-reporting": "status-only", "GH_DEBUG": "api"}
+	options := map[string]string{"inputs.prune": "actions-variables,agents-variables,environment-variables", "inputs.plan-reporting": "status-only", "GH_DEBUG": "api"}
 	check := func(r compositeResult) {
 		t.Helper()
 		if r.status != 0 {

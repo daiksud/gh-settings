@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,13 +16,11 @@ import (
 )
 
 func TestBuiltCompositeRulesetCoverage(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "changed", "readback drift"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			const input = "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    rulesets:\n      - id: 7\n        ruleset_name: PRIVATE_COVERAGE_RULE\n        enforcement_status: active\n        target_branches: {include_default_branch: true}\n        rules:\n          restrict_code_coverage: {minimum_line_coverage_percentage: 90.25}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -98,7 +95,7 @@ func TestBuiltCompositeRulesetCoverage(t *testing.T) {
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			for _, mode := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "coverage-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": mode, "GH_DEBUG": "api"})
+				result := f.run(t, "plan", "coverage-fixture-token", map[string]string{"inputs.plan-reporting": mode, "GH_DEBUG": "api"})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -115,7 +112,7 @@ func TestBuiltCompositeRulesetCoverage(t *testing.T) {
 			}
 			operations = nil
 			mu.Unlock()
-			result := f.run(t, "apply", "coverage-fixture-token", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "coverage-fixture-token", nil)
 			success := scenario != "readback drift"
 			if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 				t.Fatal(result)
@@ -124,7 +121,7 @@ func TestBuiltCompositeRulesetCoverage(t *testing.T) {
 				t.Fatal("readback uncertainty lost", result)
 			}
 			if success {
-				again := f.run(t, "apply", "coverage-fixture-token", map[string]string{"github.action_ref": version})
+				again := f.run(t, "apply", "coverage-fixture-token", nil)
 				if again.status != 0 {
 					t.Fatal(again)
 				}

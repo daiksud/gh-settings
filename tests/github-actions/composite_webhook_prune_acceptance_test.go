@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -18,14 +17,12 @@ import (
 )
 
 func TestBuiltCompositeWebhookPrune(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"empty-retention", "update-before-delete", "preflight-unknown", "partial-delete", "absence-denied"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			list := "[]"
 			if scenario == "update-before-delete" {
 				list = "[{id: 7, content_type: application/x-www-form-urlencoded}]"
@@ -131,7 +128,7 @@ func TestBuiltCompositeWebhookPrune(t *testing.T) {
 				f.base[k] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			options := map[string]string{"github.action_ref": version, "inputs.prune": "webhooks"}
+			options := map[string]string{"inputs.prune": "webhooks"}
 			for _, reporting := range []string{"detailed", "status-only"} {
 				options["inputs.plan-reporting"] = reporting
 				plan := f.run(t, "plan", "webhook-prune-installation-fixture-token", options)

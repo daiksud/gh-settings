@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,20 +16,18 @@ import (
 )
 
 func TestBuiltCompositeWebhookPruneMixed(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"success", "delete-failure"} {
 		t.Run(scenario, func(t *testing.T) {
-			testCompositeWebhookPruneMixed(t, product, version, scenario)
+			testCompositeWebhookPruneMixed(t, product, scenario)
 		})
 	}
 }
 
-func testCompositeWebhookPruneMixed(t *testing.T, product []byte, version, scenario string) {
-	f := newCompositeFixture(t)
+func testCompositeWebhookPruneMixed(t *testing.T, product compositeProduct, scenario string) {
+	f := product.newFixture(t)
 	f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 	input := "version: daiksud/gh-settings@v0\nrepository: {settings: {webhooks: [{id: 7, content_type: application/x-www-form-urlencoded, ssl_verification: false, active: false, events: [push]}, {payload_url: https://created.example/hook, content_type: application/json, ssl_verification: false, active: false, events: [push]}]}}\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
 	f.write(path, input)
@@ -130,7 +127,7 @@ func testCompositeWebhookPruneMixed(t *testing.T, product []byte, version, scena
 		f.base[k] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	opts := map[string]string{"github.action_ref": version, "inputs.prune": "webhooks"}
+	opts := map[string]string{"inputs.prune": "webhooks"}
 	observedText := func(result compositeResult) string {
 		var text strings.Builder
 		text.WriteString(result.log)
@@ -145,7 +142,7 @@ func testCompositeWebhookPruneMixed(t *testing.T, product []byte, version, scena
 	if plan.status != 0 || !strings.Contains(plan.summary, "removed.example") || !strings.Contains(plan.summary, "automatic ping") || !strings.Contains(plan.summary, "opaque Secret") || !strings.Contains(plan.summary, "man-in-the-middle") || strings.Contains(observedText(plan), "PRIVATE_MIXED") {
 		t.Fatal(plan)
 	}
-	private := f.run(t, "plan", "mixed-fixture", map[string]string{"github.action_ref": version, "inputs.prune": "all", "inputs.plan-reporting": "status-only"})
+	private := f.run(t, "plan", "mixed-fixture", map[string]string{"inputs.prune": "all", "inputs.plan-reporting": "status-only"})
 	if private.status != 0 || private.outputs["plan-outcome"] != "changed" || len(private.remainingReports) != 0 || strings.Contains(observedText(private), "removed.example") || strings.Contains(observedText(private), "created.example") || strings.Contains(observedText(private), "PRIVATE_MIXED") || strings.Contains(observedText(private), "ssl_verification") {
 		t.Fatal(private)
 	}

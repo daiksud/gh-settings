@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"flag"
 	"fmt"
 	"io"
@@ -21,38 +20,34 @@ import (
 
 var candidateBinary = flag.String("binary", "", "already-built release-version gh-settings executable for the real composite")
 
-func suppliedCompositeProduct(t *testing.T) ([]byte, string) {
+func suppliedCompositeProduct(t *testing.T) compositeProduct {
 	t.Helper()
 	if *candidateBinary == "" {
 		t.Fatal("composite acceptance requires -binary PATH with a release-version binary")
 	}
-	product, err := os.ReadFile(*candidateBinary)
+	data, err := os.ReadFile(*candidateBinary)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Artifact transfer can omit executable bits. Only execute our owned copy;
 	// the upstream candidate gate has already checked the supplied bytes.
-	copyPath := filepath.Join(t.TempDir(), "gh-settings")
-	if err := os.WriteFile(copyPath, product, 0700); err != nil {
-		t.Fatal(err)
-	}
-	versionOutput, err := exec.Command(copyPath, "--version").Output()
+	product := stageCompositeProduct(t, data)
+	versionOutput, err := exec.Command(product.path, "--version").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return product, strings.TrimSpace(strings.TrimPrefix(string(versionOutput), "gh-settings "))
+	product.version = strings.TrimSpace(strings.TrimPrefix(string(versionOutput), "gh-settings "))
+	return product
 }
 
 // The real product is supplied, not rebuilt or replaced by the shell mock. Only
 // its download is bounded; the actual installer verifies its checksum/version.
 func TestBuiltCompositeExport(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"first and repeated export", "invalid file", "settings symlink", "directory symlink", "concurrent edit", "destination write failure", "output failure after save"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			const edited = "version: daiksud/gh-settings@v0\nrepository: {about: {description: concurrent}}\n"
 			var beforeRead func()
@@ -89,14 +84,14 @@ func TestBuiltCompositeExport(t *testing.T) {
 			}
 			initial, _ := os.ReadFile(path)
 			reads := startCompositeExportAPI(t, f, beforeRead)
-			extra := map[string]string{"github.action_ref": version, "GH_DEBUG": "api", "GITHUB_TOKEN": "ambient-canary"}
+			extra := map[string]string{"GH_DEBUG": "api", "GITHUB_TOKEN": "ambient-canary"}
 			if scenario == "output failure after save" {
 				extra["OUTPUT_DIRECTORY"] = "1"
 			}
 			result := f.run(t, "export", "export-fixture-read", extra)
 			success := scenario == "first and repeated export"
 			if success {
-				want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest, "config-path": ".github/settings.yml"}
+				want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": product.version, "cli-sha256": f.digest, "config-path": ".github/settings.yml"}
 				if result.status != 0 || !reflect.DeepEqual(result.outputs, want) {
 					t.Fatalf("real export failed: %+v", result)
 				}
@@ -198,12 +193,10 @@ func startCompositeExportAPI(t *testing.T, f *compositeFixture, beforeRead func(
 // Execute the candidate's actual preparation/API/assertion scripts locally with
 // the supplied product. Hosted uses expansion remains a separate CI observation.
 func TestBuiltCandidateExportFixture(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
 	f.git("remote", "set-url", "origin", "https://github.com/example-owner/settings-fixture.git")
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 	if err := os.Symlink(root(), filepath.Join(f.caller, ".action")); err != nil {
 		t.Fatal(err)
 	}
@@ -241,11 +234,11 @@ func TestBuiltCandidateExportFixture(t *testing.T) {
 	}
 	t.Cleanup(func() { run("stop") })
 	f.base["ACTION_SHA"] = f.git("-C", root(), "rev-parse", "HEAD")
-	f.base["EXPECTED_CLI_VERSION"], f.base["EXPECTED_CLI_SHA256"] = version, f.digest
+	f.base["EXPECTED_CLI_VERSION"], f.base["EXPECTED_CLI_SHA256"] = product.version, f.digest
 	for _, scenario := range []string{"first", "repeat", "invalid", "symlink"} {
 		run("prepare-export", scenario)
 		f.sha = f.git("rev-parse", "HEAD")
-		result := f.run(t, "export", "export-fixture-read", map[string]string{"github.action_ref": version, "GH_DEBUG": "api"})
+		result := f.run(t, "export", "export-fixture-read", map[string]string{"GH_DEBUG": "api"})
 		if strings.Contains(result.log+result.summary+fmt.Sprint(result.outputs), "CANARY-local-export-value") {
 			t.Fatal("candidate export leaked its fixture variable")
 		}

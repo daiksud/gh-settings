@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,14 +18,12 @@ import (
 // The supplied product runs the real composite with a local API; this is not
 // evidence that GitHub permits these reads on an archived repository.
 func TestBuiltCompositeArchivedRunners(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "empty", "fold and order", "different", "missing", "denied", "incomplete", "duplicate", "duplicate JSON", "wrong id", "label count", "detail disagreement", "repo drift", "owner drift", "archive drift", "prune", "mixed", "export flow"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			desired := `["gpu", "linux-build"]`
 			if scenario == "empty" {
 				desired = `[]`
@@ -155,7 +152,7 @@ func TestBuiltCompositeArchivedRunners(t *testing.T) {
 				f.base[name] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			opts := map[string]string{"github.action_ref": version, "GH_DEBUG": "api"}
+			opts := map[string]string{"GH_DEBUG": "api"}
 			if scenario == "prune" {
 				opts["inputs.prune"] = "runners"
 			}

@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,17 +14,15 @@ import (
 )
 
 func TestBuiltCompositeVariableInventoryAmbiguity(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	const canary = "PRIVATE_VARIABLE_INVENTORY_CANARY"
 	for _, family := range []string{"actions", "agents", "environment"} {
 		for _, stage := range []string{"preflight", "readback"} {
 			for _, ambiguity := range []string{"duplicate", "alias", "next", "prev-only"} {
 				t.Run(family+"/"+stage+"/"+ambiguity, func(t *testing.T) {
-					f := newCompositeFixture(t)
+					f := product.newFixture(t)
 					f.base["GITHUB_ACTIONS"] = "true"
-					f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-					f.write(f.base["MOCK_ASSET"], string(product))
-					f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 					base, scope := "/repos/owner/config/"+family+"/variables", family+"-variables"
 					settings := family + ": {variables: []}"
 					if family == "environment" {
@@ -100,7 +97,7 @@ func TestBuiltCompositeVariableInventoryAmbiguity(t *testing.T) {
 						f.base[key] = "http://127.0.0.1:1"
 					}
 					f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-					result := f.run(t, "apply", "variable-fixture", map[string]string{"github.action_ref": version, "inputs.prune": scope, "GH_DEBUG": "api"})
+					result := f.run(t, "apply", "variable-fixture", map[string]string{"inputs.prune": scope, "GH_DEBUG": "api"})
 					output := result.log + result.summary + result.api + result.calls + fmt.Sprint(result.outputs)
 					if strings.Contains(output, canary) {
 						t.Fatal("variable value leaked")

@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,14 +16,12 @@ import (
 )
 
 func TestBuiltCompositeWebhooks(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"content", "url", "matching", "readback-failure", "HTTP-error", "malformed", "export"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			entry := "{id: 7, content_type: application/x-www-form-urlencoded}"
 			if scenario == "url" {
 				entry = "{id: 7, payload_url: 'https://selected.example/next%2f?q=%2F'}"
@@ -115,7 +112,7 @@ func TestBuiltCompositeWebhooks(t *testing.T) {
 				f.base[k] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			options := map[string]string{"github.action_ref": version}
+			options := map[string]string{}
 			if scenario == "export" {
 				os.Remove(path)
 				r := f.run(t, "export", "webhook-installation-fixture-token", options)

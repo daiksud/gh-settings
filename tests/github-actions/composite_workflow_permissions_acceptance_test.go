@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,13 +16,11 @@ import (
 )
 
 func TestBuiltCompositeWorkflowPermissions(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "changed", "matching declaration drift", "denied readback"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			const input = "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      general:\n        workflow_permissions:\n          default_permissions: read_repository_contents_and_packages_permissions\n          allow_github_actions_to_create_and_approve_pull_requests: true\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -88,7 +85,7 @@ func TestBuiltCompositeWorkflowPermissions(t *testing.T) {
 				attempts = 2
 			}
 			for i := 0; i < attempts; i++ {
-				result := f.run(t, "apply", "workflow-fixture-write", map[string]string{"github.action_ref": version})
+				result := f.run(t, "apply", "workflow-fixture-write", nil)
 				if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 					t.Fatalf("incorrect Action success publication: %+v", result)
 				}

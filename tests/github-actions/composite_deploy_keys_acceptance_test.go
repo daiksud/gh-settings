@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,12 +15,10 @@ import (
 )
 
 func TestBuiltCompositeDeployKeys(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
 	f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 	const publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB"
 	const input = "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    deploy_keys:\n      - title: deployment-title-canary\n        key: " + publicKey + " source-comment\n        allow_write_access: true\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
@@ -98,22 +95,21 @@ func TestBuiltCompositeDeployKeys(t *testing.T) {
 		f.base[k] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	extra := map[string]string{"github.action_ref": version}
-	planned := f.run(t, "plan", "deploy-key-fixture-token", extra)
+	planned := f.run(t, "plan", "deploy-key-fixture-token", nil)
 	if planned.status != 0 || !strings.Contains(planned.summary, "SHA256:") || !strings.Contains(planned.summary, "allow_write_access=true") || strings.Contains(planned.summary, publicKey) || strings.Contains(planned.log, "PRIVATE") {
 		t.Fatal(planned)
 	}
-	hidden := f.run(t, "plan", "deploy-key-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
+	hidden := f.run(t, "plan", "deploy-key-fixture-token", map[string]string{"inputs.plan-reporting": "status-only"})
 	if hidden.status != 0 || strings.Contains(hidden.summary+hidden.log, "deployment-title-canary") || strings.Contains(hidden.summary+hidden.log, "SHA256:") || len(hidden.remainingReports) != 0 {
 		t.Fatal(hidden)
 	}
-	created := f.run(t, "apply", "deploy-key-fixture-token", extra)
+	created := f.run(t, "apply", "deploy-key-fixture-token", nil)
 	data, _ := os.ReadFile(path)
 	if created.status != 0 || string(data) != input || created.outputs["config-sha"] != f.sha || created.outputs["target"] != "owner/config" || strings.Contains(created.log, "PRIVATE") || !strings.Contains(created.log, "SHA256:") {
 		t.Fatal(created, string(data))
 	}
 	// Action does not bind. An IDless repeated apply must collide, not reinvite or adopt.
-	collision := f.run(t, "apply", "deploy-key-fixture-token", extra)
+	collision := f.run(t, "apply", "deploy-key-fixture-token", nil)
 	if collision.status == 0 || len(collision.outputs) != 0 {
 		t.Fatal(collision)
 	}
@@ -123,7 +119,7 @@ func TestBuiltCompositeDeployKeys(t *testing.T) {
 	f.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: bind verified deploy key")
 	f.sha = f.git("rev-parse", "HEAD")
 	for i := 0; i < 2; i++ {
-		matching := f.run(t, "apply", "deploy-key-fixture-token", extra)
+		matching := f.run(t, "apply", "deploy-key-fixture-token", nil)
 		if matching.status != 0 {
 			t.Fatal(matching)
 		}
@@ -133,7 +129,7 @@ func TestBuiltCompositeDeployKeys(t *testing.T) {
 	f.git("add", ".github/settings.yml")
 	f.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: explicit deploy key deletion")
 	f.sha = f.git("rev-parse", "HEAD")
-	ordinary := f.run(t, "apply", "deploy-key-fixture-token", extra)
+	ordinary := f.run(t, "apply", "deploy-key-fixture-token", nil)
 	if ordinary.status != 0 {
 		t.Fatal(ordinary)
 	}
@@ -143,7 +139,7 @@ func TestBuiltCompositeDeployKeys(t *testing.T) {
 	}
 	fail = true
 	mu.Unlock()
-	failed := f.run(t, "apply", "deploy-key-fixture-token", map[string]string{"github.action_ref": version, "inputs.prune": "deploy-keys"})
+	failed := f.run(t, "apply", "deploy-key-fixture-token", map[string]string{"inputs.prune": "deploy-keys"})
 	data, _ = os.ReadFile(path)
 	if failed.status == 0 || len(failed.outputs) != 0 || string(data) != empty || strings.Contains(failed.log, "PRIVATE") || !strings.Contains(failed.log, "unconfirmed") {
 		t.Fatal(failed, string(data))

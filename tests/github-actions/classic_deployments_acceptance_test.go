@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,13 +16,11 @@ import (
 )
 
 func TestBuiltCompositeClassicDeployments(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "enable", "disable", "empty", "replaced-reference", "reference-before-graphql", "reference-after-graphql", "reference-before-http", "reference-after-http", "reference-before-transport", "reference-after-transport", "reference-before-member", "reference-after-member"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			desired := scenario != "disable"
 			group := "{enabled: false}"
 			if desired {
@@ -197,7 +194,7 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			for _, mode := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "deployments-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": mode, "GH_DEBUG": "api"})
+				result := f.run(t, "plan", "deployments-fixture-token", map[string]string{"inputs.plan-reporting": mode, "GH_DEBUG": "api"})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -217,7 +214,7 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 			if plannedWrites != 0 {
 				t.Fatal("plan mutated", plannedWrites)
 			}
-			result := f.run(t, "apply", "deployments-fixture-token", map[string]string{"github.action_ref": version, "GH_DEBUG": "api"})
+			result := f.run(t, "apply", "deployments-fixture-token", map[string]string{"GH_DEBUG": "api"})
 			success := scenario != "replaced-reference" && !strings.HasPrefix(scenario, "reference-")
 			beforeFailure := strings.Contains(scenario, "-before-")
 			if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
@@ -230,7 +227,7 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 				t.Fatal("uncertain progress lost", result)
 			}
 			if success {
-				if again := f.run(t, "apply", "deployments-fixture-token", map[string]string{"github.action_ref": version}); again.status != 0 {
+				if again := f.run(t, "apply", "deployments-fixture-token", nil); again.status != 0 {
 					t.Fatal(again)
 				}
 			}

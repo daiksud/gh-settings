@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestBuiltCompositeEnvironmentVariableParentIdentityAmbiguity(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	const value = "composite-identity-private-canary"
 	for _, tc := range []struct {
 		name, body string
@@ -26,11 +25,9 @@ func TestBuiltCompositeEnvironmentVariableParentIdentityAmbiguity(t *testing.T) 
 		{"name alias", `{"id":7,"Name":"other","name":"production"}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    environments:\n      - name: production\n        variables: [{name: FLAG, value: " + value + "}]\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -92,7 +89,7 @@ func TestBuiltCompositeEnvironmentVariableParentIdentityAmbiguity(t *testing.T) 
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			result := f.run(t, "apply", "identity-fixture", map[string]string{"github.action_ref": version, "GH_DEBUG": "api"})
+			result := f.run(t, "apply", "identity-fixture", map[string]string{"GH_DEBUG": "api"})
 			if (result.status == 0) != tc.valid {
 				t.Error("unexpected composite success status")
 			}

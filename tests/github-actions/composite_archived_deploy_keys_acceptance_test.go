@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,14 +21,12 @@ func TestBuiltCompositeArchivedDeployKeys(t *testing.T) {
 	const key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB"
 	const otherKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC"
 	const private = "UPSTREAM_PRIVATE_DEPLOY_KEY_CANARY"
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "title mismatch", "key mismatch", "permission mismatch", "missing", "denied", "duplicate member", "idless", "prune", "mixed", "export flow"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			id := "id: 7, "
 			if scenario == "idless" {
 				id = ""
@@ -132,7 +129,7 @@ func TestBuiltCompositeArchivedDeployKeys(t *testing.T) {
 				f.base[name] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			options := map[string]string{"github.action_ref": version, "GH_DEBUG": "api"}
+			options := map[string]string{"GH_DEBUG": "api"}
 			if scenario == "prune" {
 				options["inputs.prune"] = "deploy-keys"
 			}

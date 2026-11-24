@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,14 +16,12 @@ import (
 )
 
 func TestBuiltCompositeRunnerLabels(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "change", "clear", "readback failure", "export"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GH_DEBUG"] = "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			desired := []string{"private-custom-canary"}
 			if scenario == "clear" {
 				desired = []string{}
@@ -110,10 +107,9 @@ func TestBuiltCompositeRunnerLabels(t *testing.T) {
 				f.base[k] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			opts := map[string]string{"github.action_ref": version}
 			if scenario == "export" {
 				os.Remove(path)
-				result := f.run(t, "export", "runners-fixture", opts)
+				result := f.run(t, "export", "runners-fixture", nil)
 				b, _ := os.ReadFile(path)
 				if result.status != 0 || result.outputs["config-path"] != ".github/settings.yml" || !strings.Contains(string(b), "custom_labels:") || strings.Contains(string(b)+result.log+result.summary, "private-") {
 					t.Fatal(result, string(b))
@@ -125,16 +121,16 @@ func TestBuiltCompositeRunnerLabels(t *testing.T) {
 				}
 				return
 			}
-			detail := f.run(t, "plan", "runners-fixture", opts)
+			detail := f.run(t, "plan", "runners-fixture", nil)
 			if detail.status != 0 || (scenario != "matching" && (!strings.Contains(detail.summary, "custom_labels") || !strings.Contains(detail.summary, "23"))) {
 				t.Fatal(detail)
 			}
-			private := f.run(t, "plan", "runners-fixture", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
+			private := f.run(t, "plan", "runners-fixture", map[string]string{"inputs.plan-reporting": "status-only"})
 			outcome := "changed"
 			if scenario == "matching" {
 				outcome = "no-difference"
 			}
-			wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest, "plan-outcome": outcome}
+			wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": product.version, "cli-sha256": f.digest, "plan-outcome": outcome}
 			if private.status != 0 || !reflect.DeepEqual(private.outputs, wantOutputs) || strings.Contains(private.log+private.summary, "custom_labels") || strings.Contains(strings.ToLower(private.log+private.summary), "private-") || len(private.remainingReports) != 0 {
 				t.Fatal(private)
 			}
@@ -144,7 +140,7 @@ func TestBuiltCompositeRunnerLabels(t *testing.T) {
 				n = 1
 			}
 			for i := 0; i < n; i++ {
-				r := f.run(t, "apply", "runners-fixture", opts)
+				r := f.run(t, "apply", "runners-fixture", nil)
 				if (r.status != 0) != failed || (!failed && len(r.outputs) != 4) || (failed && len(r.outputs) != 0) || strings.Contains(r.log, "private-") || strings.Contains(r.log, "/actions/runners") {
 					t.Fatal(r)
 				}

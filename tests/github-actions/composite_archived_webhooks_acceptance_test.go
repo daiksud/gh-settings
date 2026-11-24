@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,14 +14,12 @@ import (
 )
 
 func TestBuiltCompositeArchivedWebhooks(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, mode := range []string{"matching", "config differs", "created drift", "missing config"} {
 		t.Run(mode, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, webhooks: [{id: 7, content_type: application/json, active: true, events: [push, issues]}]}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -84,7 +81,7 @@ func TestBuiltCompositeArchivedWebhooks(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			result := f.run(t, "apply", "archive-fixture", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "archive-fixture", nil)
 			if (result.status == 0) != (mode == "matching") || (result.status != 0 && len(result.outputs) != 0) {
 				t.Fatalf("unexpected result: %+v", result)
 			}

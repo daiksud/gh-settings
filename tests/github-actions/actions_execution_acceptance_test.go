@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,13 +16,11 @@ import (
 )
 
 func TestBuiltCompositeActionsExecution(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "selected change", "disabled activation", "selected failure", "companion drift"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      general:\n        actions_permissions:\n          policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows\n          require_actions_to_be_pinned_to_a_full_length_commit_sha: true\n          allow_actions_created_by_github: true\n          allow_actions_by_marketplace_verified_creators: true\n          allow_or_block_specified_actions_and_reusable_workflows: ['keep/*']\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -100,7 +97,7 @@ func TestBuiltCompositeActionsExecution(t *testing.T) {
 				attempts = 2
 			}
 			for i := 0; i < attempts; i++ {
-				result := f.run(t, "apply", "execution-fixture-write", map[string]string{"github.action_ref": version})
+				result := f.run(t, "apply", "execution-fixture-write", nil)
 				if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 					t.Fatalf("incorrect success publication: %+v", result)
 				}

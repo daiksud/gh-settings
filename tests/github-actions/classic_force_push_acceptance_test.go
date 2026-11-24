@@ -3,9 +3,7 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -17,14 +15,12 @@ import (
 )
 
 func TestBuiltCompositeClassicForcePush(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "select", "everyone", "disable", "actor-drift", "matching-actors-identity-failure", "matching-actors-graphql-error", "matching-actors-http-error", "matching-actors-malformed-response"} {
 		t.Run(scenario, func(t *testing.T) {
 			identityFailure := strings.HasPrefix(scenario, "matching-actors-")
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			group := "{enabled: true, who_can_force_push: specified_actors, actors: [{type: app, id: A_PRIVATE}]}"
 			if scenario == "everyone" {
 				group = "{enabled: true, who_can_force_push: everyone}"
@@ -182,7 +178,7 @@ func TestBuiltCompositeClassicForcePush(t *testing.T) {
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			for _, mode := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "force-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": mode, "GH_DEBUG": "api"})
+				result := f.run(t, "plan", "force-fixture-token", map[string]string{"inputs.plan-reporting": mode, "GH_DEBUG": "api"})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -199,7 +195,7 @@ func TestBuiltCompositeClassicForcePush(t *testing.T) {
 			if plannedWrites != 0 {
 				t.Fatal("plan wrote")
 			}
-			result := f.run(t, "apply", "force-fixture-token", map[string]string{"github.action_ref": version, "GH_DEBUG": "api"})
+			result := f.run(t, "apply", "force-fixture-token", map[string]string{"GH_DEBUG": "api"})
 			if strings.Contains(result.log, "T_PRIVATE") || strings.Contains(result.log, "A_PRIVATE") {
 				t.Fatal("apply debug actor leak", result)
 			}
@@ -214,7 +210,7 @@ func TestBuiltCompositeClassicForcePush(t *testing.T) {
 				t.Fatal("prewrite lookup claimed uncertain mutation", result)
 			}
 			if success {
-				again := f.run(t, "apply", "force-fixture-token", map[string]string{"github.action_ref": version})
+				again := f.run(t, "apply", "force-fixture-token", nil)
 				if again.status != 0 {
 					t.Fatal(again)
 				}

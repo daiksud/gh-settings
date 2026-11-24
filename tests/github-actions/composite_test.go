@@ -303,11 +303,12 @@ type compositeResult struct {
 }
 
 type compositeFixture struct {
-	action                           composite
-	caller, packagePath, sha, digest string
-	base                             map[string]string
-	git                              func(...string) string
-	write                            func(string, string)
+	action                   composite
+	caller, packagePath, sha string
+	compositeProduct
+	base  map[string]string
+	git   func(...string) string
+	write func(string, string)
 }
 
 func runComposite(t *testing.T, command, token string, extra map[string]string) compositeResult {
@@ -323,50 +324,20 @@ func fixtureEnvironment(values map[string]string) []string {
 	return env
 }
 
-func newCompositeFixture(t *testing.T) *compositeFixture {
+type compositeProduct struct {
+	path, digest, version string
+}
+
+func stageCompositeProduct(t *testing.T, data []byte) compositeProduct {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root(), "action.yml"))
-	if err != nil {
+	path := filepath.Join(t.TempDir(), "gh-settings")
+	if err := os.WriteFile(path, data, 0700); err != nil {
 		t.Fatal(err)
 	}
-	var action composite
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
-	if err := decoder.Decode(&action); err != nil {
-		t.Fatal(err)
-	}
-	if action.Name == "" || action.Description == "" || action.Runs.Using != "composite" {
-		t.Fatal("missing composite metadata")
-	}
-	if len(action.Inputs) != 4 || action.Inputs["prune"].Required || action.Inputs["prune"].Default == nil || *action.Inputs["prune"].Default != "" || action.Inputs["plan-reporting"].Default == nil || *action.Inputs["plan-reporting"].Default != "detailed" || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
-		t.Fatal("input contract changed")
-	}
-	if len(action.Outputs) != 6 {
-		t.Fatal("public output contract changed")
-	}
-	fixture := t.TempDir()
-	caller, packagePath, bin := filepath.Join(fixture, "caller"), filepath.Join(fixture, "action package"), filepath.Join(fixture, "bin")
-	for _, dir := range []string{caller, packagePath, bin, filepath.Join(fixture, "runner temp")} {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write := func(path, value string) {
-		t.Helper()
-		if err := os.WriteFile(path, []byte(value), 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, dir := range []string{filepath.Join(caller, "action"), filepath.Join(caller, ".github")} {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
-	write(filepath.Join(caller, "action", "install-cli.sh"), poison)
-	write(filepath.Join(bin, "gh-settings"), poison)
-	write(filepath.Join(caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\n")
-	asset := `#!/usr/bin/env bash
+	return compositeProduct{path: path, digest: fmt.Sprintf("%x", sha256.Sum256(data))}
+}
+
+const mockCompositeCLI = `#!/usr/bin/env bash
 set -euo pipefail
 case "$1" in
   --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo "gh-settings $MOCK_CLI_VERSION"; exit ;;
@@ -438,9 +409,57 @@ fi
 exit "$status"
 `
 
-	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
-	write(filepath.Join(fixture, "asset"), asset)
-	write(filepath.Join(fixture, "checksums"), digest+"  gh-settings-linux-amd64\n")
+func newCompositeFixture(t *testing.T) *compositeFixture {
+	t.Helper()
+	product := stageCompositeProduct(t, []byte(mockCompositeCLI))
+	product.version = fixtureCLIVersion
+	return product.newFixture(t)
+}
+
+func (product compositeProduct) newFixture(t *testing.T) *compositeFixture {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root(), "action.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var action composite
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&action); err != nil {
+		t.Fatal(err)
+	}
+	if action.Name == "" || action.Description == "" || action.Runs.Using != "composite" {
+		t.Fatal("missing composite metadata")
+	}
+	if len(action.Inputs) != 4 || action.Inputs["prune"].Required || action.Inputs["prune"].Default == nil || *action.Inputs["prune"].Default != "" || action.Inputs["plan-reporting"].Default == nil || *action.Inputs["plan-reporting"].Default != "detailed" || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
+		t.Fatal("input contract changed")
+	}
+	if len(action.Outputs) != 6 {
+		t.Fatal("public output contract changed")
+	}
+	fixture := t.TempDir()
+	caller, packagePath, bin := filepath.Join(fixture, "caller"), filepath.Join(fixture, "action package"), filepath.Join(fixture, "bin")
+	for _, dir := range []string{caller, packagePath, bin, filepath.Join(fixture, "runner temp")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write := func(path, value string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(value), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, dir := range []string{filepath.Join(caller, "action"), filepath.Join(caller, ".github")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
+	write(filepath.Join(caller, "action", "install-cli.sh"), poison)
+	write(filepath.Join(bin, "gh-settings"), poison)
+	write(filepath.Join(caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\n")
+	write(filepath.Join(fixture, "checksums"), product.digest+"  gh-settings-linux-amd64\n")
 	write(filepath.Join(bin, "curl"), `#!/usr/bin/env bash
 set -euo pipefail
 touch "$MOCK_DOWNLOAD"
@@ -487,7 +506,7 @@ exec /bin/rm "$@"
 		}
 		write(filepath.Join(packagePath, "action", file.Name()), string(content))
 	}
-	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": filepath.Join(fixture, "asset"), "MOCK_CALLS": filepath.Join(fixture, "calls")}
+	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": product.path, "MOCK_CALLS": filepath.Join(fixture, "calls")}
 	testBinary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -495,7 +514,7 @@ exec /bin/rm "$@"
 	base["REAL_GIT"] = realGit
 	base["MOCK_TEST_BINARY"] = testBinary
 	base["MOCK_PRESENTATION_CALLS"] = filepath.Join(fixture, "presentation-calls")
-	base["MOCK_CLI_VERSION"] = fixtureCLIVersion
+	base["MOCK_CLI_VERSION"] = product.version
 	base["MOCK_METADATA_CALLS"] = filepath.Join(fixture, "metadata-calls")
 	base["MOCK_CHECKSUMS"] = filepath.Join(fixture, "checksums")
 	base["MOCK_DOWNLOAD"] = filepath.Join(fixture, "download")
@@ -516,7 +535,7 @@ exec /bin/rm "$@"
 	git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "fixture")
 	git("remote", "add", "origin", "https://github.com/owner/config.git")
 	sha := git("rev-parse", "HEAD")
-	return &compositeFixture{action: action, caller: caller, packagePath: packagePath, sha: sha, digest: digest, base: base, git: git, write: write}
+	return &compositeFixture{action: action, caller: caller, packagePath: packagePath, sha: sha, compositeProduct: product, base: base, git: git, write: write}
 }
 
 func (f *compositeFixture) run(t *testing.T, command, token string, extra map[string]string) compositeResult {
@@ -534,7 +553,7 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	base["MOCK_CONFIG_SHA"], base["MOCK_CLI_SHA256"] = sha, digest
 	outputDirectory := t.TempDir()
 	values := map[string]string{"inputs.prune": "", "inputs.command": command, "inputs.plan-reporting": "detailed", "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
-		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": fixtureCLIVersion}
+		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": f.version}
 	for key, value := range extra {
 		if _, known := values[key]; known && (strings.HasPrefix(key, "github.") || key == "inputs.plan-reporting" || key == "inputs.prune") {
 			values[key] = value

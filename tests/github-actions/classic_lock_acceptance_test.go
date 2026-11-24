@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -29,13 +28,11 @@ func TestBuiltCompositeClassicForkSync(t *testing.T) {
 }
 
 func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "enable", "disable", "fork-sync-drift"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			desired := scenario != "disable"
 			input := fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'PRIVATE_LOCK/**', %s: %t}]}}\n", declarationKey, desired)
 			if declarationKey == "allow_fork_syncing" {
@@ -157,7 +154,7 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			for _, mode := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "lock-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": mode, "GH_DEBUG": "api"})
+				result := f.run(t, "plan", "lock-fixture-token", map[string]string{"inputs.plan-reporting": mode, "GH_DEBUG": "api"})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -174,7 +171,7 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 			if plannedWrites != 0 {
 				t.Fatal("plan mutated", plannedWrites)
 			}
-			result := f.run(t, "apply", "lock-fixture-token", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "lock-fixture-token", nil)
 			success := scenario != "fork-sync-drift"
 			if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 				t.Fatal(result)
@@ -183,7 +180,7 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 				t.Fatal("uncertain progress lost", result)
 			}
 			if success {
-				if again := f.run(t, "apply", "lock-fixture-token", map[string]string{"github.action_ref": version}); again.status != 0 {
+				if again := f.run(t, "apply", "lock-fixture-token", nil); again.status != 0 {
 					t.Fatal(again)
 				}
 			}
