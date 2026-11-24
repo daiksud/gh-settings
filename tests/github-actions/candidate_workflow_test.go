@@ -42,9 +42,6 @@ func TestPRScreeningOnly(t *testing.T) {
 	if !reflect.DeepEqual(actions, want) {
 		t.Fatalf("screening must run independent source checks and build without artifact upload: %v", actions)
 	}
-	if _, err := os.Stat(filepath.Join(root(), ".github/actions/commit-stage")); !os.IsNotExist(err) {
-		t.Fatal("the superseded commit-stage Action must be removed")
-	}
 }
 
 // Main produces release-ready artifacts after native and public-Action

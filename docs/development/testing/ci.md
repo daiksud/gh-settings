@@ -4,15 +4,7 @@ Use the [local testing guide](../testing.md) to choose a package or run the nati
 
 ## PR screening and main inspection
 
-The [PR workflow](../../../.github/workflows/pr.yml), named `pr`, runs Screening
-only: source lint, Go race and offline tests, and a native Linux build.
-The PR build reports the Go source default version `dev`.
-Its single `screening` job uses `ubuntu-slim` and reports its result directly.
-Default `pull_request` activities run it when a PR is opened, updated with
-commits, or reopened. Title/body edits and draft/readiness transitions do not
-rerun it, and the workflow leaves the PR state unchanged.
-The separate [PRLint workflow](../../../.github/workflows/prlint.yml) checks
-title/body edits and proposed squash messages.
+[PR screening](../pr-validation.md#pr-screening) runs lint, race and offline tests, then builds a Linux CLI reporting `dev`. Its build ends in the PR job.
 
 The [main workflow](../../../.github/workflows/ci-push.yml) runs full Screening
 and Inspection. It resolves the release version for the exact `main` SHA,
@@ -38,46 +30,11 @@ execute. Track each merged commit through its own aggregate result, and repair
 failed CI before continuing implementation. Runner availability can still delay
 individual jobs; a queued or cancelled job is not successful verification.
 
-PR Screening and native build jobs resolve Go from [go.mod](../../../go.mod) with
-`actions/setup-go`, and Bun from `packageManager` in
-[package.json](../../../package.json) with `oven-sh/setup-bun`. Dependencies install
-from [bun.lock](../../../bun.lock) with `bun install --frozen-lockfile`.
-Screening calls [lint](../../../.github/actions/lint/action.yml),
-[unit-test](../../../.github/actions/unit-test/action.yml) and
-[build](../../../.github/actions/build/action.yml). It does not upload artifacts.
-Actionlint and ShellCheck are not part of the check suite. Structural workflow,
-permission, dependency-inventory and shell fixture tests continue in Go/Python.
-
-The [full CI/release dependency inventory](../../../.github/actions/lock-workspace-dependencies/action.yml)
-remains for main and release. PR Screening's external dependencies are read
-from its runtime steps directly.
-
 ### Go cache in CI
 
-Setup-go caches module downloads and compilation data using
-[go.sum](../../../go.sum). A cache hit never skips validation, race-detected tests
-or the native build. Release artifacts and manifests are separately verified;
-they are not restored from the Go cache. Frozen acceptance harnesses and
-publication helpers select Go from their own source checkout's go.mod.
+The build jobs select Go from [go.mod](../../../go.mod) and use [go.sum](../../../go.sum) as the cache dependency file. Setup-go caches module downloads and compilation data. Tests and native builds run on cache hits. The acceptance jobs verify the transferred artifacts against their manifests and select Go from the frozen source checkout to compile the harness.
 
 ### Hosted candidate composite
-
-[Supplied-product Ruleset coverage checks](../../../tests/github-actions/ruleset_coverage_acceptance_test.go)
-exercise detailed/status-only plans, exact threshold/default payloads, independent
-readback, repeated no-ops, failure propagation and unchanged source YAML. The
-[built CLI lifecycle](../../../tests/acceptance/ruleset_coverage_test.go) additionally
-covers automatic export/retention, offline validation, removal, ID recovery and
-explicit pruning through isolated API fixtures.
-
-[Supplied-product workflow permission checks](../../../tests/github-actions/composite_workflow_permissions_acceptance_test.go)
-exercise the actual public Action with matching and changed declarations, repeated
-apply, minimal PUT payloads and failed independent readback. They verify success
-outputs only after completion; API responses remain isolated fixtures.
-
-[Supplied-product Actions execution checks](../../../tests/github-actions/actions_execution_acceptance_test.go)
-run the actual composite through matching and changed selected-policy apply,
-delayed activation, repeated no-ops and uncertain selected-write/readback failures.
-They verify exact ordered requests and success-only outputs against isolated APIs.
 
 The public-Action acceptance leg delegates its scenarios to the existing [candidate composite](../../../.github/actions/e2e-test/action.yml), passing the verified source, version, digest, and binary path. It creates a separate consumer that tracks only `.github/settings.yml`, without a root `action.yml` or `action/` helper directory. The process leg instead runs the built executable through the local API acceptance tests.
 
@@ -119,26 +76,10 @@ Local [composite](../../../tests/github-actions/composite_test.go) and [caller](
 
 Examples and active main callers use the same single-job apply pattern: three `uses` steps for checkout, token creation, and apply. [Operational tests](../../../tests/github-actions/operational_test.go) separately verify this repository's Environment and credential bindings. Approval and token lifecycle stubs are simulations; these tests do not load pinned release-tag bytes or establish remote protection/revocation behavior.
 
-The [supplied-product export checks](../../../tests/github-actions/composite_export_acceptance_test.go)
-also cover `.github` symlinks, concurrent edits, destination write failure and
-output failure after a completed save. They capture real composite logs with
-`GH_DEBUG=api` and check the local variable canary never reaches logs, Summary or
-outputs. Run them against an already-built executable with a stable release
-version (the candidate gate uses its verified producer binary):
+To run all supplied-product Action cases locally, pass an executable built with a stable version embedded:
 
 ```sh
 mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
-The supplied-product Environment prune check also runs the real composite's
-plan (detailed and status-only) and repeated `all` apply against a local API. It
-verifies omitted sibling scopes, complete parent deletion, unchanged YAML,
-private child evidence and cleanup without live deletion. The secret metadata
-integrity fixtures additionally cover ambiguous pages, a bounded response,
-complete pagination and privacy; built CLI and supplied-product Action cases
-reject ambiguous fresh evidence before DELETE. Owning tests cover
-child drift/custom protection and partial progress; the
-[prune specification](../features/prune.feature.md#environment-stage-test-mapping)
-records their boundaries.
-
-For failures writing export diagnostics, use the [diagnostic delivery cases](settings.md#export-diagnostic-delivery). For separately authorized checks against a live repository, see the [candidate Topics verification procedure](../repository-automation.md#bounded-candidate-action-verification).
+The [setting verification guide](settings.md) maps export, pruning and resource-specific cases to their owning tests. For authorized checks against a live repository, use the [candidate Topics verification procedure](../repository-automation.md#bounded-candidate-action-verification).

@@ -250,9 +250,8 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 	}
 	resolveNode := workflow.Jobs["resolve"]
 	var resolve struct {
-		Outputs map[string]string `yaml:"outputs"`
-		Steps   []step            `yaml:"steps"`
-		If      string            `yaml:"if"`
+		Steps []step `yaml:"steps"`
+		If    string `yaml:"if"`
 	}
 	if err := resolveNode.Decode(&resolve); err != nil {
 		t.Fatal(err)
@@ -268,14 +267,14 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 			pin = candidate
 		}
 	}
-	if resolve.If != "" || resolve.Outputs["source-sha"] != "${{ github.sha }}" ||
+	if resolve.If != "" ||
 		branch.Env["SOURCE_REF"] != "${{ github.ref }}" || len(branch.Env) != 1 ||
 		current.Env["SOURCE_SHA"] != "${{ github.sha }}" ||
 		current.Env["GH_TOKEN"] != "${{ github.token }}" ||
 		pin.Env["SOURCE_SHA"] != "${{ github.sha }}" ||
 		pin.Env["EXPECTED_SOURCE_SHA"] != "${{ inputs.source_sha }}" ||
 		len(pin.Env) != 2 || strings.Contains(current.Run, "GITHUB_OUTPUT") || strings.Contains(pin.Run, "GITHUB_OUTPUT") {
-		t.Fatal("release resolve must report non-main dispatches, publish trusted github.sha, and keep the reviewed pin separate from the token and shell outputs")
+		t.Fatal("release resolve must require a main dispatch and keep the reviewed pin separate from the token and shell outputs")
 	}
 
 	// The hosted Ubuntu workflow uses modern Bash. macOS's system Bash 3.2

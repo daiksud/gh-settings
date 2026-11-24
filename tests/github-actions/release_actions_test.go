@@ -115,15 +115,6 @@ func TestReleaseStagesOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
 				t.Fatalf("%s: missing separate release stage %q", workflow, required)
 			}
 		}
-		if strings.Contains(source, "uses: ./.github/actions/release-build") {
-			t.Fatalf("%s: release-build wrapper must not run", workflow)
-		}
-	}
-	if _, err := os.Stat(filepath.Join(root(), ".github/actions/release-build")); !os.IsNotExist(err) {
-		t.Fatal("release-build wrapper must be removed")
-	}
-	if _, err := os.Stat(filepath.Join(root(), ".github/actions/setup-tools")); !os.IsNotExist(err) {
-		t.Fatal("single-step setup-tools wrapper must be removed")
 	}
 	for name, source := range map[string]string{
 		"acceptance": acceptanceSource,
@@ -208,7 +199,7 @@ func TestReleaseArtifactManifestBehavior(t *testing.T) {
 			if err := os.Remove(filepath.Join(artifact, "unexpected")); err != nil {
 				t.Fatal(err)
 			}
-			asset := "gh-settings-" + strings.ReplaceAll(target, "-", "-")
+			asset := "gh-settings-" + target
 			if err := os.WriteFile(filepath.Join(artifact, asset), []byte("tampered"), 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -224,21 +215,13 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 	// The public Action itself consumes a binary, but its bounded API fixture is
 	// compiled from the frozen checkout. A runner's ambient Go may be too old.
 	action, _ := readReleaseAction(t, "release-acceptance")
-	ci, _ := readReleaseAction(t, "ci-acceptance")
-	var ciSetup step
-	for _, s := range ci.Runs.Steps {
-		if strings.HasPrefix(s.Uses, "actions/setup-go@") {
-			ciSetup = s
-		}
-	}
 	setupIndex, candidateIndex := -1, -1
 	for i, s := range action.Runs.Steps {
 		if strings.HasPrefix(s.Uses, "actions/setup-go@") {
 			setupIndex = i
-			if s.Uses != ciSetup.Uses || !reflect.DeepEqual(s.With, ciSetup.With) ||
-				s.With["go-version-file"] != ".action/go.mod" || s.With["go-version"] != "" ||
+			if !reflect.DeepEqual(s.With, map[string]string{"go-version-file": ".action/go.mod", "cache": "false"}) ||
 				s.If != "inputs.target == 'candidate-action'" {
-				t.Fatalf("release fixture must use the same pinned source toolchain as CI: %+v", s)
+				t.Fatalf("candidate fixture must use the toolchain from the frozen source: %+v", s)
 			}
 		}
 		if s.Uses == "./.action/.github/actions/e2e-test" {
@@ -270,13 +253,10 @@ func TestReleaseWorkflowProtectsPublication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "uses: ./.github/actions/release-build") {
-		t.Fatal("release must contain separate build and packaging steps")
-	}
 	if strings.Contains(string(data), "${{ needs.resolve.outputs.source-sha }}") {
 		t.Fatal("downstream jobs must consume the immutable dispatch SHA directly")
 	}
-	if !reflect.DeepEqual(strings.Count(string(data), "permissions: {contents: write, actions: read}"), 1) {
+	if strings.Count(string(data), "permissions: {contents: write, actions: read}") != 1 {
 		t.Fatal("only publication may request contents write")
 	}
 }

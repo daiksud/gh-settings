@@ -86,10 +86,7 @@ func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
 	git("commit", "--quiet", "-m", "fix: correction")
 	source := git("rev-parse", "HEAD")
 	git("tag", "v0.4.0")
-	bin := filepath.Join(t.TempDir(), "bin")
-	if err := os.Mkdir(bin, 0700); err != nil {
-		t.Fatal(err)
-	}
+	bin := t.TempDir()
 	stub := "#!/bin/sh\n[ \"$*\" = 'api repos/owner/repo/releases?per_page=100 --paginate --slurp' ] || exit 1\ncat \"$CATALOG_FIXTURE\"\n"
 	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(stub), 0700); err != nil {
 		t.Fatal(err)

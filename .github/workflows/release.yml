@@ -26,7 +26,6 @@ jobs:
     permissions: {contents: read, actions: read}
     outputs:
       ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
-      source-sha: ${{ github.sha }}
       version: ${{ steps.metadata.outputs.version }}
       previous-tag: ${{ steps.metadata.outputs.previous-tag }}
       previous-sha: ${{ steps.metadata.outputs.previous-sha }}
