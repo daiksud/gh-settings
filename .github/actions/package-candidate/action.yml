@@ -1,0 +1,45 @@
+name: Package a native candidate
+description: Record the built binary's identity and upload the binary and manifest together.
+inputs:
+  target:
+    description: Native OS and architecture.
+    required: true
+  version:
+    description: Version embedded in the candidate.
+    required: true
+  source-sha:
+    description: Exact main commit used to build the candidate.
+    required: true
+  binary-path:
+    description: Path to the executable built in this job.
+    required: true
+outputs:
+  artifact-id:
+    description: Immutable ID of the uploaded candidate.
+    value: ${{ steps.upload.outputs.artifact-id }}
+  artifact-digest:
+    description: SHA-256 of the uploaded archive.
+    value: ${{ steps.upload.outputs.artifact-digest }}
+runs:
+  using: composite
+  steps:
+    - name: Package the binary with its identity manifest
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        PRODUCT: ${{ inputs.binary-path }}
+      run: |
+        [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'candidate checkout differs from frozen source' >&2; exit 1; }
+        bash .github/scripts/release-artifact.sh write \
+          "$TARGET" "$VERSION" "$SOURCE_SHA" "$PRODUCT" "$RUNNER_TEMP/native-candidate"
+    - name: Upload the candidate
+      id: upload
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: candidate-${{ inputs.target }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/native-candidate
+        if-no-files-found: error
+        compression-level: 0
+        retention-days: 7

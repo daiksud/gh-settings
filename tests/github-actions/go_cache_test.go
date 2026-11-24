@@ -9,17 +9,18 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// Build jobs resolve Go from go.mod and Bun from package.json.
+// Every native build uses the module toolchain; only Linux runs the Bun-based source checks.
 func TestBuildJobsUseManifestToolchains(t *testing.T) {
 	for _, tc := range []struct {
 		workflow string
 		job      string
+		usesBun  bool
 	}{
-		{workflow: "pr.yml", job: "screening"},
-		{workflow: "ci-push.yml", job: "commit-stage"},
-		{workflow: "release.yml", job: "commit-stage"},
+		{workflow: "pr.yml", job: "verify", usesBun: true},
+		{workflow: "candidate.yml", job: "screening-linux", usesBun: true},
+		{workflow: "candidate.yml", job: "screening-macos"},
 	} {
-		t.Run(tc.workflow, func(t *testing.T) {
+		t.Run(tc.workflow+"/"+tc.job, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", tc.workflow))
 			if err != nil {
 				t.Fatal(err)
@@ -54,14 +55,14 @@ func TestBuildJobsUseManifestToolchains(t *testing.T) {
 					cacheIndex = i
 				case strings.Contains(s.Uses, "go-cache") || strings.HasPrefix(s.Uses, "actions/cache/"):
 					t.Fatalf("custom Go cache management must not return: %+v", s)
-				case s.Uses == "./.github/actions/build":
+				case s.Uses == "./.github/actions/build" || s.Uses == "./.github/actions/screening":
 					buildIndex = i
 					if s.If != "" || s.Continue {
 						t.Fatalf("build must not be skipped on a cache hit: %+v", s)
 					}
 				}
 			}
-			if bunIndex < 0 || cacheIndex <= bunIndex || buildIndex <= cacheIndex {
+			if (bunIndex >= 0) != tc.usesBun || cacheIndex <= bunIndex || buildIndex <= cacheIndex {
 				t.Fatalf("install Bun, resolve Go, then build: bun=%d cache=%d build=%d",
 					bunIndex, cacheIndex, buildIndex)
 			}

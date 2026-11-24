@@ -14,12 +14,12 @@ func TestSettingsPRValidationUsesPinnedConsumer(t *testing.T) {
 	if err := target.Decode(&trigger); err != nil {
 		t.Fatal(err)
 	}
-	if len(w.On) != 1 || len(trigger) != 1 || !reflect.DeepEqual(trigger["branches"], []string{"main"}) {
-		t.Fatal("the required validator must use default pull_request activities on main")
+	if len(w.On) != 1 || len(trigger) != 2 || !reflect.DeepEqual(trigger["types"], []string{"opened", "synchronize", "reopened", "edited"}) || !reflect.DeepEqual(trigger["branches"], []string{"main"}) {
+		t.Fatal("the required validator must handle all candidate changes on main")
 	}
-	j, present := w.Jobs[settingsValidateCheckName]
+	j, present := w.Jobs["validate"]
 	if !present || len(w.Jobs) != 1 || len(w.Permissions) != 0 || len(w.Env) != 0 ||
-		j.If != "" || j.Needs != "" || j.Environment != "" || j.Continue || j.Runner != "ubuntu-slim" ||
+		j.Name != validationCheckName || j.If != candidateEventCondition || j.Needs != "" || j.Environment != "" || j.Continue || j.Runner != "ubuntu-slim" ||
 		j.Timeout != 10 || len(j.Env) != 0 ||
 		!reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
 		t.Fatal("required validation must execute without privilege")
@@ -29,7 +29,7 @@ func TestSettingsPRValidationUsesPinnedConsumer(t *testing.T) {
 		t.Fatal("required validation must not override concurrency or publish outputs")
 	}
 	if len(j.Steps) != 2 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
-		len(j.Steps[0].With) != 0 || len(j.Steps[0].Env) != 0 {
+		!reflect.DeepEqual(j.Steps[0].With, map[string]string{"persist-credentials": "false"}) || len(j.Steps[0].Env) != 0 {
 		t.Fatal("required validator must use default merge checkout")
 	}
 	validate := j.Steps[1]

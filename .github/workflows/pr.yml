@@ -1,21 +1,26 @@
 name: pr
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
 permissions: {}
 defaults:
   run:
     shell: bash
-concurrency:
-  group: pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 jobs:
-  screening:
+  verify:
+    name: ${{ (github.event.action != 'edited' || github.event.changes.base) && 'screening' || 'pr-metadata' }}
+    if: github.event.action != 'edited' || github.event.changes.base
+    concurrency:
+      group: pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-slim
     timeout-minutes: 20
     permissions: {contents: read}
     steps:
       - name: Checkout validation source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up Bun from package manifest
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -27,9 +32,5 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-      - name: Lint source and Markdown
-        uses: ./.github/actions/lint
-      - name: Run unit tests
-        uses: ./.github/actions/unit-test
-      - name: Build executable
-        uses: ./.github/actions/build
+      - name: Screen and build the development CLI
+        uses: ./.github/actions/screening

@@ -42,9 +42,9 @@ func readReleaseAction(t *testing.T, name string) (localReleaseAction, string) {
 func TestReleaseLocalActionContracts(t *testing.T) {
 	wantInputs := map[string][]string{
 		"release-metadata":   {"source-sha", "promote-to-v1"},
-		"release-acceptance": {"target", "version", "source-sha"},
-		"release-publish":    {"source-sha", "version", "previous-tag", "previous-sha"},
-		"release-verify":     {"source-sha", "version"},
+		"release-acceptance": {"target", "version", "source-sha", "artifact-id"},
+		"release-publish":    {"source-sha", "version", "previous-tag", "previous-sha", "run-id", "linux-artifact-id", "macos-artifact-id"},
+		"release-verify":     {"source-sha", "version", "run-id", "linux-artifact-id", "macos-artifact-id"},
 	}
 	for name, keys := range wantInputs {
 		t.Run(name, func(t *testing.T) {
@@ -59,18 +59,10 @@ func TestReleaseLocalActionContracts(t *testing.T) {
 			}
 		})
 	}
-	metadata, metadataSource := readReleaseAction(t, "release-metadata")
-	for _, key := range []string{"version", "previous-tag", "previous-sha", "build-matrix", "acceptance-matrix"} {
+	metadata, _ := readReleaseAction(t, "release-metadata")
+	for _, key := range []string{"version", "previous-tag", "previous-sha", "release-needed"} {
 		if _, ok := metadata.Outputs[key]; !ok {
 			t.Fatalf("metadata is missing output %s", key)
-		}
-	}
-	for _, matrix := range []string{
-		`build_matrix='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"},{"target":"darwin-arm64","runner":"macos-15"}]}'`,
-		`acceptance_matrix='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"},{"target":"darwin-arm64","runner":"macos-15"},{"target":"candidate-action","runner":"ubuntu-24.04"}]}'`,
-	} {
-		if !strings.Contains(metadataSource, matrix) {
-			t.Fatalf("metadata action lost allowlisted matrix %s", matrix)
 		}
 	}
 }
@@ -93,27 +85,23 @@ func TestReleaseMetadataPromotionChoice(t *testing.T) {
 func TestReleaseStagesOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
 	build, _ := readReleaseAction(t, "build")
 	acceptance, acceptanceSource := readReleaseAction(t, "release-acceptance")
-	_, publishSource := readReleaseAction(t, "release-publish")
+	publish, publishSource := readReleaseAction(t, "release-publish")
 	verify, verifySource := readReleaseAction(t, "release-verify")
 
-	for _, workflow := range []string{"ci-push.yml", "release.yml"} {
-		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", workflow))
-		if err != nil {
-			t.Fatal(err)
-		}
-		source := string(data)
-		for _, required := range []string{
-			"uses: ./.github/actions/lint",
-			"uses: ./.github/actions/unit-test",
-			"uses: ./.github/actions/build",
-			"release-artifact.sh write",
-			"actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
-			"compression-level: 0",
-			"overwrite: true",
-		} {
-			if !strings.Contains(source, required) {
-				t.Fatalf("%s: missing separate release stage %q", workflow, required)
+	for name, action := range map[string]localReleaseAction{"publish": publish, "verify": verify} {
+		var selected []string
+		for _, step := range action.Runs.Steps {
+			if !strings.HasPrefix(step.Uses, "actions/download-artifact@") {
+				continue
 			}
+			selected = append(selected, step.With["artifact-ids"])
+			if step.With["run-id"] != "${{ inputs.run-id }}" || step.With["repository"] != "${{ github.repository }}" ||
+				step.With["github-token"] != "${{ github.token }}" || step.With["digest-mismatch"] != "error" || step.With["name"] != "" {
+				t.Fatalf("%s download did not select the inspected artifact from its producer: %+v", name, step.With)
+			}
+		}
+		if !reflect.DeepEqual(selected, []string{"${{ inputs.linux-artifact-id }}", "${{ inputs.macos-artifact-id }}"}) {
+			t.Fatalf("%s must retrieve the inspected pair: %v", name, selected)
 		}
 	}
 	for name, source := range map[string]string{

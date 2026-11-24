@@ -1,8 +1,12 @@
 name: Reuse inspected main artifacts
-description: Verify archived release products from the latest successful exact-SHA ci-push run.
+description: Verify archived release products from the latest successful exact-SHA push run.
 inputs:
   ci-run-id:
-    description: Validated ci-push run ID, empty when no run was found.
+    description: Validated push run ID, empty when no run was found.
+    required: false
+    default: ''
+  ci-run-attempt:
+    description: Validated push run attempt, empty when no run was found.
     required: false
     default: ''
   version:
@@ -15,6 +19,12 @@ outputs:
   reused:
     description: True only when both native products are verified and ready for handoff.
     value: ${{ steps.lookup.outputs.reused }}
+  linux-id:
+    description: Inspected Linux artifact ID when reused.
+    value: ${{ steps.lookup.outputs.linux-id }}
+  macos-id:
+    description: Inspected macOS artifact ID when reused.
+    value: ${{ steps.lookup.outputs.macos-id }}
 runs:
   using: composite
   steps:
@@ -25,5 +35,6 @@ runs:
         GH_TOKEN: ${{ github.token }}
         SOURCE_SHA: ${{ inputs.source-sha }}
         CI_RUN_ID: ${{ inputs.ci-run-id }}
+        CI_RUN_ATTEMPT: ${{ inputs.ci-run-attempt }}
         RELEASE_VERSION: ${{ inputs.version }}
-      run: python3 .github/scripts/release-ci.py reuse "$CI_RUN_ID" "$RELEASE_VERSION"
+      run: python3 .github/scripts/release-ci.py reuse "$CI_RUN_ID" "$CI_RUN_ATTEMPT" "$RELEASE_VERSION"

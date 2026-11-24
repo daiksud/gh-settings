@@ -4,15 +4,17 @@ The [default-branch Ruleset and its required checks](repository-automation.md#pr
 
 ## PR screening
 
-The [pr workflow](../../.github/workflows/pr.yml) uses the default `pull_request`
-activities: opened, synchronize, and reopened. Its single `screening` job runs
-source lint, unit tests, and a native Linux build on `ubuntu-slim`.
-The job calls the focused local Actions directly; [testing](testing.md#ci-validation)
-describes the main CI checks and their artifacts. A failed lint, unit-test, or
-build step fails the job. The separate `ci-push` aggregate checks Screening
-and process/public-Action Inspection on main.
+The [PR workflow](../../.github/workflows/pr.yml) runs on opened, synchronized,
+reopened and base-retargeted PRs. Its `screening` job installs the manifest-selected
+tools and runs the [shared Linux checks](../../.github/actions/screening/action.yml)
+on the merge candidate. Lint, unit tests and a native build must all succeed.
+Checkout disables credential persistence, and the job has Contents read permission.
+Concurrent updates to one PR cancel superseded screening runs.
 
-The screening job has Contents read permission, and checkout uses its default credential persistence. PR-controlled checks can use that read-only credential during the job. Screening leaves Draft and Ready state unchanged. Metadata-only edits trigger the separate message check.
+Editing only the PR title or body runs PRLint. Screening and settings validation
+skip that edit under separate display names so a skipped result cannot satisfy
+either required check for a new merge candidate. The [main CI guide](testing/ci.md)
+describes the inspections that run after merge.
 
 ## Message and settings validation
 
@@ -20,7 +22,7 @@ The [PRLint workflow](../../.github/workflows/prlint.yml) checks the current PR 
 
 PRs authored by `dependabot[bot]` skip the `prlint` job. The condition uses the PR author, so a human rerun still skips that job. GitHub treats a skipped job as successful for required-check purposes. The requirement, the other checks and normal review still apply. See [GitHub's job-condition contract](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
 
-The [settings-pr workflow](../../.github/workflows/settings-pr.yml) runs on opened, synchronized and reopened PRs targeting `main`. Its only job uses the default merge checkout and a Contents-read token on `ubuntu-slim`. The public Action pinned in the PR workflow runs `validate` on `.github/settings.yml` without an Environment or settings token. A passing check means the selected package accepts that declaration. The [manual apply workflow](repository-automation.md#active-settings-workflows) owns remote settings changes.
+The [settings-pr workflow](../../.github/workflows/settings-pr.yml) checks newly opened, synchronized, reopened and base-retargeted PRs targeting `main`. Its only job uses the default merge checkout and a Contents-read token on `ubuntu-slim`. The public Action pinned in the PR workflow runs `validate` on `.github/settings.yml` without an Environment or settings token. A passing check means the selected package accepts that declaration. The [manual apply workflow](repository-automation.md#active-settings-workflows) owns remote settings changes.
 
 ## Ruleset enforcement
 

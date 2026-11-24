@@ -3,9 +3,11 @@
 import hashlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -23,7 +25,7 @@ REPO = "daiksud/gh-settings"
 def run(run_id, run_number=1, conclusion="success", status="completed"):
     return {
         "id": run_id, "run_number": run_number, "run_attempt": 1,
-        "path": ".github/workflows/ci-push.yml", "event": "push",
+        "path": ".github/workflows/push.yml", "event": "push",
         "head_branch": "main", "head_sha": SHA,
         "repository": {"full_name": REPO},
         "status": status, "conclusion": conclusion,
@@ -73,17 +75,29 @@ class ReleaseCITests(unittest.TestCase):
     def output(self):
         return (Path(self.temp.name) / "outputs").read_text()
 
+    def ci_responses(self, runs, deployments=None):
+        if deployments is None:
+            deployments = [{"name": "deployment", "status": "completed", "conclusion": "success"}]
+
+        def response(route, key):
+            if key == "workflow_runs":
+                self.assertIn("/actions/workflows/push.yml/runs?", route)
+                self.assertIn(f"head_sha={SHA}", route)
+                return runs
+            self.assertEqual(key, "jobs")
+            self.assertRegex(route, r"/attempts/\d+/jobs\?")
+            return deployments
+        return mock.patch.object(ci, "api_items", side_effect=response)
+
     def test_no_ci_run_triggers_full_validation(self):
-        with mock.patch.object(ci, "api_items", return_value=[]):
+        with self.ci_responses([]):
             ci.status()
-        self.assertEqual(self.output(), "ci-run-id=\n")
+        self.assertEqual(self.output(), "ci-run-id=\nci-run-attempt=\n")
 
     def test_latest_successful_ci_run_is_selected(self):
-        with mock.patch.object(ci, "api_items", return_value=[
-            run(1, 1), run(4, 4), run(3, 3)
-        ]):
+        with self.ci_responses([run(1, 1), run(4, 4), run(3, 3)]):
             ci.status()
-        self.assertEqual(self.output(), "ci-run-id=4\n")
+        self.assertEqual(self.output(), "ci-run-id=4\nci-run-attempt=1\n")
 
     def test_latest_failed_or_incomplete_run_blocks_release(self):
         for conclusion, status in [
@@ -111,10 +125,17 @@ class ReleaseCITests(unittest.TestCase):
                     with self.assertRaises(ci.Fatal):
                         ci.status()
 
-    def test_changed_selected_run_blocks_publication(self):
-        with mock.patch.object(ci, "api_items", return_value=[run(10)]):
-            with self.assertRaises(ci.Fatal):
-                ci.status("9")
+    def test_changed_selection_blocks_publication(self):
+        for expected in (("9", "1"), ("10", "2"), ("", "")):
+            with self.subTest(expected=expected), self.ci_responses([run(10)]):
+                with self.assertRaises(ci.Fatal):
+                    ci.status(expected)
+
+    def test_successful_run_requires_completed_deployment(self):
+        for jobs in ([], [{"name": "deployment", "status": "completed", "conclusion": "skipped"}]):
+            with self.subTest(jobs=jobs), self.ci_responses([run(10)], jobs):
+                with self.assertRaises(ci.Fatal):
+                    ci.status()
 
     def test_api_authentication_error_is_not_a_fallback(self):
         completed = subprocess.CompletedProcess(["gh"], 1, "", "403")
@@ -128,84 +149,101 @@ class ReleaseCITests(unittest.TestCase):
             with self.assertRaises(ci.Fatal):
                 ci.api_items("repos/daiksud/gh-settings/actions/runs", "artifacts")
 
-    def fixture(self):
-        linux = archive_for("linux-amd64")
-        macos = archive_for("darwin-arm64")
-        artifacts = [
-            artifact("release-linux-amd64", 11, linux),
-            artifact("release-darwin-arm64", 12, macos),
-        ]
-        archives = {11: linux, 12: macos}
-        return artifacts, archives
+    def fixture(self, version=VERSION, corrupt_binary=False):
+        archives = {
+            11: archive_for("linux-amd64", version, corrupt_binary),
+            12: archive_for("darwin-arm64", version),
+        }
+        items = [artifact("candidate-linux-amd64-1", 11, archives[11]),
+                 artifact("candidate-darwin-arm64-2", 12, archives[12])]
+        env = {
+            **os.environ, "GITHUB_SHA": SHA, "VERSION": version, "GITHUB_EVENT_NAME": "push",
+            "GITHUB_RUN_ID": "7", "GITHUB_RUN_ATTEMPT": "2",
+            "LINUX_ID": "11", "MACOS_ID": "12",
+            "LINUX_DIGEST": items[0]["digest"].removeprefix("sha256:"),
+            "MACOS_DIGEST": items[1]["digest"].removeprefix("sha256:"),
+        }
+        manifest = subprocess.run(
+            [sys.executable, SCRIPT.with_name("deployment-manifest.py")],
+            env=env, check=True, capture_output=True, text=True,
+        )
+        record = json.loads(manifest.stdout)
+        self.record_deployment(items, archives, record)
+        return items, archives, record
 
-    def exercise_reuse(self, artifacts, archive_map):
+    @staticmethod
+    def record_deployment(items, archives, record):
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w") as archive:
+            archive.writestr("deployment.json", json.dumps(record))
+        archives[13] = output.getvalue()
+        items[:] = [item for item in items if item["id"] != 13]
+        items.append(artifact("deployment-2", 13, archives[13]))
+
+    def exercise(self, items, archives, *, probe=False, version=VERSION):
         with (
-            mock.patch.object(ci, "select_ci_run", return_value=run(7)),
-            mock.patch.object(ci, "api_items", return_value=artifacts),
-            mock.patch.object(
-                ci, "fetch_archive",
-                side_effect=lambda _repo, identifier, _token: archive_map[identifier],
-            ),
+            mock.patch.object(ci, "select_ci_run", return_value={**run(7), "run_attempt": 2}),
+            mock.patch.object(ci, "api_items", return_value=items),
+            mock.patch.object(ci, "fetch_archive", side_effect=lambda repo, identifier, token: archives[identifier]),
         ):
-            ci.reuse("7", VERSION)
+            if probe:
+                ci.probe()
+            else:
+                ci.reuse("7", "2", version)
 
-    def test_matching_products_are_reused_without_rebuild(self):
-        artifacts, archives = self.fixture()
-        self.exercise_reuse(artifacts, archives)
-        self.assertEqual(self.output(), "reused=true\n")
-        for target in ci.TARGETS:
-            path = Path(self.temp.name) / "reused-release" / target
-            self.assertTrue((path / ("gh-settings-" + target)).is_file())
-            self.assertTrue((path / "release-manifest").is_file())
+    def test_reuses_only_deployed_ids_including_products_from_prior_attempt(self):
+        items, archives, _ = self.fixture()
+        other = archive_for("linux-amd64", "v2.0.0")
+        items.append(artifact("candidate-linux-amd64-2", 15, other))
+        self.exercise(items, archives)
+        self.assertEqual(self.output(), "linux-id=11\nmacos-id=12\nreused=true\n")
+        self.assertEqual({p.name for p in Path(self.temp.name).iterdir()}, {"outputs", "summary"})
 
-    def test_missing_expired_or_duplicate_artifact_falls_back(self):
-        for variation in ("missing", "expired", "duplicate"):
+    def test_missing_expired_duplicate_or_replaced_deployed_item_falls_back(self):
+        for variation in ("missing", "expired", "duplicate", "replaced", "digest", "damaged"):
             with self.subTest(variation=variation):
-                artifacts, archives = self.fixture()
+                items, archives, _ = self.fixture()
                 if variation == "missing":
-                    artifacts.pop()
+                    items.pop()
                 elif variation == "expired":
-                    artifacts[0]["expired"] = True
-                else:
-                    artifacts.append(artifacts[0].copy())
-                self.exercise_reuse(artifacts, archives)
+                    items[0]["expired"] = True
+                elif variation == "duplicate":
+                    items.append(items[-1].copy())
+                elif variation == "replaced":
+                    items[0]["id"] = 28
+                elif variation == "digest":
+                    items[0]["digest"] = "sha256:" + "0" * 64
+                elif variation == "damaged":
+                    archives[11] = b"corrupted"
+                self.exercise(items, archives)
                 self.assertIn("reused=false\n", self.output())
                 self.assertIn("Warning:", (Path(self.temp.name) / "summary").read_text())
-                self.assertFalse((Path(self.temp.name) / "reused-release").exists())
 
-    def test_digest_mismatch_warns_and_falls_back(self):
-        artifacts, archives = self.fixture()
-        artifacts[0]["digest"] = "sha256:" + ("0" * 64)
-        self.exercise_reuse(artifacts, archives)
-        self.assertEqual(self.output(), "reused=false\n")
-        self.assertIn("SHA-256 mismatch", (Path(self.temp.name) / "summary").read_text())
+    def test_stale_or_incomplete_record_falls_back(self):
+        invalid = {"run_attempt": 1, "run_id": True, "source_sha": "b" * 40,
+                   "event": "pull_request", "artifacts": {}}
+        for key, value in invalid.items():
+            with self.subTest(key=key):
+                items, archives, record = self.fixture()
+                self.record_deployment(items, archives, {**record, key: value})
+                self.exercise(items, archives)
+                self.assertIn("reused=false\n", self.output())
 
-    def test_version_mismatch_warns_and_falls_back(self):
-        artifacts, archives = self.fixture()
-        archives[11] = archive_for("linux-amd64", "v1.2.4")
-        artifacts[0]["digest"] = "sha256:" + hashlib.sha256(archives[11]).hexdigest()
-        self.exercise_reuse(artifacts, archives)
-        self.assertEqual(self.output(), "reused=false\n")
-        self.assertIn("version mismatch", (Path(self.temp.name) / "summary").read_text())
+    def test_wrong_api_producer_stops_reuse(self):
+        items, archives, _ = self.fixture()
+        items[0]["workflow_run"]["head_sha"] = "b" * 40
+        with self.assertRaises(ci.Fatal):
+            self.exercise(items, archives)
 
     def test_normal_ci_products_cannot_be_reused_for_opted_in_promotion(self):
-        archives = {11: archive_for("linux-amd64", "v0.44.0"),
-                    12: archive_for("darwin-arm64", "v0.44.0")}
-        artifacts = [artifact("release-linux-amd64", 11, archives[11]),
-                     artifact("release-darwin-arm64", 12, archives[12])]
-        with (mock.patch.object(ci, "select_ci_run", return_value=run(7)),
-              mock.patch.object(ci, "api_items", return_value=artifacts),
-              mock.patch.object(ci, "fetch_archive", side_effect=lambda _repo, identifier, _token: archives[identifier])):
-            ci.reuse("7", "v1.0.1")
+        items, archives, _ = self.fixture(version="v0.44.0")
+        self.exercise(items, archives, version="v1.0.1")
         self.assertEqual(self.output(), "reused=false\n")
-        self.assertFalse((Path(self.temp.name) / "reused-release").exists())
         self.assertIn("expected v1.0.1, observed v0.44.0", (Path(self.temp.name) / "summary").read_text())
 
     def test_invalid_binary_manifest_warns_and_falls_back(self):
-        artifacts, archives = self.fixture()
-        archives[11] = archive_for("linux-amd64", corrupt_binary=True)
-        artifacts[0]["digest"] = "sha256:" + hashlib.sha256(archives[11]).hexdigest()
-        self.exercise_reuse(artifacts, archives)
+        items, archives, _ = self.fixture(corrupt_binary=True)
+        self.exercise(items, archives)
         self.assertEqual(self.output(), "reused=false\n")
         self.assertIn("binary SHA-256 is invalid", (Path(self.temp.name) / "summary").read_text())
 
@@ -214,10 +252,21 @@ class ReleaseCITests(unittest.TestCase):
             ci.extract_product(b"not-a-zip", "linux-amd64", Path(self.temp.name) / "broken")
         self.assertFalse((Path(self.temp.name) / "broken").exists())
 
-    def test_no_run_outputs_fallback_without_network(self):
-        with mock.patch.object(ci, "api_items", side_effect=AssertionError("network was used")):
-            ci.reuse("", VERSION)
+    def test_no_run_triggers_fresh_validation_and_blocks_probe(self):
+        with self.ci_responses([]):
+            ci.reuse("", "", VERSION)
+            with self.assertRaises(ci.Fatal):
+                ci.probe()
         self.assertEqual(self.output(), "reused=false\n")
+
+    def test_probe_requires_deployed_linux_id_and_frozen_version(self):
+        items, archives, _ = self.fixture()
+        items.pop(1)  # The live consumer requires only the inspected Linux product.
+        self.exercise(items, archives, probe=True)
+        self.assertEqual(self.output(), f"ci-run-id=7\nci-run-attempt=2\nlinux-id=11\nversion={VERSION}\n")
+        items.pop(0)
+        with self.assertRaises(ci.Unusable):
+            self.exercise(items, archives, probe=True)
 
 
 if __name__ == "__main__":

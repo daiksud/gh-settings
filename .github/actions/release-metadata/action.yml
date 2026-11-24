@@ -1,5 +1,5 @@
 name: Resolve release metadata
-description: Calculate the release version and validate fixed product matrices.
+description: Select the version for a main commit and determine whether it needs publication.
 inputs:
   source-sha:
     description: Exact frozen main commit.
@@ -18,12 +18,9 @@ outputs:
   previous-sha:
     description: Previous published stable source, empty only for an immutable retry.
     value: ${{ steps.resolve.outputs.previous-sha }}
-  build-matrix:
-    description: Validated product build targets and runners.
-    value: ${{ steps.resolve.outputs.build-matrix }}
-  acceptance-matrix:
-    description: Validated native and public Action acceptance targets and runners.
-    value: ${{ steps.resolve.outputs.acceptance-matrix }}
+  release-needed:
+    description: True for a new version or an immutable retry, false for an empty change interval.
+    value: ${{ steps.resolve.outputs.release-needed }}
 runs:
   using: composite
   steps:
@@ -36,29 +33,10 @@ runs:
       run: |
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid metadata source' >&2; exit 1; }
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'metadata checkout differs from frozen source' >&2; exit 1; }
-        metadata="$RUNNER_TEMP/release-metadata"
-        [[ ! -e "$metadata" ]]
         args=(--allow-retry)
         case "$PROMOTE_TO_V1" in
           false) ;;
           true) args+=(--graduate-to-v1) ;;
           *) echo 'promote-to-v1 must be true or false' >&2; exit 1 ;;
         esac
-        python3 .github/scripts/release-version.py "${args[@]}" > "$metadata"
-        [[ "$(wc -l < "$metadata" | tr -d ' ')" == 3 ]] || { echo 'metadata output line count changed' >&2; exit 1; }
-        for key in version previous-tag previous-sha; do
-          [[ "$(grep -c "^$key=" "$metadata")" == 1 ]] || { echo "metadata output lacks $key" >&2; exit 1; }
-        done
-        [[ -z "$(grep -Ev '^(version|previous-tag|previous-sha)=' "$metadata")" ]] || { echo 'metadata output contains an unexpected key' >&2; exit 1; }
-        version="$(sed -n 's/^version=//p' "$metadata")"
-        previous_tag="$(sed -n 's/^previous-tag=//p' "$metadata")"
-        previous_sha="$(sed -n 's/^previous-sha=//p' "$metadata")"
-        [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'metadata returned an invalid version' >&2; exit 1; }
-        if [[ -n "$previous_tag" || -n "$previous_sha" ]]; then
-          [[ "$previous_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'metadata returned an invalid predecessor tag' >&2; exit 1; }
-          [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'metadata returned an invalid predecessor source' >&2; exit 1; }
-        fi
-        build_matrix='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"},{"target":"darwin-arm64","runner":"macos-15"}]}'
-        acceptance_matrix='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"},{"target":"darwin-arm64","runner":"macos-15"},{"target":"candidate-action","runner":"ubuntu-24.04"}]}'
-        printf 'version=%s\nprevious-tag=%s\nprevious-sha=%s\n' "$version" "$previous_tag" "$previous_sha" >> "$GITHUB_OUTPUT"
-        printf 'build-matrix=%s\nacceptance-matrix=%s\n' "$build_matrix" "$acceptance_matrix" >> "$GITHUB_OUTPUT"
+        python3 .github/scripts/release-version.py "${args[@]}"

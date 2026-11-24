@@ -15,7 +15,7 @@ import (
 // Execute the source-controlled composite resolver against an isolated release
 // catalog and Git history. The gh stand-in accepts only the expected read call.
 func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
-	for _, name := range []string{"ci-push.yml", "release.yml"} {
+	for _, name := range []string{"push.yml", "release.yml"} {
 		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name))
 		if err != nil {
 			t.Fatal(err)
@@ -105,10 +105,10 @@ func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
 		caller, choice, version string
 		retry, valid            bool
 	}{
-		{"ci-push", "false", "v0.3.1", false, true},
+		{"push", "false", "v0.3.1", false, true},
 		{"release-default", "false", "v0.3.1", false, true},
 		{"release-promotion", "true", "v1.0.1", false, true},
-		{"ci-push-retry", "false", "v0.4.0", true, true},
+		{"push-retry", "false", "v0.4.0", true, true},
 		{"release-default-retry", "false", "v0.4.0", true, true},
 		{"release-promotion-v0-retry", "true", "", true, false},
 		{"invalid-choice", "yes", "", false, false},
@@ -149,7 +149,7 @@ func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
 			if tc.retry {
 				want = "version=v0.4.0\nprevious-tag=\nprevious-sha=\n"
 			}
-			if !strings.HasPrefix(string(content), want) {
+			if string(content) != want+"release-needed=true\n" {
 				t.Fatalf("wrong frozen metadata: %s", content)
 			}
 		})

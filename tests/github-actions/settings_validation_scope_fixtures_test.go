@@ -9,14 +9,18 @@ const settingsValidationFixture = `name: settings-pr
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, edited]
 permissions: {}
 jobs:
-  settings-pr:
+  validate:
+    name: ${{ (github.event.action != 'edited' || github.event.changes.base) && 'settings-pr' || 'settings-metadata' }}
+    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-slim
     timeout-minutes: 10
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
       - uses: daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2
         with: {command: validate}
 `
@@ -38,7 +42,7 @@ func TestSettingsEnvironmentScopeRequiresOneValidator(t *testing.T) {
 		t.Fatal("missing validator accepted")
 	}
 	files = settingsValidationFixtureWorkflows()
-	files[settingsPRWorkflowPath] = []byte(strings.Replace(settingsValidationFixture, "  settings-pr:\n", "  other:\n", 1))
+	files[settingsPRWorkflowPath] = []byte(strings.Replace(settingsValidationFixture, "  validate:\n", "  other:\n", 1))
 	if err := checkSettingsEnvironmentScope(files); err == nil {
 		t.Fatal("missing required job accepted")
 	}
@@ -65,21 +69,23 @@ func TestSettingsValidationRequiredBoundaries(t *testing.T) {
 		{"protected Environment", "    runs-on:", "    environment: gh-settings\n    runs-on:"},
 		{"other Environment", "    runs-on:", "    environment: preview\n    runs-on:"},
 		{"job secret", "    runs-on:", "    env: {GH_TOKEN: unsafe}\n    runs-on:"},
-		{"conditional job", "  settings-pr:\n", "  settings-pr:\n    if: false\n"},
+		{"suppressed validator", "if: " + candidateEventCondition, "if: false"},
+		{"metadata claims required check", validationCheckName, "settings-pr"},
 		{"job outputs", "    steps:\n", "    outputs: {success: true}\n    steps:\n"},
 		{"ignored failure", "    steps:\n", "    continue-on-error: true\n    steps:\n"},
 		{"wrong runner", "runs-on: ubuntu-slim", "runs-on: ubuntu-24.04"},
 		{"wrong timeout", "timeout-minutes: 10", "timeout-minutes: 60"},
 		{"workflow concurrency", "permissions: {}", "permissions: {}\nconcurrency: shared"},
 		{"job concurrency", "    steps:\n", "    concurrency: {group: shared}\n    steps:\n"},
-		{"wrong job", "  settings-pr:\n", "  other:\n"},
+		{"wrong job", "  validate:\n", "  other:\n"},
 		{"mutable validator", "daiksud/gh-settings@998576e7326d1075406b84e4988cf728108772f2", "daiksud/gh-settings@main"},
 		{"wrong validator", "daiksud/gh-settings@", "other/validator@"},
 		{"plan instead of validate", "with: {command: validate}", "with: {command: plan}"},
 		{"token input", "with: {command: validate}", "with: {command: validate, token: unsafe}"},
 		{"conditional validator", "        with: {command: validate}", "        if: false\n        with: {command: validate}"},
 		{"ignored validator", "        with: {command: validate}", "        continue-on-error: true\n        with: {command: validate}"},
-		{"checkout with inputs", "      - uses: actions/checkout@", "      - with: {ref: main}\n        uses: actions/checkout@"},
+		{"base checkout", "persist-credentials: false}", "persist-credentials: false, ref: main}"},
+		{"persisted credentials", "persist-credentials: false", "persist-credentials: true"},
 		{"extra step", "    steps:\n", "    steps:\n      - run: echo bypass\n"},
 	} {
 		t.Run(change.name, func(t *testing.T) {
@@ -98,7 +104,7 @@ func TestSettingsValidationRequiredBoundaries(t *testing.T) {
 func TestSettingsValidationTriggerBoundaries(t *testing.T) {
 	for _, change := range []struct{ name, before, after string }{
 		{"path filter", "    branches: [main]", "    branches: [main]\n    paths: ['.github/settings.yml']"},
-		{"types override", "    branches: [main]", "    branches: [main]\n    types: [opened]"},
+		{"missing retarget event", "types: [opened, synchronize, reopened, edited]", "types: [opened, synchronize, reopened]"},
 		{"wrong event", "  pull_request:", "  pull_request_target:"},
 		{"wrong branch", "branches: [main]", "branches: [develop]"},
 		{"extra branch", "branches: [main]", "branches: [main, develop]"},

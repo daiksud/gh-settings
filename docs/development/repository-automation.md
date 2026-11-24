@@ -51,10 +51,11 @@ resource-specific behavior.
 
 | Workflow | Trigger and responsibility |
 | --- | --- |
-| [`pr.yml`](../../.github/workflows/pr.yml) | Default pull_request activities run the single `screening` job for source checks, unit tests, and a native build |
+| [`pr.yml`](../../.github/workflows/pr.yml) | Opening, updating, reopening or retargeting a PR runs Linux `screening` on the merge candidate |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
-| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; install the manifest-selected toolchain, build native release-ready binaries, and inspect them, ending in `ci-push` |
-| [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Default pull_request events validate the PR merge declaration only; the validation check is `settings-pr` |
+| [`push.yml`](../../.github/workflows/push.yml) | Each main push resolves its version, inspects native candidates and deploys the accepted artifact IDs |
+| [`candidate.yml`](../../.github/workflows/candidate.yml) | Main CI and manual release share Linux screening, native builds and three inspections through a local reusable workflow |
+| [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Opening, updating, reopening or retargeting a PR to main runs the `settings-pr` check on the proposed merge declaration |
 | [`settings-apply.yml`](../../.github/workflows/settings-apply.yml) | Manual dispatch from `main`; one Environment-bound direct apply job |
 | [`labeler.yml`](../../.github/workflows/labeler.yml) | On selected `pull_request_target` events, synchronize labels using trusted base rules without checking out PR code |
 | [`verify-public-action.yml`](../../.github/workflows/verify-public-action.yml) | Manually dispatch the [bounded candidate Topics check](#bounded-candidate-action-verification) against its dedicated repository |
@@ -107,7 +108,7 @@ For onboarded workflows, Dependabot updates the lockfile alongside the workflow 
 
 ### Workspace composite coverage
 
-`pr`, `ci-push`, and `release` keep their workspace-local Action references.
+Workflows keep their workspace-local Action references.
 The main and release acceptance jobs check frozen source out under `.action`, create a separate
 configuration-only consumer at the workspace root, and execute that candidate
 Action. Release verification separately checks the published tag out under
@@ -116,22 +117,17 @@ its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
 
-`ci-push` and `release` still use the
-[full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
-through `$/` in a step guarded by `${{ false }}`. The step never runs and
-only enumerates transitive external dependencies for the lockfile generator.
-`--ignore-local-actions` preserves the workspace-relative action paths. See
-[GitHub's local-path guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies#keeping-a-local-path-action).
+Each workflow has its own lockfile entry. The [candidate workflow](../../.github/workflows/candidate.yml)
+uses an inert [dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
+to expose nested Action pins to the generator. Release inventories its publication
+dependencies. The `--ignore-local-actions` option keeps the runtime checkout paths
+intact. See [GitHub's local-path guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies#keeping-a-local-path-action).
 
-[Inventory tests](../../tests/github-actions/actions_lockfile_test.go) walk the
-runtime workflow and nested local composites, including the root Action reached
-through the frozen `.action` and `.published` checkouts. For PR Screening, they compare external
-references directly against the same workflow's lock entries. For main and
-release, they compare the external references with the inert composite and the
-same workflow's generated lock entries. Changing a nested dependency requires
-regenerating the lockfile and updating the main/release inventory. Existing candidate, consumer and release verification
-checks still own checkout identity and execution isolation; the dependency
-inventory does not replace those checks or authorize a release.
+[Inventory tests](../../tests/github-actions/actions_lockfile_test.go) compare each workflow's
+generated entries with its directly executed Actions and their nested dependencies.
+The local candidate workflow has its own entries and runs at the caller's commit.
+The tests resolve both the frozen `.action` and published `.published` checkout paths
+to inspect the root Action.
 
 ### Security boundary
 
@@ -245,8 +241,8 @@ must already be included in the App installation. No App grant or Environment
 protection is changed by the probe.
 
 Before issuing the App token, the job requires the latest exact-SHA main
-`ci-push` to have completed successfully, using the existing release CI gate.
-It downloads that run's Linux artifact with archive-digest checking and verifies
+`push` run to have completed successfully. It selects the deployed Linux artifact
+by its recorded ID and checks the archive digest. It then verifies
 the source/version/target manifest and product digest with `release-artifact.sh`.
 Missing, failed, unfinished, expired or mismatching evidence stops the probe;
 there is no rebuild or published-release fallback. The source checkout must be
@@ -312,12 +308,13 @@ itself delete the live Environment. Deletion is a separate authorized operation.
 
 The ordinary Go suite retains the
 [Environment scope tests](../../tests/github-actions/settings_environment_scope_test.go)
-in `pr` and `ci-push`. They allow the literal `gh-settings` Environment only
+in `pr` and the shared candidate workflow. They allow the literal `gh-settings` Environment only
 in `.github/workflows/settings-apply.yml/jobs.settings-apply` and the bounded
 `.github/workflows/verify-public-action.yml/jobs.topics` probe, require manual dispatch,
 and require a single credential-free validation job in `settings-pr.yml`.
 They reject dynamic Environment names, workflow/job aliases and merges,
-duplicate keys, reusable workflow jobs, and retired check-name collisions.
+duplicate keys and retired check-name collisions. Only main CI and release may call
+the repository-local candidate workflow, with Contents read permission and no secrets.
 
 Candidate code controls the
 scope tests in PR CI, so a passing result is not a trusted-main policy decision
@@ -381,4 +378,4 @@ Use [repository rules](https://github.com/daiksud/gh-settings/rules), [Environme
 
 [Operational fixtures](../../tests/github-actions/operational_test.go) and the [test evidence boundaries](testing.md#release-and-publication-evidence) help distinguish source correctness from those external settings. Release dispatch and recovery have their own [maintainer runbook](releases.md).
 
-The manual `release` workflow uses the `actions: read` job permission only for reading CI runs and their artifacts. No CI artifact is executed or published without matching archive digest, source SHA, version, target and product SHA-256. Artifact incompatibility triggers a warning and a full fresh build/Inspection; GitHub API/authentication failures or failed `ci-push` abort. The privileged publication job repeats the main/CI checks before writing a release.
+The manual `release` workflow uses the `actions: read` job permission only for reading CI runs and their artifacts. No CI artifact is executed or published without matching archive digest, source SHA, version, target and product SHA-256. Artifact incompatibility triggers a warning and a full fresh build/Inspection; GitHub API/authentication failures or a failed `push` run stops publication. The privileged publication job repeats the main/CI checks before writing a release.

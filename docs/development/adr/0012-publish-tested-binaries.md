@@ -12,7 +12,7 @@ Accepted — implemented by the manual release workflow.
 
 ## Context
 
-Rebuilding a product after acceptance can change its bytes, even when the source commit and version match. The existing [main CI](../../../.github/workflows/ci-push.yml) builds a validation artifact for its own run, not a multi-platform release artifact.
+Rebuilding a product after acceptance can change its bytes, even when the source commit and version match. The existing [main CI at the time of this decision](https://github.com/daiksud/gh-settings/blob/4a3a0a37223b462246a1c7a3c33124e150d08428/.github/workflows/ci-push.yml) builds a validation artifact for its own run, not a multi-platform release artifact.
 
 ## Decision
 

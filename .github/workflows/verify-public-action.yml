@@ -20,7 +20,7 @@ jobs:
           ref: ${{ github.sha }}
           path: .verification-source
           persist-credentials: false
-      - name: Require a successful exact-SHA main CI producer
+      - name: Require a successful exact-SHA main deployment
         id: ci
         env:
           GH_TOKEN: ${{ github.token }}
@@ -29,15 +29,11 @@ jobs:
           set -euo pipefail
           cd .verification-source
           [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
-          result="$RUNNER_TEMP/topics-ci-output"
-          GITHUB_OUTPUT="$result" python3 .github/scripts/release-ci.py status
-          run_id="$(sed -n 's/^ci-run-id=//p' "$result")"
-          [[ "$run_id" =~ ^[1-9][0-9]*$ ]] || { echo 'successful exact-SHA CI is required; no build fallback' >&2; exit 1; }
-          printf 'ci-run-id=%s\n' "$run_id" >> "$GITHUB_OUTPUT"
+          python3 .github/scripts/release-ci.py probe
       - name: Download only the selected CI Linux product
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: release-linux-amd64
+          artifact-ids: ${{ steps.ci.outputs.linux-id }}
           path: ${{ runner.temp }}/topics-candidate-linux
           github-token: ${{ github.token }}
           repository: daiksud/gh-settings
@@ -47,6 +43,7 @@ jobs:
         id: candidate
         env:
           SOURCE_SHA: ${{ github.sha }}
+          VERSION: ${{ steps.ci.outputs.version }}
         run: |
           set -euo pipefail
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} && -z ${GH_CONFIG_DIR:-} ]]
@@ -55,20 +52,20 @@ jobs:
           [[ "$(git -C "$source" rev-parse HEAD)" == "$SOURCE_SHA" ]]
           [[ -z "$(git -C "$source" status --porcelain)" ]]
           directory="$RUNNER_TEMP/topics-candidate-linux"
-          version="$(sed -n 's/^version=//p' "$directory/release-manifest")"
-          bash "$source/.github/scripts/release-artifact.sh" verify linux-amd64 "$version" "$SOURCE_SHA" "$directory" "$GITHUB_OUTPUT"
+          bash "$source/.github/scripts/release-artifact.sh" verify linux-amd64 "$VERSION" "$SOURCE_SHA" "$directory" "$GITHUB_OUTPUT"
           digest="$(sed -n 's/^sha256=//p' "$GITHUB_OUTPUT")"
-          bash "$source/tests/github-actions/prepare-candidate-download.sh" "$directory/gh-settings-linux-amd64" "$digest" "$SOURCE_SHA" "$version"
-          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          bash "$source/tests/github-actions/prepare-candidate-download.sh" "$directory/gh-settings-linux-amd64" "$digest" "$SOURCE_SHA" "$VERSION"
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
       - name: Recheck the CI producer before issuing any live token
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.sha }}
           CI_RUN_ID: ${{ steps.ci.outputs.ci-run-id }}
+          CI_RUN_ATTEMPT: ${{ steps.ci.outputs.ci-run-attempt }}
         run: |
           set -euo pipefail
           cd .verification-source
-          python3 .github/scripts/release-ci.py status "$CI_RUN_ID"
+          python3 .github/scripts/release-ci.py status "$CI_RUN_ID" "$CI_RUN_ATTEMPT"
       - name: Mint a token only for the dedicated test repository
         id: app
         uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0

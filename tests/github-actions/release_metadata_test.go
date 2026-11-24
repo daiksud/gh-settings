@@ -30,22 +30,19 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 		t.Fatal("version calculation must not add a publication trigger or manual version override")
 	}
 	resolve := workflow.Jobs["resolve"]
-	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read", "actions": "read"}) ||
-		!reflect.DeepEqual(resolve.Outputs, map[string]string{
-			"ci-run-id":         "${{ steps.ci.outputs.ci-run-id }}",
-			"version":           "${{ steps.metadata.outputs.version }}",
-			"previous-tag":      "${{ steps.metadata.outputs.previous-tag }}",
-			"previous-sha":      "${{ steps.metadata.outputs.previous-sha }}",
-			"build-matrix":      "${{ steps.metadata.outputs.build-matrix }}",
-			"acceptance-matrix": "${{ steps.metadata.outputs.acceptance-matrix }}",
-		}) {
-		t.Fatal("metadata resolution must be read-only and report the CI run, version, baseline and matrices")
+	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read", "actions": "read"}) {
+		t.Fatal("metadata resolution must be read-only")
+	}
+	for _, key := range []string{"version", "previous-tag", "previous-sha", "release-needed"} {
+		if resolve.Outputs[key] != "${{ steps.metadata.outputs."+key+" }}" {
+			t.Fatalf("resolve must forward %s from the frozen release metadata", key)
+		}
 	}
 	metadata := findStep(t, job{Steps: resolve.Steps}, "metadata")
 	if metadata.Uses != "./.github/actions/release-metadata" || metadata.Run != "" || metadata.If != "" || metadata.Continue || !reflect.DeepEqual(metadata.Env, map[string]string{
 		"GH_TOKEN": "${{ github.token }}",
 	}) || !reflect.DeepEqual(metadata.With, map[string]string{"source-sha": "${{ github.sha }}", "promote-to-v1": "${{ inputs.promote_to_v1 }}"}) {
-		t.Fatal("resolve must delegate validated metadata and matrices from the frozen source without success overrides")
+		t.Fatal("resolve must derive release metadata from the frozen source without success overrides")
 	}
 	var checkout step
 	for _, s := range resolve.Steps {

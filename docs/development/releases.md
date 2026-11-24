@@ -1,6 +1,6 @@
 # Maintainer releases
 
-The [manual release workflow](../../.github/workflows/release.yml) first checks the latest matching main `ci-push` run. It reuses that successful run's verified Linux and macOS products, or rebuilds and reinspects both products if the artifacts are missing, expired or fail identity checks. A failed, cancelled or unfinished `ci-push` blocks release rather than triggering a rebuild. Merging code neither calculates a persistent version nor authorizes publication. The [README](../../README.md) owns installation; the [Actions guide](../guides/github-actions.md#published-package-and-consumer-pins) owns consumer pins.
+The [manual release workflow](../../.github/workflows/release.yml) selects a version for a specific main commit and publishes the Linux and macOS binaries that passed inspection. It can use the [main deployment](../../.github/workflows/push.yml) or run the same builds and inspections itself. See the [README](../../README.md) for installation and the [Actions guide](../guides/github-actions.md#published-package-and-consumer-pins) for consumer pins.
 
 ## Automatic version calculation
 
@@ -26,8 +26,10 @@ a conflicting second stable tag. That promotion needs a new substantive source
 commit; the existing release and tag remain unchanged.
 
 The strongest signal wins once. Empty commits are ignored; every tree change
-counts, including a release-preparation-named commit. If no substantive change
-remains, calculation fails. The release list, stable baseline, complete history
+counts, including a release-preparation-named commit. With only empty commits
+since the baseline, main deploys binaries with the baseline version and the new
+source SHA. A manual release for that source completes without publication.
+The release list, stable baseline, complete history
 and ancestor relationship must validate; drafts, prereleases, unpublished tags
 and code-fenced footer examples do not establish the published boundary.
 
@@ -49,13 +51,7 @@ the initial v1.0.1 promotion, check it in the Actions dispatch form or add
 the version or override ordinary SemVer. Dispatch still requires separate
 publication authorization.
 
-The workflow requires successful main CI when a matching run exists, calculates the version, and freezes the source SHA and published baseline. It verifies the matching run's artifacts or performs all native builds and acceptance checks again. Before publication it rechecks main and the selected CI result; any failed or incomplete CI blocks release. Source changes after resolution do not enter the release. The external release catalog can change between runs on the same SHA, so a different calculated version requires the existing artifact identity checks and validated fallback; artifacts are never relabeled. A main CI candidate version is not a published release.
-
-Main CI's default-off products can have a different version from an opted-in
-release. For example, v0.44.0 CI artifacts cannot be published as v1.0.1. The
-existing version/manifest checks reject reuse and require the complete native
-build and acceptance fallback with v1.0.1 embedded throughout. Publish and
-post-publication verification consume only the accepted release-run products.
+Release resolution freezes the source SHA and published baseline before selecting artifacts. The release catalog can change between runs even at the same SHA. For example, an opted-in v1.0.1 release must rebuild and inspect both products if main deployed a v0.x candidate. The publisher rechecks the selected main run and current main SHA immediately before publication.
 
 ## Release assets and validation
 
@@ -68,23 +64,21 @@ Each release contains those two raw executables, `SHA256SUMS`, and notes with so
 
 | Stage | Required behavior |
 | --- | --- |
-| Resolve | Require the dispatched main commit to remain current, check an optional reviewed source pin, derive the version or recognize an exact retry, freeze the predecessor, and emit allowlisted build/acceptance matrices from that trusted source |
-| Reuse | Look up the exact-source main `ci-push` result; require success, verify both artifact archives and contained source/version/target/SHA-256 manifests, then upload verified bytes to the current release run. Missing/expired products or digest/version mismatches warn and select full fallback; API and authentication failures abort |
-| Commit stage (fallback only) | Run source checks in the Linux lane, build Linux and macOS on native runners, and upload source/version/asset/SHA-256 manifests |
-| Acceptance stage (fallback only) | Download only this run's manifested products, verify exact inventory and bytes, run both native harnesses, and exercise the candidate root Action against a separate consumer |
-| Delivery gate | Require either fully verified reused artifacts with build and Inspection skipped, or complete successful fallback Screening and Inspection; no failed/skipped work may be represented as acceptance |
-| Release | Recheck exact main and `ci-push` status; redownload and reverify both release-run manifests, generate notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
-| Verify release | Check out the published tag separately, compare actual public downloads byte-for-byte with accepted manifests, and run the published root Action with real downloads for a separate consumer |
+| Resolve | Require the dispatched main SHA, check the optional source pin and select the version. For a new version or immutable retry, look up the latest exact-source main deployment and validate the two artifacts for reuse. |
+| Candidate | If fresh products are needed, invoke the [candidate workflow](../../.github/workflows/candidate.yml) to run Linux screening, build both native targets and inspect the two binaries and candidate root Action. |
+| Select | Accept the producer run and two artifact IDs from verified reuse or a successful fresh candidate workflow. |
+| Release | Recheck main and the selected CI run. Download both accepted artifacts by ID, verify manifests and bytes, generate notes, validate the tag and draft, upload missing assets and publish. |
+| Verify release | Compare the public downloads with the same two accepted artifacts and exercise the published tag's root Action in a separate consumer. |
 
-Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The release workflow delegates metadata, artifact reuse, build, acceptance, publish and verification to focused local Actions. gh-settings owns its version-resolution policy, release gates and manifests. Those wrappers own the pinned artifact transfer and manifest checks; no matrix job output supplies a product hash to publication. The shared [acceptance-stage](../../.github/actions/integration-test/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
-
-All three main-CI inspection lanes must succeed before their products can be reused. Otherwise all fallback native and candidate-Action acceptance lanes must succeed before publication. Failure, unexpected skipping or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. Post-publication verification independently establishes the tag and public-download identity. [Release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) protect orchestration bytes, source/version/manifests, dependency bindings, and tamper rejection. Fixture and PR validation do not execute a hosted release.
+Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The [native acceptance harness](../../.github/actions/integration-test/action.yml) compiles separately and runs the supplied product. Manual release runs share a non-cancelling concurrency group.
 
 ### Cross-run artifact reuse
 
-The release resolver queries the source commit's latest `ci-push.yml` push run on `main`. A failed, cancelled, timed-out or pending result stops release immediately; older successful attempts are not substitutes. If no run exists, fresh Screening and Inspection are required. GitHub API/authentication or provenance errors also stop release.
+The resolver selects the latest `push.yml` run and attempt for this repository, main branch and source SHA. A failed, cancelled or unfinished run, unverifiable provenance or an API error stops release. When no matching run exists, the release runs the complete candidate workflow.
 
-For successful CI, the reuse step requires unique, unexpired Linux and macOS artifacts. Each archive's SHA-256 is compared with the recorded GitHub artifact digest, then the exact two-file inventory and source/version/target/binary SHA-256 manifest are checked. Missing, expired, mismatched-version or corrupted artifacts are rejected with an Actions warning and Job Summary entry; they trigger full validation, not publication. Both accepted products are transferred into the release run using the original release artifact names. Publication and post-publication verification continue to consume these same-run artifacts, whether they came from CI reuse or a fresh build. The release job rechecks main and CI success immediately before publication.
+After successful main inspection, `deployment` records the producer run and the IDs and digests of the inspected Linux and macOS artifacts. Candidate artifact names include the producing build attempt, so a retry can use products retained from successful jobs. Release verifies the deployment record for the selected attempt, the archive digest of each product, its two-file inventory and the manifest's source, version, target and binary SHA-256. Missing, expired, corrupt or incompatible artifacts trigger fresh screening and inspection. Publication and verification download from the selected producer run by artifact ID.
+
+The [release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) cover selection, cancellation, product identity and permission boundaries. Actual public downloads are checked after an authorized release.
 
 ## Release notes from committed messages
 
@@ -159,9 +153,9 @@ For a new release, the complete notes are prepared before creating any missing t
 | Conflicting tag/manifest, altered or unexpected assets, duplicate names, or missing tag for an existing release | Stop without retagging, replacing assets, or recreating the missing tag |
 | Post-publication smoke failed | Diagnose the same immutable release and rerun verification; do not replace published bytes |
 
-The resolver recognizes a retry only when the calculated version, release identity marker, and tag identify the exact frozen source; the publisher still verifies every checksum and asset. It does not recalculate a new version or regenerate stored notes for that release. An unrelated release with the same version is not a retry. Publication consumes only products downloaded from this run's build artifacts and verified against their per-target manifests; it never rebuilds an accepted executable.
+The resolver recognizes a retry only when the calculated version, release identity marker, and tag identify the exact frozen source; the publisher still verifies every checksum and asset. It does not recalculate a new version or regenerate stored notes for that release. An unrelated release with the same version is not a retry. Publication downloads the two selected artifacts by ID and verifies their per-target manifests.
 
-A new workflow run resolves current main again. Existing tags remain immutable, so changed source cannot reuse a conflicting tag. Before tag creation, a fresh run may validate a newly reviewed source. The original SHA remains in run logs; artifacts are retained for one day. Keep incomplete drafts for inspection instead of automatically deleting them.
+A new workflow run resolves current main again. Existing tags remain immutable, so changed source cannot reuse a conflicting tag. Before tag creation, a fresh run may validate a newly reviewed source. The run logs record the original SHA, and candidate artifacts are retained for seven days. Keep incomplete drafts for inspection instead of automatically deleting them.
 
 ## Action version and availability
 

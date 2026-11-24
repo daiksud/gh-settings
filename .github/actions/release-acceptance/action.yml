@@ -10,6 +10,9 @@ inputs:
   source-sha:
     description: Exact frozen main commit.
     required: true
+  artifact-id:
+    description: Immutable ID of the candidate built for this inspection lane.
+    required: true
 runs:
   using: composite
   steps:
@@ -19,24 +22,18 @@ runs:
         TARGET: ${{ inputs.target }}
         VERSION: ${{ inputs.version }}
         SOURCE_SHA: ${{ inputs.source-sha }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
       run: |
+        [[ "$ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'invalid candidate artifact ID' >&2; exit 1; }
         [[ "$TARGET" == linux-amd64 || "$TARGET" == darwin-arm64 || "$TARGET" == candidate-action ]] || { echo 'invalid acceptance target' >&2; exit 1; }
         [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid acceptance version' >&2; exit 1; }
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid acceptance source' >&2; exit 1; }
         [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'acceptance checkout differs from frozen source' >&2; exit 1; }
-    - name: Retrieve the Linux release artifact
-      if: inputs.target == 'linux-amd64' || inputs.target == 'candidate-action'
+    - name: Retrieve the candidate by its immutable ID
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
-        name: release-linux-amd64
-        path: ${{ runner.temp }}/accepted-linux-amd64
-        digest-mismatch: error
-    - name: Retrieve the macOS release artifact
-      if: inputs.target == 'darwin-arm64'
-      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-      with:
-        name: release-darwin-arm64
-        path: ${{ runner.temp }}/accepted-darwin-arm64
+        artifact-ids: ${{ inputs.artifact-id }}
+        path: ${{ runner.temp }}/accepted
         digest-mismatch: error
     - name: Verify the transferred manifest and product bytes
       id: artifact
@@ -50,7 +47,7 @@ runs:
         [[ "$artifact_target" != candidate-action ]] || artifact_target=linux-amd64
         bash .action/.github/scripts/release-artifact.sh verify \
           "$artifact_target" "$VERSION" "$SOURCE_SHA" \
-          "$RUNNER_TEMP/accepted-$artifact_target" "$GITHUB_OUTPUT"
+          "$RUNNER_TEMP/accepted" "$GITHUB_OUTPUT"
     - name: Run native product acceptance
       if: inputs.target == 'linux-amd64' || inputs.target == 'darwin-arm64'
       uses: ./.action/.github/actions/integration-test

@@ -1,10 +1,6 @@
 name: Build
-description: Build one native executable and report its path and source commit.
+description: Build one native executable and report its path.
 inputs:
-  binary-name:
-    description: Output executable name.
-    required: false
-    default: gh-settings
   version:
     description: Stable release version to embed. An empty input uses the CLI's development version.
     required: false
@@ -13,9 +9,6 @@ outputs:
   binary-path:
     description: Native product executable path.
     value: ${{ steps.build.outputs.binary-path }}
-  source-sha:
-    description: Checked-out source SHA used to build.
-    value: ${{ steps.build.outputs.source-sha }}
 runs:
   using: composite
   steps:
@@ -23,7 +16,6 @@ runs:
       id: build
       shell: bash
       env:
-        BINARY_NAME: ${{ inputs.binary-name }}
         BUILD_VERSION: ${{ inputs.version }}
       run: |
         ldflags=''
@@ -34,8 +26,5 @@ runs:
           }
           ldflags="-X main.version=$BUILD_VERSION"
         fi
-        source_sha="$(git rev-parse HEAD)"
-        [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
-        go build -trimpath -ldflags "$ldflags" -o "$RUNNER_TEMP/$BINARY_NAME" .
-        printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
-        printf 'source-sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+        go build -trimpath -ldflags "$ldflags" -o "$RUNNER_TEMP/gh-settings" .
+        printf 'binary-path=%s\n' "$RUNNER_TEMP/gh-settings" >> "$GITHUB_OUTPUT"

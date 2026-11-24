@@ -30,6 +30,7 @@ type workflow struct {
 	Jobs map[string]job `yaml:"jobs"`
 }
 type job struct {
+	Name        string            `yaml:"name"`
 	Timeout     int               `yaml:"timeout-minutes"`
 	Needs       string            `yaml:"needs"`
 	If          string            `yaml:"if"`

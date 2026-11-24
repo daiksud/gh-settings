@@ -18,20 +18,23 @@ func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 		return fmt.Errorf("settings validation must not inject workflow credentials or options")
 	}
 	jobs, err := settingsYAMLMap(workflow["jobs"])
-	if err != nil || len(jobs) != 1 || jobs[settingsValidateCheckName] == nil {
+	if err != nil || len(jobs) != 1 || jobs["validate"] == nil {
 		return fmt.Errorf("settings validation requires exactly one settings-pr job")
 	}
 	if err := checkSettingsPRTrigger(workflow["on"]); err != nil {
 		return err
 	}
-	job, err := settingsYAMLMap(jobs[settingsValidateCheckName])
+	job, err := settingsYAMLMap(jobs["validate"])
 	if err != nil {
 		return err
 	}
-	for _, key := range []string{"environment", "uses", "needs", "env", "container", "services", "strategy", "concurrency", "outputs", "if", "name"} {
+	for _, key := range []string{"environment", "uses", "needs", "env", "container", "services", "strategy", "concurrency", "outputs"} {
 		if job[key] != nil {
 			return fmt.Errorf("settings-pr job must not have field %s", key)
 		}
+	}
+	if !settingsScalarIs(job["name"], validationCheckName) || !settingsScalarIs(job["if"], candidateEventCondition) {
+		return fmt.Errorf("settings validation must run for candidate updates and reserve its required check for those events")
 	}
 	if job["continue-on-error"] != nil && !settingsScalarIs(job["continue-on-error"], "false") {
 		return fmt.Errorf("settings validation must not ignore failure")
@@ -44,9 +47,10 @@ func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 	if steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) != 2 {
 		return fmt.Errorf("settings validation requires default checkout and pinned validator")
 	}
-	checkout, err := settingsValidationStep(steps.Content[0], "uses")
-	if err != nil || !settingsPinnedAction(checkout["uses"], "actions/checkout") {
-		return fmt.Errorf("checkout must be pinned with no inputs")
+	checkout, err := settingsValidationStep(steps.Content[0], "uses", "with")
+	if err != nil || !settingsPinnedAction(checkout["uses"], "actions/checkout") ||
+		!settingsStringMapIs(checkout["with"], map[string]string{"persist-credentials": "false"}) {
+		return fmt.Errorf("checkout must select the merge candidate without persisting credentials")
 	}
 	validate, err := settingsValidationStep(steps.Content[1], "uses", "with")
 	if err != nil || !settingsPinnedAction(validate["uses"], "daiksud/gh-settings") ||

@@ -89,8 +89,7 @@ class HistoryFixture(unittest.TestCase):
 
     def test_empty_commits_and_unpublished_tags(self):
         self.commit("build(release): preparation", empty=True)
-        with self.assertRaisesRegex(versioning.ReleaseError, "no substantive changes"):
-            self.calculate()
+        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base))
         self.commit("fix: correction")
         self.git("tag", "v99.0.0")
         self.assertEqual(self.calculate()[0], "v0.3.1")
@@ -111,12 +110,12 @@ class HistoryFixture(unittest.TestCase):
                     "prerelease": False, "published_at": "2026-10-02T00:00:00Z",
                     "body": "<!-- gh-settings-release: " + json.dumps(manifest) + " -->\nNotes"}
         self.assertEqual(self.calculate([released], True), ("v0.4.0", "", ""))
-        with self.assertRaisesRegex(versioning.ReleaseError, "no substantive changes"):
-            self.calculate([released])
+        self.assertEqual(self.calculate([released]), ("v0.4.0", "v0.4.0", sha))
 
     def test_invalid_baseline_and_empty_interval(self):
-        with self.assertRaisesRegex(versioning.ReleaseError, "no substantive changes"):
-            self.calculate()
+        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base))
+        with self.assertRaisesRegex(versioning.ReleaseError, "valid immutable identity"):
+            self.calculate(allow_retry=True)
         self.commit("fix: a change")
         (self.root / ".git/shallow").write_text(self.base + "\n")
         with self.assertRaisesRegex(versioning.ReleaseError, "complete Git history"):
@@ -131,8 +130,7 @@ class HistoryFixture(unittest.TestCase):
                 self.assertEqual((version, previous, sha), ("v1.0.1", "v0.3.0", self.base))
         self.git("reset", "--hard", self.base)
         self.commit("chore: empty", empty=True)
-        with self.assertRaisesRegex(versioning.ReleaseError, "no substantive changes"):
-            self.calculate(graduate_to_v1=True)
+        self.assertEqual(self.calculate(graduate_to_v1=True), (self.tag, self.tag, self.base))
 
     def test_default_and_opt_in_use_the_same_frozen_interval(self):
         self.commit("feat!: new contract")
@@ -232,13 +230,28 @@ class HistoryFixture(unittest.TestCase):
                  mock.patch.object(versioning, "read_releases", return_value=self.catalog()):
                 for args in (["--graduate-to-v1"], ["--allow-retry", "--graduate-to-v1"],
                              ["--graduate-to-v1", "--allow-retry"]):
-                    output = io.StringIO()
-                    with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stdout(output):
+                    output = self.root / "outputs"
+                    output.unlink(missing_ok=True)
+                    with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}):
                         versioning.main()
-                    self.assertEqual(output.getvalue(), f"version=v1.0.1\nprevious-tag=v0.3.0\nprevious-sha={self.base}\n")
+                    self.assertEqual(output.read_text(), f"version=v1.0.1\nprevious-tag=v0.3.0\nprevious-sha={self.base}\nrelease-needed=true\n")
                 for args in (["--graduate-to-v1", "--graduate-to-v1"], ["--unknown"], ["--allow-retry=yes"]):
                     with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                         versioning.main()
+        finally:
+            os.chdir(old)
+
+    def test_empty_push_keeps_baseline_version_and_skips_manual_publication(self):
+        source = self.commit("chore: rerun main CI", empty=True)
+        output = self.root / "outputs"
+        old = pathlib.Path.cwd()
+        os.chdir(self.root)
+        try:
+            env = {"SOURCE_SHA": source, "GITHUB_REPOSITORY": "owner/repo", "GITHUB_OUTPUT": str(output)}
+            with mock.patch.dict(os.environ, env), mock.patch.object(versioning, "read_releases", return_value=self.catalog()), \
+                 mock.patch.object(versioning.sys, "argv", ["release-version.py", "--allow-retry"]):
+                versioning.main()
+            self.assertEqual(output.read_text(), f"version={self.tag}\nprevious-tag={self.tag}\nprevious-sha={self.base}\nrelease-needed=false\n")
         finally:
             os.chdir(old)
 

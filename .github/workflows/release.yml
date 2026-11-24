@@ -29,8 +29,11 @@ jobs:
       version: ${{ steps.metadata.outputs.version }}
       previous-tag: ${{ steps.metadata.outputs.previous-tag }}
       previous-sha: ${{ steps.metadata.outputs.previous-sha }}
-      build-matrix: ${{ steps.metadata.outputs.build-matrix }}
-      acceptance-matrix: ${{ steps.metadata.outputs.acceptance-matrix }}
+      release-needed: ${{ steps.metadata.outputs.release-needed }}
+      ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
+      reused: ${{ steps.reuse.outputs.reused }}
+      linux-id: ${{ steps.reuse.outputs.linux-id }}
+      macos-id: ${{ steps.reuse.outputs.macos-id }}
     steps:
       - name: Require a main-branch dispatch
         env:
@@ -69,18 +72,11 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      # Inventory dependencies without changing workspace Action execution.
-      - name: Lock dependencies of workspace Actions
+      # Lock the nested Actions used to publish and verify the selected artifacts.
+      - name: Inventory publication dependencies
         if: ${{ false }}
-        uses: $/.github/actions/lock-workspace-dependencies
-      - name: Require successful main CI, when present
-        id: ci
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/release-ci.py status
-      - name: Resolve release metadata and validated target matrices
+        uses: $/.github/actions/release-publish
+      - name: Calculate the version for the frozen main commit
         id: metadata
         uses: ./.github/actions/release-metadata
         with:
@@ -88,159 +84,64 @@ jobs:
           promote-to-v1: ${{ inputs.promote_to_v1 }}
         env:
           GH_TOKEN: ${{ github.token }}
-  reuse:
-    needs: resolve
-    runs-on: ubuntu-slim
-    timeout-minutes: 12
-    permissions: {contents: read, actions: read}
-    outputs:
-      reused: ${{ steps.lookup.outputs.reused }}
-    steps:
-      - name: Checkout frozen main to verify candidate artifacts
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Recover exact-SHA CI products
-        id: lookup
+      - name: Check the latest main validation
+        id: ci
+        if: steps.metadata.outputs.release-needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/release-ci.py status
+      - name: Select reusable inspected artifacts
+        id: reuse
+        if: steps.metadata.outputs.release-needed == 'true'
         uses: ./.github/actions/release-reuse
         with:
           source-sha: ${{ github.sha }}
-          version: ${{ needs.resolve.outputs.version }}
-          ci-run-id: ${{ needs.resolve.outputs.ci-run-id }}
-      - name: Transfer verified Linux product into this release run
-        if: steps.lookup.outputs.reused == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-linux-amd64
-          path: ${{ runner.temp }}/reused-release/linux-amd64
-          if-no-files-found: error
-          overwrite: true
-          compression-level: 0
-          retention-days: 1
-      - name: Transfer verified macOS product into this release run
-        if: steps.lookup.outputs.reused == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-darwin-arm64
-          path: ${{ runner.temp }}/reused-release/darwin-arm64
-          if-no-files-found: error
-          overwrite: true
-          compression-level: 0
-          retention-days: 1
-  commit-stage:
-    needs: [resolve, reuse]
-    if: needs.reuse.outputs.reused != 'true'
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+          version: ${{ steps.metadata.outputs.version }}
+          ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
+          ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
+  candidate:
+    needs: resolve
+    if: needs.resolve.outputs.release-needed == 'true' && needs.resolve.outputs.reused == 'false'
     permissions: {contents: read}
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.resolve.outputs.build-matrix) }}
-    steps:
-      - name: Checkout exact source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Validate the frozen source and native target
-        env:
-          TARGET: ${{ matrix.target }}
-          VERSION: ${{ needs.resolve.outputs.version }}
-          SOURCE_SHA: ${{ github.sha }}
-        run: |
-          [[ "$TARGET" == linux-amd64 || "$TARGET" == darwin-arm64 ]] || exit 1
-          [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
-          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
-          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || exit 1
-      - name: Set up Bun from package manifest
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version-file: package.json
-      - name: Install development dependencies
-        run: bun install --frozen-lockfile
-      - name: Restore Go module and build caches
-        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-      - name: Lint source and Markdown
-        if: matrix.target == 'linux-amd64'
-        uses: ./.github/actions/lint
-      - name: Run unit tests
-        if: matrix.target == 'linux-amd64'
-        uses: ./.github/actions/unit-test
-      - name: Build native executable
-        id: build
-        uses: ./.github/actions/build
-        with:
-          binary-name: gh-settings-${{ matrix.target }}
-          version: ${{ needs.resolve.outputs.version }}
-      - name: Package artifact and identity manifest
-        id: package
-        env:
-          TARGET: ${{ matrix.target }}
-          VERSION: ${{ needs.resolve.outputs.version }}
-          SOURCE_SHA: ${{ github.sha }}
-          BUILT_SOURCE_SHA: ${{ steps.build.outputs.source-sha }}
-          PRODUCT: ${{ steps.build.outputs.binary-path }}
-        run: |
-          [[ "$BUILT_SOURCE_SHA" == "$SOURCE_SHA" ]] || {
-            echo 'built binary source differs from frozen commit' >&2
-            exit 1
-          }
-          destination="$RUNNER_TEMP/release-$TARGET"
-          bash .github/scripts/release-artifact.sh write \
-            "$TARGET" "$VERSION" "$SOURCE_SHA" "$PRODUCT" "$destination"
-          printf 'artifact-dir=%s\n' "$destination" >> "$GITHUB_OUTPUT"
-      - name: Upload native product and manifest
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-${{ matrix.target }}
-          path: ${{ steps.package.outputs.artifact-dir }}
-          if-no-files-found: error
-          include-hidden-files: false
-          compression-level: 0
-          retention-days: 7
-          overwrite: true
-  acceptance-stage:
-    needs: [resolve, reuse, commit-stage]
-    if: needs.reuse.outputs.reused != 'true'
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
-    permissions: {contents: read}
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}
-    steps:
-      - name: Checkout frozen source separately from the consumer
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          path: .action
-          persist-credentials: false
-      - name: Accept the transferred release artifact
-        uses: ./.action/.github/actions/release-acceptance
-        with:
-          target: ${{ matrix.target }}
-          version: ${{ needs.resolve.outputs.version }}
-          source-sha: ${{ github.sha }}
-  delivery-gate:
-    needs: [resolve, reuse, commit-stage, acceptance-stage]
-    if: always()
+    uses: ./.github/workflows/candidate.yml
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+  select:
+    needs: [resolve, candidate]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.release-needed == 'true' }}
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {}
+    outputs:
+      run-id: ${{ steps.artifacts.outputs.run-id }}
+      linux-id: ${{ steps.artifacts.outputs.linux-id }}
+      macos-id: ${{ steps.artifacts.outputs.macos-id }}
     steps:
-      - name: Require reuse or complete fresh Screening and Inspection
+      - name: Select the accepted artifacts from exactly one producer
+        id: artifacts
         env:
-          RESULTS: ${{ toJSON(needs) }}
+          REUSED: ${{ needs.resolve.outputs.reused }}
+          CANDIDATE: ${{ needs.candidate.result }}
+          PUSH_RUN: ${{ needs.resolve.outputs.ci-run-id }}
+          PUSH_LINUX: ${{ needs.resolve.outputs.linux-id }}
+          PUSH_MACOS: ${{ needs.resolve.outputs.macos-id }}
+          FRESH_LINUX: ${{ needs.candidate.outputs.linux-id }}
+          FRESH_MACOS: ${{ needs.candidate.outputs.macos-id }}
         run: |
-          set -euo pipefail
-          python3 -c 'import json,os; d=json.loads(os.environ["RESULTS"]); assert d["resolve"]["result"] == d["reuse"]["result"] == "success" and ((d["reuse"]["outputs"]["reused"] == "true" and d["commit-stage"]["result"] == d["acceptance-stage"]["result"] == "skipped") or (d["reuse"]["outputs"]["reused"] != "true" and d["commit-stage"]["result"] == d["acceptance-stage"]["result"] == "success"))'
+          case "$REUSED/$CANDIDATE" in
+            true/skipped) run=$PUSH_RUN; linux=$PUSH_LINUX; macos=$PUSH_MACOS ;;
+            false/success) run=$GITHUB_RUN_ID; linux=$FRESH_LINUX; macos=$FRESH_MACOS ;;
+            *) echo 'No accepted set of release artifacts' >&2; exit 1 ;;
+          esac
+          for id in "$run" "$linux" "$macos"; do
+            [[ "$id" =~ ^[1-9][0-9]*$ ]] || exit 1
+          done
+          [[ "$linux" != "$macos" ]] || exit 1
+          printf 'run-id=%s\nlinux-id=%s\nmacos-id=%s\n' "$run" "$linux" "$macos" >> "$GITHUB_OUTPUT"
   release:
-    needs: [resolve, delivery-gate]
-    if: always() && needs.resolve.result == 'success' && needs.delivery-gate.result == 'success'
+    needs: [resolve, select]
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.select.result == 'success' }}
     runs-on: ubuntu-slim
     timeout-minutes: 15
     permissions: {contents: write, actions: read}
@@ -251,18 +152,19 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Recheck main and ci-push before publication
+      - name: Recheck main and the selected push attempt before publication
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.sha }}
           EXPECTED_RUN: ${{ needs.resolve.outputs.ci-run-id }}
+          EXPECTED_ATTEMPT: ${{ needs.resolve.outputs.ci-run-attempt }}
         run: |
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           [[ "$current_main" == "$SOURCE_SHA" ]] || {
             echo 'main advanced during release; abort publication' >&2
             exit 1
           }
-          python3 .github/scripts/release-ci.py status "$EXPECTED_RUN"
+          python3 .github/scripts/release-ci.py status "$EXPECTED_RUN" "$EXPECTED_ATTEMPT"
       - name: Publish accepted release artifacts
         uses: ./.github/actions/release-publish
         with:
@@ -270,14 +172,15 @@ jobs:
           version: ${{ needs.resolve.outputs.version }}
           previous-tag: ${{ needs.resolve.outputs.previous-tag }}
           previous-sha: ${{ needs.resolve.outputs.previous-sha }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+          run-id: ${{ needs.select.outputs.run-id }}
+          linux-artifact-id: ${{ needs.select.outputs.linux-id }}
+          macos-artifact-id: ${{ needs.select.outputs.macos-id }}
   verify-release:
-    needs: [resolve, release]
-    if: always() && needs.resolve.result == 'success' && needs.release.result == 'success'
+    needs: [resolve, select, release]
+    if: ${{ !cancelled() && needs.release.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    permissions: {contents: read}
+    permissions: {contents: read, actions: read}
     steps:
       - name: Checkout frozen verification source separately from the consumer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -290,3 +193,6 @@ jobs:
         with:
           source-sha: ${{ github.sha }}
           version: ${{ needs.resolve.outputs.version }}
+          run-id: ${{ needs.select.outputs.run-id }}
+          linux-artifact-id: ${{ needs.select.outputs.linux-id }}
+          macos-artifact-id: ${{ needs.select.outputs.macos-id }}
