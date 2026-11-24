@@ -10,6 +10,19 @@ This guide is for people changing gh-settings itself: its code, tests, documenta
 4. Use the [testing guide](docs/development/testing.md) to choose checks for the affected behavior.
 5. Submit a focused PR to `main`. Describe the problem, change and verification, and address findings under the [code-review policy](.agents/skills/code-review/SKILL.md). See [PR validation](docs/development/pr-validation.md) for the checks and [repository automation](docs/development/repository-automation.md#codex-approval-control) for how an approving review is recorded.
 
+## Repository directory guide
+
+| Directory | What you can change here |
+| --- | --- |
+| [.agents](.agents/README.md) | Review instructions and skill metadata for agents working on gh-settings. |
+| [.github](.github/CONTENTS.md) | This repository's settings declaration, workflows, CI Actions and contribution templates. |
+| [action](action/README.md) | The installer that the public GitHub Action uses to fetch and verify the CLI. |
+| [docs](docs/README.md) | User guides, public references, behavior specifications and maintainer documentation. |
+| [examples](examples/README.md) | Workflows that users can copy into the repository they manage. |
+| [internal](internal/README.md) | Go packages that implement settings management, the CLI and Action reporting. |
+| [scripts](scripts/README.md) | Tools for generating release notes and publishing verified binaries. |
+| [tests](tests/README.md) | CLI and Action acceptance tests, shared fixtures and offline release checks. |
+
 ## Issues and pull requests
 
 When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose), choose the template that fits the work:

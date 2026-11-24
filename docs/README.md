@@ -2,7 +2,7 @@
 
 ## For users
 
-If this is your first checkout, [install the CLI](../README.md#install) and [manage a repository description](tutorials.md). For an existing checkout or workflow, choose the task below.
+If this is your first checkout, [install the CLI](../README.md#install) and [manage a repository description](tutorials.md). For an existing checkout or workflow, browse the [task guides](guides/README.md) or look up a command, Action input or YAML field in the [public references](references/README.md).
 
 | Task | Read |
 | --- | --- |
@@ -18,7 +18,7 @@ If this is your first checkout, [install the CLI](../README.md#install) and [man
 
 ## For contributors
 
-Start with [CONTRIBUTING](../CONTRIBUTING.md) to propose a change. For implementation and maintenance work, use the following guides.
+Start with [CONTRIBUTING](../CONTRIBUTING.md) to propose a change. The [development directory guide](development/README.md) explains where to document implementation decisions and how to find the tests for a change.
 
 | Task | Read |
 | --- | --- |
