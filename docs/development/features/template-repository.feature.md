@@ -44,7 +44,7 @@ Local fakes and HTTP fixtures establish typed reads, exact requests and error ha
 
 ## Test mapping
 
-- [Codec](../../../internal/workspace/ui_general_test.go) and [model](../../../internal/settings/template_test.go): omission, explicit booleans, invalid types, round trips, managed count and comparison.
+- [Codec](../../../internal/workspace/ui_general_test.go) and [model](../../../internal/settings/comparison_test.go): omission, explicit booleans, invalid types, round trips, managed count and comparison.
 - [REST](../../../internal/github/template_test.go): required boolean observations, exact omitted/true/false/mixed PATCH payloads and forbidden writes.
 - [Plan](../../../internal/app/template_test.go) and [export](../../../internal/app/export_test.go): REST-only requests and complete observed declarations.
 - [Summary](../../../internal/actions/template_test.go): native boolean rendering and type rejection.

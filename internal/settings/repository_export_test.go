@@ -17,7 +17,7 @@ func TestRepositoryExportGroupsAreCompleteAndDisjoint(t *testing.T) {
 	if len(groups) != len(want) {
 		t.Fatalf("groups=%v", groups)
 	}
-	var all []FieldID
+	var fieldCount int
 	for i, group := range groups {
 		fields := group.Fields()
 		var paths []string
@@ -34,14 +34,14 @@ func TestRepositoryExportGroupsAreCompleteAndDisjoint(t *testing.T) {
 				t.Fatalf("group %d selects=%v, err=%v", i, selected, err)
 			}
 		}
-		all = append(all, fields...)
+		fieldCount += len(fields)
 		fields[0] = FieldID{}
 		if group.Fields()[0].Path() != want[i][0] {
 			t.Fatal("caller mutated group membership")
 		}
 	}
-	if !reflect.DeepEqual(all, AllRepositoryFields()) {
-		t.Fatal("export partition does not cover exactly the strict scalar observation")
+	if fieldCount != RepositoryFieldCount()-1 {
+		t.Fatalf("ordinary export should cover every field except archived, got %d fields", fieldCount)
 	}
 }
 
@@ -87,9 +87,6 @@ func TestRepositoryExportProjectionOwnsOnlyCompleteRequestedGroup(t *testing.T) 
 			got, err := missing.ExportDeclaration(group, prior)
 			if err == nil || !reflect.DeepEqual(got, RepositoryDeclaration{}) || retained != "retained" {
 				t.Fatalf("incomplete group exposed partial projection: %+v, %v", got, err)
-			}
-			if _, err := missing.Declaration(); err == nil {
-				t.Fatal("export relaxed the strict all-fields projection")
 			}
 		})
 	}

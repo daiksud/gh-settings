@@ -51,7 +51,7 @@ A same-value `false` PATCH can establish response/read agreement, but does not e
 ## Test mapping
 
 - [Schema](../../../internal/workspace/ui_general_test.go): omission, explicit booleans, round trip, and invalid types.
-- [Comparison](../../../internal/settings/discussions_test.go): false, omission, no difference, and stable order.
+- [Comparison](../../../internal/settings/comparison_test.go): false, omission, no difference, and stable order.
 - [REST adapter](../../../internal/github/discussions_test.go): complete reads, declared-only PATCH, response mismatch/missing data, and forbidden writes.
 - [Use case](../../../internal/app/discussions_test.go) and [export](../../../internal/app/export_test.go): REST-only plan and observed export values.
 - [Summary](../../../internal/actions/discussions_test.go): native boolean rendering and rejection of invalid value types.

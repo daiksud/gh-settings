@@ -76,26 +76,26 @@ func TestActionsAccessStrictMappingAndOwnership(t *testing.T) {
 	if _, _, _, err := (ActionsAccessObservation{}).Values(); err == nil {
 		t.Fatal("unacquired accepted")
 	}
-	for _, pair := range []struct{ level, owner string }{{"none", "User"}, {"user", "User"}, {"none", "Organization"}, {"organization", "Organization"}} {
+	for _, pair := range []struct {
+		level, owner string
+		choice       uimodel.ActionsAccessChoice
+	}{
+		{"none", "User", uimodel.NotAccessible},
+		{"user", "User", uimodel.AccessibleFromRepositoriesOwnedByUser},
+		{"none", "Organization", uimodel.NotAccessible},
+		{"organization", "Organization", uimodel.AccessibleFromRepositoriesInOrganization},
+	} {
 		o, err := NewActionsAccessObservation(pair.level, "private", pair.owner)
 		if err != nil {
 			t.Fatal(err)
 		}
-		d, err := o.Declaration()
-		if err != nil {
-			t.Fatal(err)
-		}
-		n, c, err := CompareActionsAccess(o, d)
+		n, c, err := CompareActionsAccess(o, ActionsPolicyDeclaration{AccessLevel: &pair.level})
 		if err != nil || n != 1 || len(c) != 0 {
 			t.Fatal("equal comparison failed")
 		}
 		choice, ok := ActionsAccessChoiceForValue(pair.level)
-		if !ok {
-			t.Fatal("missing mapping")
-		}
-		value, ok := ActionsAccessValueForChoice(choice)
-		if !ok || value != pair.level {
-			t.Fatal("mapping changed")
+		if !ok || choice != pair.choice {
+			t.Fatalf("level %q maps to %q, want %q", pair.level, choice, pair.choice)
 		}
 		wrong := "user"
 		if pair.owner == "User" {
@@ -113,11 +113,6 @@ func TestActionsAccessStrictMappingAndOwnership(t *testing.T) {
 	for _, level := range []string{"enterprise", "", "not_accessible"} {
 		if _, err := NewActionsAccessObservation(level, "private", "User"); err == nil {
 			t.Fatal("unknown native accepted")
-		}
-	}
-	for _, choice := range []uimodel.ActionsAccessChoice{"none", "user", "organization", "unknown"} {
-		if _, ok := ActionsAccessValueForChoice(choice); ok {
-			t.Fatal("native alias accepted")
 		}
 	}
 }

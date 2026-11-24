@@ -32,6 +32,7 @@ func TestForkPolicyObservationsAndExplicitPrerequisites(t *testing.T) {
 		valid            bool
 	}{
 		{PrivateForkDeclaration{}, 0, 0, true},
+		{PrivateForkDeclaration{Run: forkBool(true), WriteTokens: forkBool(false), Secrets: forkBool(true), Approval: forkBool(false)}, 4, 0, true},
 		{PrivateForkDeclaration{WriteTokens: forkBool(false)}, 1, 0, true},
 		{PrivateForkDeclaration{Secrets: forkBool(false)}, 0, 0, false},
 		{PrivateForkDeclaration{Run: forkBool(true), Secrets: forkBool(false)}, 2, 1, true},
@@ -52,14 +53,7 @@ func TestForkPolicyObservationsAndExplicitPrerequisites(t *testing.T) {
 	if m, c, err := ComparePrivateFork(NewPrivateForkObservation([4]bool{false, true, true, false}), d); err != nil || m != 4 || len(c) != 4 {
 		t.Fatal(m, c, err)
 	}
-	round, err := o.Declaration()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if m, c, err := ComparePrivateFork(o, round); err != nil || m != 4 || len(c) != 0 {
-		t.Fatal(m, c, err)
-	}
-	whole := ActionsPolicyDeclaration{PrivateFork: round}
+	whole := ActionsPolicyDeclaration{PrivateFork: d}
 	if whole.Empty() || !whole.ExecutionEmpty() || !whole.WorkflowPermissionsEmpty() || !whole.RetentionEmpty() {
 		t.Fatal("family leaked", whole)
 	}

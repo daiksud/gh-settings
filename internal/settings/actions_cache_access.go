@@ -35,17 +35,6 @@ func ActionsAccessChoiceForValue(value string) (uimodel.ActionsAccessChoice, boo
 	}
 	return "", false
 }
-func ActionsAccessValueForChoice(choice uimodel.ActionsAccessChoice) (string, bool) {
-	switch choice {
-	case uimodel.NotAccessible:
-		return "none", true
-	case uimodel.AccessibleFromRepositoriesOwnedByUser:
-		return "user", true
-	case uimodel.AccessibleFromRepositoriesInOrganization:
-		return "organization", true
-	}
-	return "", false
-}
 func ValidActionsAccessLevel(value string) bool {
 	_, valid := ActionsAccessChoiceForValue(value)
 	return valid
@@ -204,13 +193,6 @@ func PrepareActionsAccess(o ActionsAccessObservation, level string) error {
 		return fmt.Errorf("%s choice is incompatible with repository owner type %s", ActionsAccessPath, owner)
 	}
 	return nil
-}
-func (o ActionsAccessObservation) Declaration() (ActionsPolicyDeclaration, error) {
-	level, _, _, err := o.Values()
-	if err != nil {
-		return ActionsPolicyDeclaration{}, err
-	}
-	return ActionsPolicyDeclaration{AccessLevel: &level}, nil
 }
 func CompareActionsAccess(o ActionsAccessObservation, d ActionsPolicyDeclaration) (int, []ActionsPolicyChange, error) {
 	if err := d.Validate(); err != nil {

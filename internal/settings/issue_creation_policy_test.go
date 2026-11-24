@@ -20,9 +20,6 @@ func TestIssueCreationPolicyIsIndependentAndAcquired(t *testing.T) {
 	if _, err := CompareRepositoryObservation(before, desired); err == nil {
 		t.Fatal("unread policy acquired a default")
 	}
-	if _, err := observed.Declaration(); err == nil {
-		t.Fatal("partial observation exported")
-	}
 	for _, value := range []string{"ALL", "COLLABORATORS_ONLY"} {
 		if !ValidIssueCreationPolicy(value) {
 			t.Fatal(value)

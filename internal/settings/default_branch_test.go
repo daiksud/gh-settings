@@ -1,9 +1,6 @@
 package settings
 
-import (
-	"reflect"
-	"testing"
-)
+import "testing"
 
 func TestDefaultBranchNames(t *testing.T) {
 	for _, name := range []string{"main", "release/v2", "feature/日本語", "@", "foo./bar", "refs/heads/main"} {
@@ -32,22 +29,5 @@ func TestDefaultBranchNames(t *testing.T) {
 		if ValidRepositoryFieldValue("repository.default_branch", value) {
 			t.Errorf("accepted %#v", value)
 		}
-	}
-}
-
-func TestDefaultBranchComparison(t *testing.T) {
-	branch := "release/v2"
-	current := RepositoryState{DefaultBranch: "main"}
-	if got := CompareRepository(current, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
-		t.Fatalf("omitted field managed: %+v", got)
-	}
-	got := CompareRepository(current, RepositoryDeclaration{DefaultBranch: &branch})
-	want := []Change{{field: FieldID{path: "repository.default_branch"}, values: stringPair{before: "main", after: "release/v2"}}}
-	if got.Managed != 1 || !reflect.DeepEqual(got.Changes, want) {
-		t.Fatalf("comparison=%+v", got)
-	}
-	got = CompareRepository(RepositoryState{DefaultBranch: branch}, RepositoryDeclaration{DefaultBranch: &branch})
-	if got.Managed != 1 || len(got.Changes) != 0 {
-		t.Fatalf("equal branch=%+v", got)
 	}
 }

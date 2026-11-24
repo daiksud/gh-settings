@@ -172,59 +172,11 @@ func compareObservedFields[S any, V bool | string](result *Comparison, fields []
 	return nil
 }
 
-// AllRepositoryFields requests every supported scalar in canonical order.
-func AllRepositoryFields() []FieldID {
-	fields := make([]FieldID, 0, RepositoryFieldCount())
-	fields = appendRepositoryFieldIDs(fields, repositoryStringFields[:])
-	fields = appendRepositoryFieldIDs(fields, repositoryBoolFields[:])
-	fields = appendRepositoryFieldIDs(fields, mergeMethodsBoolFields[:])
-	fields = appendRepositoryFieldIDs(fields, mergeMethodsStringFields[:])
-	fields = appendRepositoryFieldIDs(fields, prAccessBoolFields[:])
-	fields = appendRepositoryFieldIDs(fields, prAccessStringFields[:])
-	fields = appendRepositoryFieldIDs(fields, issuePolicyStringFields[:])
-	return appendRepositoryFieldIDs(fields, sponsorshipBoolFields[:])
-}
-
 func appendRepositoryFieldIDs[S any, V bool | string](identities []FieldID, fields []repositoryField[S, V]) []FieldID {
 	for _, field := range fields {
 		identities = append(identities, FieldID{path: field.name})
 	}
 	return identities
-}
-
-// Declaration returns all supported values only after every field was acquired.
-// Values are copied, preserving explicit false, empty strings and enum values.
-func (observation RepositoryObservation) Declaration() (RepositoryDeclaration, error) {
-	var result RepositoryDeclaration
-	if err := copyObservedFields(&result, repositoryStringFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if err := copyObservedFields(&result, repositoryBoolFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if err := copyObservedFields(&result, mergeMethodsBoolFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if err := copyObservedFields(&result, mergeMethodsStringFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if result.AllowMergeCommit != nil && !*result.AllowMergeCommit {
-		result.MergeCommitTitle = nil
-		result.MergeCommitMessage = nil
-	}
-	if err := copyObservedFields(&result, prAccessBoolFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if err := copyObservedFields(&result, prAccessStringFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if err := copyObservedFields(&result, issuePolicyStringFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	if err := copyObservedFields(&result, sponsorshipBoolFields[:], observation.values); err != nil {
-		return RepositoryDeclaration{}, err
-	}
-	return result, nil
 }
 
 func copyObservedFields[S any, V bool | string](result *RepositoryDeclaration, fields []repositoryField[S, V], observed RepositoryDeclaration) error {

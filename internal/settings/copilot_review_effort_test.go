@@ -101,25 +101,24 @@ func TestCopilotReviewEffortOwnedCopiesAndAcquisition(t *testing.T) {
 	}
 	configured = "max"
 	available[0] = "max"
-	got, _ := o.Configured()
+	got, err := o.Configured()
+	if err != nil || got == nil {
+		t.Fatalf("missing configured choice: %v", err)
+	}
 	*got = "max"
-	choices, _ := o.Available()
-	choices[0] = "max"
-	got, _ = o.Configured()
-	choices, _ = o.Available()
-	effective, _ := o.Effective()
-	if *got != "lite" || choices[0] != "lite" || effective != "lite" {
-		t.Fatal(got, choices, effective)
+	got, err = o.Configured()
+	if err != nil || got == nil || *got != "lite" {
+		t.Fatalf("configured choice changed: %v, %v", got, err)
+	}
+	if err := o.ValidateDesired("lite"); err != nil {
+		t.Fatalf("mutating the input removed an available choice: %v", err)
 	}
 	var unread CopilotReviewEffortObservation
 	if _, err := unread.Configured(); err == nil {
 		t.Fatal("unread configured")
 	}
-	if _, err := unread.Effective(); err == nil {
-		t.Fatal("unread effective")
-	}
-	if _, err := unread.Available(); err == nil {
-		t.Fatal("unread available")
+	if err := unread.ValidateDesired("lite"); err == nil {
+		t.Fatal("unread availability accepted")
 	}
 	if (Declaration{CopilotReviewEffort: effortString("default")}).Empty() {
 		t.Fatal("default declaration is managed")
