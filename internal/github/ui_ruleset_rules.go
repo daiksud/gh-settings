@@ -10,7 +10,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 	result := []settings.RulesetRule{}
 	if ui.AutomaticallyRequestCopilotCodeReview != nil {
 		rule := ui.AutomaticallyRequestCopilotCodeReview
-		result = append(result, settings.RulesetRule{Type: "copilot_code_review", Parameters: &settings.RuleParameters{ReviewOnPush: copyUIRulesetValue(rule.ReviewNewPushes), ReviewDraftPullRequests: copyUIRulesetValue(rule.ReviewDraftPullRequests)}})
+		result = append(result, settings.RulesetRule{Type: "copilot_code_review", Parameters: &settings.RuleParameters{ReviewOnPush: copyUIValue(rule.ReviewNewPushes), ReviewDraftPullRequests: copyUIValue(rule.ReviewDraftPullRequests)}})
 	}
 	for _, control := range []struct {
 		selected *bool
@@ -23,7 +23,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		}
 	}
 	if ui.RestrictUpdates != nil {
-		result = append(result, settings.RulesetRule{Type: "update", Parameters: &settings.RuleParameters{UpdateAllowsFetchAndMerge: copyUIRulesetValue(ui.RestrictUpdates.AllowFetchAndMerge)}})
+		result = append(result, settings.RulesetRule{Type: "update", Parameters: &settings.RuleParameters{UpdateAllowsFetchAndMerge: copyUIValue(ui.RestrictUpdates.AllowFetchAndMerge)}})
 	}
 	if ui.RequireDeploymentsToSucceed != nil {
 		if ui.RequireDeploymentsToSucceed.RequiredDeploymentEnvironments == nil {
@@ -62,8 +62,8 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 	}
 	if coverage := ui.RestrictCodeCoverage; coverage != nil {
 		result = append(result, settings.RulesetRule{Type: "code_coverage", Parameters: &settings.RuleParameters{
-			MinimumCoverage: copyUIRulesetValue(coverage.MinimumLineCoveragePercentage),
-			MaxCoverageDrop: copyUIRulesetValue(coverage.MaximumLineCoverageDrop),
+			MinimumCoverage: copyUIValue(coverage.MinimumLineCoveragePercentage),
+			MaxCoverageDrop: copyUIValue(coverage.MaximumLineCoverageDrop),
 		}})
 	}
 	return &result, nil
@@ -71,7 +71,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 
 func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, error) {
 	no := false
-	result := uimodel.RulesetRules{RestrictCreations: copyUIRulesetValue(&no), RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
+	result := uimodel.RulesetRules{RestrictCreations: copyUIValue(&no), RestrictDeletions: copyUIValue(&no), BlockForcePushes: copyUIValue(&no), RequireLinearHistory: copyUIValue(&no), RequireSignedCommits: copyUIValue(&no)}
 	for _, rule := range rules {
 		switch rule.Type {
 		case "creation":
@@ -80,9 +80,9 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			if rule.Parameters == nil || rule.Parameters.UpdateAllowsFetchAndMerge == nil {
 				return uimodel.RulesetRules{}, fmt.Errorf("update requires complete parameters")
 			}
-			result.RestrictUpdates = &uimodel.UpdateRule{AllowFetchAndMerge: copyUIRulesetValue(rule.Parameters.UpdateAllowsFetchAndMerge)}
+			result.RestrictUpdates = &uimodel.UpdateRule{AllowFetchAndMerge: copyUIValue(rule.Parameters.UpdateAllowsFetchAndMerge)}
 		case "copilot_code_review":
-			result.AutomaticallyRequestCopilotCodeReview = &uimodel.CopilotCodeReviewRule{ReviewNewPushes: copyUIRulesetValue(rule.Parameters.ReviewOnPush), ReviewDraftPullRequests: copyUIRulesetValue(rule.Parameters.ReviewDraftPullRequests)}
+			result.AutomaticallyRequestCopilotCodeReview = &uimodel.CopilotCodeReviewRule{ReviewNewPushes: copyUIValue(rule.Parameters.ReviewOnPush), ReviewDraftPullRequests: copyUIValue(rule.Parameters.ReviewDraftPullRequests)}
 		case "deletion":
 			*result.RestrictDeletions = true
 		case "non_fast_forward":
@@ -123,8 +123,8 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 				return uimodel.RulesetRules{}, fmt.Errorf("code_coverage requires both acquired thresholds")
 			}
 			result.RestrictCodeCoverage = &uimodel.CodeCoverageRule{
-				MinimumLineCoveragePercentage: copyUIRulesetValue(p.MinimumCoverage),
-				MaximumLineCoverageDrop:       copyUIRulesetValue(p.MaxCoverageDrop),
+				MinimumLineCoveragePercentage: copyUIValue(p.MinimumCoverage),
+				MaximumLineCoverageDrop:       copyUIValue(p.MaxCoverageDrop),
 			}
 		default:
 			return uimodel.RulesetRules{}, fmt.Errorf("ruleset rule has no prepared UI mapping: %s", rule.Type)

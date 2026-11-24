@@ -128,7 +128,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		}
 		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity, RequiredApprovalsNormalization: normalizations.RequiredApprovals, MergeMethodsNormalization: normalizations.MergeMethods, TeamApprovalsNormalizations: normalizations.TeamApprovals, ScanningAlertsNormalizations: normalizations.ScanningAlerts, ScanningSecurityAlertsNormalizations: normalizations.ScanningSecurityAlerts, BypassModeNormalizations: normalizations.BypassModes})
 	}
-	return settings.NewRulesetObservationWithUnmanagedIDs(values, 0, unmanagedIDs)
+	return settings.NewRulesetObservation(values, unmanagedIDs)
 }
 func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, error) {
 	if err := rejectUnsupportedRulesetScope(raw); err != nil {
@@ -371,7 +371,7 @@ func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[st
 	if err != nil {
 		return err
 	}
-	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 1, Policy: policy}}, 0)
+	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 1, Policy: policy}}, nil)
 	if err != nil {
 		return err
 	}

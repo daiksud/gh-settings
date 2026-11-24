@@ -43,7 +43,7 @@ func TestReadRulesetsCompleteOwnershipAndTargets(t *testing.T) {
 		t.Fatal(err)
 	}
 	values, err := observed.Values()
-	if err != nil || len(values) != 2 || values[0].ID != 7 || values[1].ID != 8 || observed.ExcludedPush() != 0 || len(calls) != 3 {
+	if err != nil || len(values) != 2 || values[0].ID != 7 || values[1].ID != 8 || !observed.HasUnmanagedID(9) || len(calls) != 3 {
 		t.Fatalf("%+v %v %v", observed, err, calls)
 	}
 }

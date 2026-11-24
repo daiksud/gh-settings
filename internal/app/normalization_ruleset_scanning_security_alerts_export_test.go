@@ -24,7 +24,7 @@ func TestScanningSecurityAlertsExportUsesIndependentSinkAfterCompleteAcquisition
 				always := "always"
 				state.Policy.BypassActors = &[]settings.BypassActor{{ActorType: "OrganizationAdmin", BypassMode: &always}}
 			}
-			observed, err := settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+			observed, err := settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

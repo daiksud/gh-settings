@@ -46,7 +46,7 @@ func TestScanningAlertsMappingAndOwnedState(t *testing.T) {
 	}
 	for _, companions := range []bool{false, true} {
 		state := normalizedScanningAlertsState(companions)
-		observed, err := NewRulesetObservation([]RulesetState{state}, 0)
+		observed, err := NewRulesetObservation([]RulesetState{state}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +106,7 @@ func TestScanningAlertsRejectInvalidIdentityAndEvidenceIndependently(t *testing.
 	} {
 		state := normalizedScanningAlertsState(true)
 		mutate(&state)
-		if got, err := NewRulesetObservation([]RulesetState{state}, 0); err == nil || !reflect.DeepEqual(got, RulesetObservation{}) {
+		if got, err := NewRulesetObservation([]RulesetState{state}, nil); err == nil || !reflect.DeepEqual(got, RulesetObservation{}) {
 			t.Fatal(got, err)
 		}
 		if raw, err := state.RawCodeScanningTools(); err == nil || raw != nil {

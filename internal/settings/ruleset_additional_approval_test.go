@@ -50,7 +50,7 @@ func TestRulesetAdditionalApprovalOwnership(t *testing.T) {
 func TestRulesetAdditionalApprovalObservationRequiresValue(t *testing.T) {
 	policy := reviewPolicy()
 	ruleOf(t, policy, "pull_request").RequireExtraApprovalForUnattributedChanges = nil
-	if _, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: policy}}, 0); err == nil {
+	if _, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: policy}}, nil); err == nil {
 		t.Fatal("defaulted missing observation")
 	}
 }

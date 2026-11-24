@@ -34,7 +34,7 @@ func TestRulesetBypassObservationOwnsIdentityBoundRawModes(t *testing.T) {
 				{ActorType: "User", ActorID: rsID(9), BypassMode: rsText("USER_MODE")},
 			}
 			state := normalizedBypassState(raw, companions)
-			observed, err := NewRulesetObservation([]RulesetState{state}, 0)
+			observed, err := NewRulesetObservation([]RulesetState{state}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -107,7 +107,7 @@ func TestRulesetBypassObservationRejectsIncompleteOrForgedEvidence(t *testing.T)
 	if got, err := bypassOnly.RawBypassActors(); err == nil || got != nil {
 		t.Fatal("bypass-only evidence ignored policy ID", got, err)
 	}
-	if observed, err := NewRulesetObservation([]RulesetState{bypassOnly}, 0); err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
+	if observed, err := NewRulesetObservation([]RulesetState{bypassOnly}, nil); err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
 		t.Fatal("bypass-only mismatched ID accepted", observed, err)
 	}
 	for _, mutate := range []func(*RulesetState){
@@ -149,7 +149,7 @@ func TestRulesetBypassObservationRejectsIncompleteOrForgedEvidence(t *testing.T)
 		if got, err := state.RawRequiredApprovals(); err == nil || got != nil {
 			t.Fatal("cross-record approvals escaped", got, err)
 		}
-		observed, err := NewRulesetObservation([]RulesetState{{ID: 8, Policy: basicPolicy("valid")}, state}, 0)
+		observed, err := NewRulesetObservation([]RulesetState{{ID: 8, Policy: basicPolicy("valid")}, state}, nil)
 		if err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
 			t.Fatal("partial collection escaped", observed, err)
 		}

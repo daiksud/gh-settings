@@ -59,7 +59,7 @@ func TestMergeMethodsCompleteDecoderPreservesAllEvidenceAndStrictVerification(t 
 				t.Fatal("companion evidence lost", records)
 			}
 			state := settings.RulesetState{ID: 7, Policy: policy, EnforcementNormalization: records.Enforcement, RequiredApprovalsNormalization: records.RequiredApprovals, MergeMethodsNormalization: records.MergeMethods, QualitySeverityNormalization: records.QualitySeverity, BypassModeNormalizations: records.BypassModes}
-			observed, err := settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+			observed, err := settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

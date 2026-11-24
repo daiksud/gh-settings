@@ -50,7 +50,7 @@ func TestRulesetRequiredApprovalsExportOrdersTypedWarningsAndPreservesAbsence(t 
 					always := "always"
 					canonical.Policy.BypassActors = &[]settings.BypassActor{{ActorType: "OrganizationAdmin", BypassMode: &always}}
 				}
-				observed, err := settings.NewRulesetObservation([]settings.RulesetState{z, canonical, absent, a}, 0)
+				observed, err := settings.NewRulesetObservation([]settings.RulesetState{z, canonical, absent, a}, nil)
 				if err != nil {
 					t.Fatal(err)
 				}

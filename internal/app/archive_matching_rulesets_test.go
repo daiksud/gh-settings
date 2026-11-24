@@ -59,19 +59,19 @@ func TestArchivedRulesetsMatchRequiresCompleteIdentityAndPolicy(t *testing.T) {
 					case "incomplete observation":
 						return settings.RulesetObservation{}, nil
 					case "missing object":
-						return settings.NewRulesetObservation(nil, 0)
+						return settings.NewRulesetObservation(nil, nil)
 					case "name collision":
 						other := state
 						other.ID, other.Policy.Name = 8, "other"
 						state.Policy.Name = "different"
 						other.Policy.Name = "basic"
-						return settings.NewRulesetObservation([]settings.RulesetState{state, other}, 0)
+						return settings.NewRulesetObservation([]settings.RulesetState{state, other}, nil)
 					case "matching with extra object":
 						other := state
 						other.ID, other.Policy.Name = 8, "unmanaged"
-						return settings.NewRulesetObservation([]settings.RulesetState{state, other}, 0)
+						return settings.NewRulesetObservation([]settings.RulesetState{state, other}, nil)
 					default:
-						return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+						return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 					}
 				},
 				Ruleset:   func(repository.Repository, settings.RulesetChange) (int64, error) { writes++; return 0, nil },

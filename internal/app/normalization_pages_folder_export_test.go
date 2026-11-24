@@ -53,13 +53,13 @@ func TestPagesFolderExportWarningsRequireSelectedCompleteSource(t *testing.T) {
 			}
 			reader.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
 				if test.failure != "conversion" {
-					return settings.NewRulesetObservation(nil, 0)
+					return settings.NewRulesetObservation(nil, nil)
 				}
 				state := appRulesetState(t)
 				mode := "always"
 				actors := []settings.BypassActor{{ActorType: "OrganizationAdmin", BypassMode: &mode}}
 				state.Policy.BypassActors = &actors
-				return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+				return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 			}
 			saved := false
 			var warnings []settings.ObservationNormalization

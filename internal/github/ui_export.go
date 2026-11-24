@@ -110,7 +110,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 			if err != nil {
 				return uimodel.Repository{}, fmt.Errorf("export Rulesets: %w", err)
 			}
-			rulesets = append(rulesets, prepared.Ruleset)
+			rulesets = append(rulesets, prepared)
 		}
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}

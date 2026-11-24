@@ -115,7 +115,7 @@ func TestPruneRulesetsCreatesBeforeAlphabeticallyEarlierDelete(t *testing.T) {
 	var calls []string
 	result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: desired}, nil }, checkoutRepository, Writer{
 		ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
-			return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+			return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 		},
 		Ruleset: func(_ repository.Repository, c settings.RulesetChange) (int64, error) {
 			calls = append(calls, c.Operation()+":"+c.Name())

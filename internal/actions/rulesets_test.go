@@ -103,7 +103,7 @@ func TestRulesetPlanReportAndSummaryShowSelectedWholeObjects(t *testing.T) {
 	}
 	unlisted := current.Rulesets.Values()[0]
 	unlisted.Name = "CANARY-unlisted-object"
-	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: current.Rulesets.Values()[0]}, {ID: 8, Policy: unlisted}}, 0)
+	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: current.Rulesets.Values()[0]}, {ID: 8, Policy: unlisted}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

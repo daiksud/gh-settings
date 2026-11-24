@@ -42,7 +42,7 @@ func TestRulesetCodeAnalysisExportRetainsCompleteProtection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obs, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 26024001, Policy: policy}}, 0)
+	obs, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 26024001, Policy: policy}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

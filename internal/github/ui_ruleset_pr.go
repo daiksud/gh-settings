@@ -11,12 +11,12 @@ func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, e
 		return nil, fmt.Errorf("required_approvals must be a UI choice from 0 to 10")
 	}
 	result := &settings.RuleParameters{
-		RequireExtraApprovalForUnattributedChanges: copyUIRulesetValue(ui.RequireAnAdditionalApprovalForUnattributedCopilotPullRequests),
-		RequiredApprovingReviewCount:               copyUIRulesetValue(ui.RequiredApprovals),
-		DismissStaleReviewsOnPush:                  copyUIRulesetValue(ui.DismissStalePullRequestApprovalsWhenNewCommitsArePushed),
-		RequireCodeOwnerReview:                     copyUIRulesetValue(ui.RequireReviewFromCodeOwners),
-		RequireLastPushApproval:                    copyUIRulesetValue(ui.RequireApprovalOfTheMostRecentReviewablePush),
-		RequiredReviewThreadResolution:             copyUIRulesetValue(ui.RequireConversationResolutionBeforeMerging),
+		RequireExtraApprovalForUnattributedChanges: copyUIValue(ui.RequireAnAdditionalApprovalForUnattributedCopilotPullRequests),
+		RequiredApprovingReviewCount:               copyUIValue(ui.RequiredApprovals),
+		DismissStaleReviewsOnPush:                  copyUIValue(ui.DismissStalePullRequestApprovalsWhenNewCommitsArePushed),
+		RequireCodeOwnerReview:                     copyUIValue(ui.RequireReviewFromCodeOwners),
+		RequireLastPushApproval:                    copyUIValue(ui.RequireApprovalOfTheMostRecentReviewablePush),
+		RequiredReviewThreadResolution:             copyUIValue(ui.RequireConversationResolutionBeforeMerging),
 	}
 	if ui.AllowedMergeMethods != nil {
 		methods := make([]string, 0, len(*ui.AllowedMergeMethods))
@@ -37,12 +37,12 @@ func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, e
 		return nil, fmt.Errorf("required_approvals is missing or outside UI choices")
 	}
 	result := &uimodel.PullRequestRule{
-		RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: copyUIRulesetValue(p.RequireExtraApprovalForUnattributedChanges),
-		RequiredApprovals: copyUIRulesetValue(p.RequiredApprovingReviewCount),
-		DismissStalePullRequestApprovalsWhenNewCommitsArePushed: copyUIRulesetValue(p.DismissStaleReviewsOnPush),
-		RequireReviewFromCodeOwners:                             copyUIRulesetValue(p.RequireCodeOwnerReview),
-		RequireApprovalOfTheMostRecentReviewablePush:            copyUIRulesetValue(p.RequireLastPushApproval),
-		RequireConversationResolutionBeforeMerging:              copyUIRulesetValue(p.RequiredReviewThreadResolution),
+		RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: copyUIValue(p.RequireExtraApprovalForUnattributedChanges),
+		RequiredApprovals: copyUIValue(p.RequiredApprovingReviewCount),
+		DismissStalePullRequestApprovalsWhenNewCommitsArePushed: copyUIValue(p.DismissStaleReviewsOnPush),
+		RequireReviewFromCodeOwners:                             copyUIValue(p.RequireCodeOwnerReview),
+		RequireApprovalOfTheMostRecentReviewablePush:            copyUIValue(p.RequireLastPushApproval),
+		RequireConversationResolutionBeforeMerging:              copyUIValue(p.RequiredReviewThreadResolution),
 	}
 	if p.AllowedMergeMethods == nil {
 		return nil, fmt.Errorf("missing acquired allowed merge methods")

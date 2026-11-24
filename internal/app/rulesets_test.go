@@ -51,7 +51,7 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 			if fail == "read" {
 				return settings.RulesetObservation{}, errors.New("denied")
 			}
-			return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+			return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 		}, Ruleset: func(_ repository.Repository, c settings.RulesetChange) (int64, error) {
 			calls = append(calls, "ruleset-write")
 			if c.ID() != 7 || *c.After().Enforcement != "disabled" || len(*c.After().Rules) != 1 {
@@ -79,7 +79,7 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 }
 func TestRulesetsAppPreflightsWholeCollectionAndNoops(t *testing.T) {
 	state := appRulesetState(t)
-	observed, _ := settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+	observed, _ := settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 	for _, body := range []string{`[{id: 7, name: basic, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]}]`, `[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]},{id: 99, name: z-missing, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]}]`} {
 		writes := 0
 		result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: appRulesets(t, body)}, nil }, checkoutRepository, Writer{ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) { return observed, nil }, Ruleset: func(repository.Repository, settings.RulesetChange) (int64, error) { writes++; return 17, nil }})
@@ -110,44 +110,26 @@ func TestRulesetsPlanFailureDiscardsEarlierComparison(t *testing.T) {
 	}
 }
 func TestRulesetsExportAcquiresOwnedIdentities(t *testing.T) {
-	for _, include := range []bool{true} {
-		for _, fail := range []bool{false} {
-			saved := false
-			readRulesets := 0
-			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
-			reader.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
-				readRulesets++
-				if fail {
-					return settings.RulesetObservation{}, errors.New("hidden bypass")
-				}
-				return settings.NewRulesetObservation([]settings.RulesetState{appRulesetState(t)}, 2)
-			}
-			err := Export(ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
-				return func(d settings.Declaration) error {
-					saved = true
-					if (d.Rulesets != nil) != include {
-						t.Fatal("presence")
-					}
-					if include {
-						values := d.Rulesets.Values()
-						if len(values) != 1 || values[0].ID == nil || *values[0].ID != 7 {
-							t.Fatal("export lost observed Ruleset ID", values)
-						}
-					}
-					return nil
-				}, nil
-			}}, reader)
-			if include {
-				if readRulesets != 1 || (fail && saved) || (!fail && !saved) {
-					t.Fatal(saved, readRulesets)
-				}
-			} else if readRulesets != 0 || !saved || err != nil {
-				t.Fatal("default export changed")
-			}
-			if (err != nil) != (include && fail) {
-				t.Fatal(err)
-			}
-		}
+	reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
+	reads := 0
+	reader.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
+		reads++
+		basic := appRulesetState(t)
+		zulu := appRulesetState(t)
+		zulu.ID, zulu.Policy.Name = 5, "zulu"
+		return settings.NewRulesetObservation([]settings.RulesetState{zulu, basic}, nil)
+	}
+	var saved *settings.RulesetDeclarations
+	err := Export(ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
+		return func(d settings.Declaration) error { saved = d.Rulesets; return nil }, nil
+	}}, reader)
+	if err != nil || saved == nil || reads != 1 {
+		t.Fatalf("Rulesets export: saved=%v reads=%d error=%v", saved, reads, err)
+	}
+	values := saved.Values()
+	if len(values) != 2 || values[0].Name != "basic" || values[0].ID == nil || *values[0].ID != 7 ||
+		values[1].Name != "zulu" || values[1].ID == nil || *values[1].ID != 5 {
+		t.Fatalf("Rulesets export lost name order or acquired IDs: %+v", values)
 	}
 }
 
@@ -167,7 +149,7 @@ func TestRulesetExplicitDeletionAppOperationAndPartialFailure(t *testing.T) {
 			},
 			ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
 				calls = append(calls, "rulesets-read")
-				return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+				return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 			},
 			Ruleset: func(_ repository.Repository, c settings.RulesetChange) (int64, error) {
 				calls = append(calls, "delete")

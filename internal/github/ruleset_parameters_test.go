@@ -51,7 +51,7 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	obs, e := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: before}}, 0)
+	obs, e := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: before}}, nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -129,7 +129,7 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 		t.Fatal(calls, e)
 	}
 	after := *changes[0].After()
-	afterObs, _ := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: after}}, 0)
+	afterObs, _ := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: after}}, nil)
 	if again, e := settings.ReconcileRulesets(afterObs, &d); e != nil || len(again) != 0 {
 		t.Fatal("repeat writes", again, e)
 	}

@@ -30,7 +30,7 @@ func declareUIRulesetBypass(entries *[]uimodel.BypassEntry) (*[]settings.BypassA
 		}{{entry.Team, "Team"}, {entry.App, "Integration"}, {entry.User, "User"}} {
 			if dynamic.id != nil {
 				selected++
-				actor.ActorType, actor.ActorID = dynamic.kind, copyUIRulesetValue(dynamic.id)
+				actor.ActorType, actor.ActorID = dynamic.kind, copyUIValue(dynamic.id)
 			}
 		}
 		if entry.DeployKeys != nil {
@@ -67,18 +67,18 @@ func observeUIRulesetBypass(actors []settings.BypassActor) (*[]uimodel.BypassEnt
 			}
 			for role, id := range uiRulesetRoles {
 				if id == *actor.ActorID {
-					entry.Role = copyUIRulesetValue(&role)
+					entry.Role = copyUIValue(&role)
 				}
 			}
 			if entry.Role == nil {
 				return nil, fmt.Errorf("bypass role is outside UI choices")
 			}
 		case "Team":
-			entry.Team = copyUIRulesetValue(actor.ActorID)
+			entry.Team = copyUIValue(actor.ActorID)
 		case "Integration":
-			entry.App = copyUIRulesetValue(actor.ActorID)
+			entry.App = copyUIValue(actor.ActorID)
 		case "User":
-			entry.User = copyUIRulesetValue(actor.ActorID)
+			entry.User = copyUIValue(actor.ActorID)
 		case "DeployKey":
 			selected := true
 			entry.DeployKeys = &selected

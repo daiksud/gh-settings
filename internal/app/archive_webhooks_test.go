@@ -139,7 +139,7 @@ func TestArchivedWebhookAndRulesetMustBothMatch(t *testing.T) {
 				},
 				ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
 					ruleReads++
-					return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+					return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 				},
 				ReadWebhooks: func(repository.Repository, []int64) (settings.WebhookObservation, error) {
 					hookReads++

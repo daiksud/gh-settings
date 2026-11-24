@@ -7,7 +7,7 @@ import (
 )
 
 func declareUIRulesetChecks(ui uimodel.StatusChecksRule) (*settings.RuleParameters, error) {
-	result := &settings.RuleParameters{StrictRequiredStatusChecksPolicy: copyUIRulesetValue(ui.RequireBranchesToBeUpToDateBeforeMerging), DoNotEnforceOnCreate: copyUIRulesetValue(ui.DoNotRequireStatusChecksOnCreation)}
+	result := &settings.RuleParameters{StrictRequiredStatusChecksPolicy: copyUIValue(ui.RequireBranchesToBeUpToDateBeforeMerging), DoNotEnforceOnCreate: copyUIValue(ui.DoNotRequireStatusChecksOnCreation)}
 	if ui.RequiredStatusChecks == nil {
 		return result, nil
 	}
@@ -19,7 +19,7 @@ func declareUIRulesetChecks(ui uimodel.StatusChecksRule) (*settings.RuleParamete
 		if check.Source.App != nil && *check.Source.App <= 0 {
 			return nil, fmt.Errorf("check source App requires positive identity")
 		}
-		checks = append(checks, settings.RequiredStatusCheck{Context: check.Check, IntegrationID: copyUIRulesetValue(check.Source.App)})
+		checks = append(checks, settings.RequiredStatusCheck{Context: check.Check, IntegrationID: copyUIValue(check.Source.App)})
 	}
 	result.RequiredStatusChecks = &checks
 	return result, nil
@@ -29,12 +29,12 @@ func declareUIRulesetChecks(ui uimodel.StatusChecksRule) (*settings.RuleParamete
 func observeUIRulesetChecks(p *settings.RuleParameters) *uimodel.StatusChecksRule {
 	checks := make([]uimodel.StatusCheck, 0, len(*p.RequiredStatusChecks))
 	for _, check := range *p.RequiredStatusChecks {
-		source := uimodel.CheckSource{App: copyUIRulesetValue(check.IntegrationID)}
+		source := uimodel.CheckSource{App: copyUIValue(check.IntegrationID)}
 		if source.App == nil {
 			selected := true
 			source.AnySource = &selected
 		}
 		checks = append(checks, uimodel.StatusCheck{Check: check.Context, Source: source})
 	}
-	return &uimodel.StatusChecksRule{RequiredStatusChecks: &checks, RequireBranchesToBeUpToDateBeforeMerging: copyUIRulesetValue(p.StrictRequiredStatusChecksPolicy), DoNotRequireStatusChecksOnCreation: copyUIRulesetValue(p.DoNotEnforceOnCreate)}
+	return &uimodel.StatusChecksRule{RequiredStatusChecks: &checks, RequireBranchesToBeUpToDateBeforeMerging: copyUIValue(p.StrictRequiredStatusChecksPolicy), DoNotRequireStatusChecksOnCreation: copyUIValue(p.DoNotEnforceOnCreate)}
 }

@@ -31,7 +31,7 @@ func TestRulesetRequiredApprovalsObservationOwnsTypedRawAndCompanions(t *testing
 		for _, both := range []bool{false, true} {
 			state := normalizedRequiredApprovalsState(7, "first", raw, both)
 			other := normalizedRequiredApprovalsState(9, "other", 12, both)
-			observed, err := NewRulesetObservation([]RulesetState{state, other}, 0)
+			observed, err := NewRulesetObservation([]RulesetState{state, other}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -110,7 +110,7 @@ func TestRulesetRequiredApprovalsObservationRejectsIncompleteAndForgedRecords(t 
 		if got, err := state.RawEnforcement(); err == nil || got != "" {
 			t.Fatal("cross-record enforcement escaped", got, err)
 		}
-		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, 0)
+		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, nil)
 		if err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
 			t.Fatal("partial collection escaped", observed, err)
 		}

@@ -87,7 +87,7 @@ func TestUIFromExportDeclarationPreservesOptionalAboutFields(t *testing.T) {
 
 func exportRulesetPolicies(t *testing.T, states []settings.RulesetState) *settings.RulesetDeclarations {
 	t.Helper()
-	observed, err := settings.NewRulesetObservation(states, 0)
+	observed, err := settings.NewRulesetObservation(states, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

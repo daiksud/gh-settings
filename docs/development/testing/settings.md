@@ -109,7 +109,7 @@ The [Ruleset mapping](../ui-ruleset-mapping.md) records the supported UI control
 | [PR settings](../../../internal/github/ui_ruleset_pr_test.go) | Singleton flags, finite count choices, merge methods and complete read projection |
 | [Checks](../../../internal/github/ui_ruleset_checks_test.go) | Singleton flags, empty collections, Any source vs App identity, raw null source and owned values |
 | [Analysis](../../../internal/github/ui_ruleset_analysis_test.go) | All 20 scanning threshold combinations, four quality choices and required desired values |
-| [Collection/transport](../../../internal/github/ui_ruleset_collection_test.go) | Acquired IDs, sorting, no partial projection, raw eight-rule reads, exact no-ID POST/selected-ID PUT and independent readback |
+| [Collection and transport](../../../internal/github/ui_ruleset_collection_test.go) | Omitted and empty collections, raw eight-rule reads through export, exact no-ID POST/selected-ID PUT and independent readback |
 
 [Unsupported Ruleset acceptance](../../../tests/acceptance/ruleset_unsupported_controls_test.go) rejects removed declarations before remote work, including false/empty values, and verifies that unsupported observed enforcement, rule types and review-dismissal parameters block export, update and explicit deletion without writes or configuration replacement. These local cases preserve supported PR behavior and do not change live protection.
 

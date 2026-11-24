@@ -20,7 +20,7 @@ func TestRulesetPruneRejectsUnmanagedAndNormalizedPolicy(t *testing.T) {
 	policy := basicPolicy("basic")
 	policy.ID = &id
 	desired, _ := NewRulesetDeclarations(nil)
-	current, _ := NewRulesetObservation([]RulesetState{{ID: id, Policy: policy}}, 0)
+	current, _ := NewRulesetObservation([]RulesetState{{ID: id, Policy: policy}}, nil)
 	changes, err := ReconcileRulesetsWithPrune(current, &desired, true)
 	if err != nil || len(changes) != 1 || changes[0].ID() != id || changes[0].Operation() != "delete" || !changes[0].MatchesDeletionPolicy(policy) {
 		t.Fatal(changes, err)
@@ -29,20 +29,18 @@ func TestRulesetPruneRejectsUnmanagedAndNormalizedPolicy(t *testing.T) {
 	if changes[0].MatchesDeletionPolicy(policy) {
 		t.Fatal("drift accepted")
 	}
-	for _, args := range []struct {
-		push int
-		ids  []int64
-	}{{1, nil}, {0, []int64{9}}} {
-		unowned, _ := NewRulesetObservationWithUnmanagedIDs(nil, args.push, args.ids)
-		if _, err := ReconcileRulesetsWithPrune(unowned, &desired, true); err == nil {
-			t.Fatal("unowned inventory accepted")
-		}
+	unowned, err := NewRulesetObservation(nil, []int64{9})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReconcileRulesetsWithPrune(unowned, &desired, true); err == nil {
+		t.Fatal("unowned inventory accepted")
 	}
 	policy = basicPolicy("basic")
 	policy.ID = &id
 	disabled := "disabled"
 	policy.Enforcement = &disabled
-	current, err = NewRulesetObservation([]RulesetState{{ID: id, Policy: policy, EnforcementNormalization: ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE", Fallback: "disabled"}}}, 0)
+	current, err = NewRulesetObservation([]RulesetState{{ID: id, Policy: policy, EnforcementNormalization: ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE", Fallback: "disabled"}}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

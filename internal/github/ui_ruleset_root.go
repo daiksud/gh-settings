@@ -64,7 +64,7 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		include = appendUITargetPatterns(include, ui.TargetTags.IncludeByPattern, prefix)
 		exclude = appendUITargetPatterns(exclude, ui.TargetTags.ExcludeByPattern, prefix)
 	}
-	result := settings.RulesetDeclaration{ID: copyUIRulesetValue(ui.ID), Name: ui.RulesetName, Target: &target, Enforcement: &enforcement, Conditions: &settings.RulesetConditions{RefName: &settings.RefNameCondition{Include: &include, Exclude: &exclude}}}
+	result := settings.RulesetDeclaration{ID: copyUIValue(ui.ID), Name: ui.RulesetName, Target: &target, Enforcement: &enforcement, Conditions: &settings.RulesetConditions{RefName: &settings.RefNameCondition{Include: &include, Exclude: &exclude}}}
 	var err error
 	result.BypassActors, err = declareUIRulesetBypass(ui.BypassList)
 	if err != nil {
@@ -89,30 +89,25 @@ func appendUITargetPatterns(result []string, patterns *[]string, prefix string) 
 	return result
 }
 
-// PreparedRuleset contains complete supported Ruleset UI state.
-type PreparedRuleset struct {
-	uimodel.Ruleset
-}
-
 // RulesetObservation projects only complete, validated acquired API policies.
 // Never run declaration-default normalization on an observation.
-func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, error) {
+func RulesetObservation(policy settings.RulesetDeclaration) (uimodel.Ruleset, error) {
 	if err := settings.ValidateRuleset(policy, true); err != nil {
-		return PreparedRuleset{}, err
+		return uimodel.Ruleset{}, err
 	}
 	status, valid := settings.RulesetEnforcementChoiceForValue(*policy.Enforcement)
 	if !valid {
-		return PreparedRuleset{}, fmt.Errorf("ruleset enforcement_status is outside UI choices")
+		return uimodel.Ruleset{}, fmt.Errorf("ruleset enforcement_status is outside UI choices")
 	}
-	result := uimodel.Ruleset{ID: copyUIRulesetValue(policy.ID), RulesetName: policy.Name, EnforcementStatus: &status}
+	result := uimodel.Ruleset{ID: copyUIValue(policy.ID), RulesetName: policy.Name, EnforcementStatus: &status}
 	var err error
 	result.BypassList, err = observeUIRulesetBypass(*policy.BypassActors)
 	if err != nil {
-		return PreparedRuleset{}, err
+		return uimodel.Ruleset{}, err
 	}
 	result.Rules, err = observeUIRulesetRules(*policy.Rules)
 	if err != nil {
-		return PreparedRuleset{}, err
+		return uimodel.Ruleset{}, err
 	}
 	prefix := "refs/heads/"
 	if *policy.Target == "tag" {
@@ -129,20 +124,20 @@ func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, er
 		case strings.HasPrefix(value, prefix):
 			pattern := strings.TrimPrefix(value, prefix)
 			if strings.TrimSpace(pattern) == "" {
-				return PreparedRuleset{}, fmt.Errorf("ruleset inclusion pattern has blank UI suffix")
+				return uimodel.Ruleset{}, fmt.Errorf("ruleset inclusion pattern has blank UI suffix")
 			}
 			include = append(include, pattern)
 		default:
-			return PreparedRuleset{}, fmt.Errorf("ruleset inclusion pattern is outside target UI choices")
+			return uimodel.Ruleset{}, fmt.Errorf("ruleset inclusion pattern is outside target UI choices")
 		}
 	}
 	for _, value := range *policy.Conditions.RefName.Exclude {
 		if !strings.HasPrefix(value, prefix) {
-			return PreparedRuleset{}, fmt.Errorf("ruleset exclusion pattern is outside target UI choices")
+			return uimodel.Ruleset{}, fmt.Errorf("ruleset exclusion pattern is outside target UI choices")
 		}
 		pattern := strings.TrimPrefix(value, prefix)
 		if strings.TrimSpace(pattern) == "" {
-			return PreparedRuleset{}, fmt.Errorf("ruleset exclusion pattern has blank UI suffix")
+			return uimodel.Ruleset{}, fmt.Errorf("ruleset exclusion pattern has blank UI suffix")
 		}
 		exclude = append(exclude, pattern)
 	}
@@ -151,14 +146,5 @@ func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, er
 	} else {
 		result.TargetTags = &uimodel.TagTargets{IncludeAllTags: &all, IncludeByPattern: &include, ExcludeByPattern: &exclude}
 	}
-	prepared := PreparedRuleset{Ruleset: result}
-	return prepared, nil
-}
-
-func copyUIRulesetValue[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
+	return result, nil
 }

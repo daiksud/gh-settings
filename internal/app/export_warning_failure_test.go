@@ -174,7 +174,7 @@ func warningFailureReader(t *testing.T) Reader {
 	bypass := exportBypassState(t, 7, "policy", true)
 	state.Policy.BypassActors = bypass.Policy.BypassActors
 	state.BypassModeNormalizations = bypass.BypassModeNormalizations
-	rulesets, err := settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+	rulesets, err := settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
