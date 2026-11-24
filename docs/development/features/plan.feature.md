@@ -76,8 +76,8 @@ Focused application tests record declaration loading, target resolution, and rea
 
 | Behavior | Test |
 | --- | --- |
-| Original five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../../internal/settings/comparison_test.go), [TestRenderComparison](../../../internal/cli/comparison_test.go) |
-| Discussions omission/false/equality/order after wiki and REST-only selective read | [TestDiscussionsComparison](../../../internal/settings/discussions_test.go), [TestPlanRequestsDiscussionsField](../../../internal/app/discussions_test.go), [TestPlanAcceptance](../../../tests/acceptance/plan_test.go) |
+| Repository scalar field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../../internal/settings/comparison_test.go), [TestRenderComparison](../../../internal/cli/comparison_test.go) |
+| Discussions omission/false/equality/order after wiki and REST-only selective read | [Repository scalar comparison](../../../internal/settings/comparison_test.go), [TestPlanRequestsDiscussionsField](../../../internal/app/discussions_test.go), [TestPlanAcceptance](../../../tests/acceptance/plan_test.go) |
 | CLI operation selection and output failure | [TestRunSelectsOperation and TestPlanOutputFailure](../../../internal/cli/run_test.go) |
 | API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../../internal/github/repository_test.go) |
 | Exact declared Repository FieldID requests; observation failure or missing required values discard the report | [TestPlanRequestsMergeMethodFields and TestPlanMixedRepositoryObservationFailureDiscardsComparison](../../../internal/app/merge_methods_test.go) |

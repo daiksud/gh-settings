@@ -101,13 +101,6 @@ func (o PrivateForkObservation) Values() ([4]bool, error) {
 	}
 	return o.values, nil
 }
-func (o PrivateForkObservation) Declaration() (PrivateForkDeclaration, error) {
-	v, err := o.Values()
-	if err != nil {
-		return PrivateForkDeclaration{}, err
-	}
-	return PrivateForkDeclaration{&v[0], &v[1], &v[2], &v[3]}, nil
-}
 
 // ComparePrivateFork checks write prerequisites only when a write is necessary.
 // Enabling execution must also make latent credential/approval choices explicit.

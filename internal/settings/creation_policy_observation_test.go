@@ -18,7 +18,11 @@ func TestRepositoryObservationOwnsCreationPolicyProvenance(t *testing.T) {
 	if again := observed.CreationPolicyNormalizations(); len(again) != 2 || again[0] != prRecord || again[1] != issueRecord {
 		t.Fatal("returned records alias observation", again)
 	}
-	declaration, err := observed.Declaration()
+	declaration, err := observed.ExportDeclaration(RepositoryExportPullRequests, RepositoryDeclaration{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration, err = observed.ExportDeclaration(RepositoryExportIssuePolicy, declaration)
 	if err != nil || declaration.PullRequestCreationPolicy == nil || *declaration.PullRequestCreationPolicy != "ALL" || declaration.IssueCreationPolicy == nil || *declaration.IssueCreationPolicy != "ALL" {
 		t.Fatal("wire evidence leaked into effective intent", declaration, err)
 	}

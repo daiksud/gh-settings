@@ -98,9 +98,6 @@ var actionsPolicyEvents = []string{
 	"branch_protection_rule", "check_run", "check_suite", "create", "delete", "deployment", "deployment_status", "discussion", "discussion_comment", "fork", "gollum", "image_version", "issue_comment", "issues", "label", "merge_group", "milestone", "page_build", "project", "project_card", "project_column", "public", "pull_request", "pull_request_review", "pull_request_review_comment", "pull_request_target", "push", "registry_package", "release", "repository_dispatch", "schedule", "status", "watch", "workflow_call", "workflow_dispatch", "workflow_run",
 }
 
-// SupportedActionsPolicyEvents returns the official supported event vocabulary.
-func SupportedActionsPolicyEvents() []string { return slices.Clone(actionsPolicyEvents) }
-
 func validateActionsPolicyName(name string) error {
 	if strings.TrimSpace(name) == "" || !utf8.ValidString(name) {
 		return fmt.Errorf("Actions policy name must be nonempty")
@@ -481,17 +478,6 @@ func ReconcileActionsPolicies(observed ActionsPolicyObservation, desired *Action
 		changes = append(changes, change)
 	}
 	return changes, nil
-}
-func CompareActionsPolicies(observed ActionsPolicyObservation, desired *ActionsPolicyDeclarations) (Comparison, error) {
-	changes, err := ReconcileActionsPolicies(observed, desired)
-	if err != nil {
-		return Comparison{}, err
-	}
-	result := Comparison{ActionsPolicies: changes}
-	if desired != nil && desired.Len() > 0 {
-		result.Managed = 1
-	}
-	return result, nil
 }
 
 // ExportActionsPolicies refuses lossy exports of unsupported remote objects.

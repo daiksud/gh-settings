@@ -16,16 +16,17 @@ func TestMergeMethodsPresenceAndComparison(t *testing.T) {
 		t.Fatal("base/merge selection mixed")
 	}
 	current := MergeMethodsState{AllowMergeCommit: true, AllowRebaseMerge: true}
-	got := CompareMergeMethods(current, RepositoryDeclaration{AllowMergeCommit: &no, AllowSquashMerge: &yes, AllowRebaseMerge: &no})
+	observed := NewRepositoryObservation(nil, &current, nil)
+	got := mustCompareObservation(t, observed, RepositoryDeclaration{AllowMergeCommit: &no, AllowSquashMerge: &yes, AllowRebaseMerge: &no})
 	want := []Change{{field: FieldID{path: "repository.allow_merge_commit"}, values: boolPair{before: true, after: false}}, {field: FieldID{path: "repository.allow_squash_merge"}, values: boolPair{before: false, after: true}}, {field: FieldID{path: "repository.allow_rebase_merge"}, values: boolPair{before: true, after: false}}}
 	if got.Managed != 3 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("got=%+v", got)
 	}
-	got = CompareMergeMethods(current, RepositoryDeclaration{AllowSquashMerge: &no})
+	got = mustCompareObservation(t, observed, RepositoryDeclaration{AllowSquashMerge: &no})
 	if got.Managed != 1 || len(got.Changes) != 0 {
 		t.Fatalf("false/equality=%+v", got)
 	}
-	if got := CompareMergeMethods(current, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
+	if got := mustCompareObservation(t, observed, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
 		t.Fatalf("unmanaged=%+v", got)
 	}
 }
@@ -33,15 +34,16 @@ func TestMergeMethodsPresenceAndComparison(t *testing.T) {
 func TestDeleteBranchOnMergePresenceAndComparison(t *testing.T) {
 	no := false
 	current := MergeMethodsState{DeleteBranchOnMerge: true}
-	got := CompareMergeMethods(current, RepositoryDeclaration{DeleteBranchOnMerge: &no})
+	observed := NewRepositoryObservation(nil, &current, nil)
+	got := mustCompareObservation(t, observed, RepositoryDeclaration{DeleteBranchOnMerge: &no})
 	want := []Change{{field: FieldID{path: "repository.delete_branch_on_merge"}, values: boolPair{before: true, after: false}}}
 	if got.Managed != 1 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("comparison=%+v", got)
 	}
-	if got := CompareMergeMethods(current, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
+	if got := mustCompareObservation(t, observed, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
 		t.Fatalf("omitted=%+v", got)
 	}
-	if got := CompareMergeMethods(MergeMethodsState{}, RepositoryDeclaration{DeleteBranchOnMerge: &no}); got.Managed != 1 || len(got.Changes) != 0 {
+	if got := mustCompareObservation(t, NewRepositoryObservation(nil, &MergeMethodsState{}, nil), RepositoryDeclaration{DeleteBranchOnMerge: &no}); got.Managed != 1 || len(got.Changes) != 0 {
 		t.Fatalf("false=%+v", got)
 	}
 }
@@ -49,7 +51,8 @@ func TestDeleteBranchOnMergePresenceAndComparison(t *testing.T) {
 func TestPROptionsComparison(t *testing.T) {
 	no, yes := false, true
 	current := MergeMethodsState{AllowAutoMerge: true, AllowUpdateBranch: true}
-	got := CompareMergeMethods(current, RepositoryDeclaration{AllowAutoMerge: &no, AllowUpdateBranch: &no})
+	observed := NewRepositoryObservation(nil, &current, nil)
+	got := mustCompareObservation(t, observed, RepositoryDeclaration{AllowAutoMerge: &no, AllowUpdateBranch: &no})
 	want := []Change{{field: FieldID{path: "repository.allow_auto_merge"}, values: boolPair{before: true, after: false}}, {field: FieldID{path: "repository.allow_update_branch"}, values: boolPair{before: true, after: false}}}
 	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("comparison=%+v", got)
@@ -62,12 +65,12 @@ func TestPROptionsComparison(t *testing.T) {
 		{desired: RepositoryDeclaration{AllowAutoMerge: &yes}, managed: 1},
 		{desired: RepositoryDeclaration{AllowUpdateBranch: &yes}, managed: 1},
 	} {
-		got := CompareMergeMethods(current, test.desired)
+		got := mustCompareObservation(t, observed, test.desired)
 		if got.Managed != test.managed || len(got.Changes) != 0 {
 			t.Fatalf("equal=%+v", got)
 		}
 	}
-	if got := CompareMergeMethods(current, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
+	if got := mustCompareObservation(t, observed, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
 		t.Fatalf("omitted=%+v", got)
 	}
 }

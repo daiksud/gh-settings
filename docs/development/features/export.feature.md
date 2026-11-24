@@ -242,7 +242,7 @@ These scenarios map to ordinary Go tests, [application export tests](../../../in
 | There is no usable current repository | `TestExportTargetFailureBeforeRead`, `TestExportRootFailureBeforeRead`, `TestCheckoutPrepareSaveOutsideGit` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestCurrentRepositoryRequiresCheckout` | — |
 | The response cannot form a complete configuration | `TestReadRepositoryFailures` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
-| Missing repository-group observations retain compatible prior intent | [TestExportRepositoryUnavailableGroupsRetainOnlyPriorIntent](../../../internal/app/export_repository_test.go), [strict all-fields projection](../../../internal/settings/requested_observation_test.go) | `TestRepositoryExportIndependentObservationsAcceptance` |
+| Missing repository-group observations retain compatible prior intent | [TestExportRepositoryUnavailableGroupsRetainOnlyPriorIntent](../../../internal/app/export_repository_test.go), [complete and incomplete export groups](../../../internal/settings/repository_export_test.go) | `TestRepositoryExportIndependentObservationsAcceptance` |
 | Standard output is unavailable | [TestExportDoesNotWriteStdout](../../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 

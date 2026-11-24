@@ -16,13 +16,11 @@ func ValidateCopilotReviewEffort(value string) error {
 	return fmt.Errorf("%s must be default, lite, balanced or max", CopilotReviewEffortPath)
 }
 
-// CopilotReviewEffortObservation retains the API's visible configured value,
-// effective effort and current availability separately. A nil configured value
-// can hide an unavailable saved override; it does not prove inheritance was saved.
+// CopilotReviewEffortObservation retains the configured value and available choices.
+// GitHub may return a nil configured value for an unavailable saved override.
 type CopilotReviewEffortObservation struct {
 	acquired   bool
 	configured *string
-	effective  string
 	available  []string
 }
 
@@ -43,7 +41,7 @@ func NewCopilotReviewEffortObservation(configured *string, effective string, ava
 	if !seen[effective] || configured != nil && !seen[*configured] {
 		return CopilotReviewEffortObservation{}, fmt.Errorf("observed Copilot review effort is not available")
 	}
-	result := CopilotReviewEffortObservation{acquired: true, effective: effective, available: slices.Clone(available)}
+	result := CopilotReviewEffortObservation{acquired: true, available: slices.Clone(available)}
 	if configured != nil {
 		value := *configured
 		result.configured = &value
@@ -68,18 +66,6 @@ func (o CopilotReviewEffortObservation) Configured() (*string, error) {
 	}
 	value := *o.configured
 	return &value, nil
-}
-func (o CopilotReviewEffortObservation) Effective() (string, error) {
-	if _, err := o.Value(); err != nil {
-		return "", err
-	}
-	return o.effective, nil
-}
-func (o CopilotReviewEffortObservation) Available() ([]string, error) {
-	if _, err := o.Value(); err != nil {
-		return nil, err
-	}
-	return slices.Clone(o.available), nil
 }
 func (o CopilotReviewEffortObservation) ValidateDesired(desired string) error {
 	if err := ValidateCopilotReviewEffort(desired); err != nil {

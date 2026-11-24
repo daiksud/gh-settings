@@ -51,16 +51,12 @@ func TestActionsPolicyDeclarationValidation(t *testing.T) {
 		})
 	}
 	all := good
-	all.Events = SupportedActionsPolicyEvents()
+	all.Events = actionsPolicyEvents
 	if len(all.Events) != 36 {
 		t.Fatalf("event vocabulary count %d", len(all.Events))
 	}
 	if err := ValidateActionsEventPolicy(all); err != nil {
 		t.Fatal(err)
-	}
-	all.Events[0] = "corrupted"
-	if SupportedActionsPolicyEvents()[0] == "corrupted" {
-		t.Fatal("vocabulary aliased")
 	}
 }
 
@@ -148,7 +144,7 @@ func TestActionsPolicyReconciliation(t *testing.T) {
 	p := eventPolicy(1, "Build")
 	p.Enforcement = "disabled"
 	p.Events = []string{"release"}
-	comparison, err := CompareActionsPolicies(observed, eventDeclarations(t, p))
+	comparison, err := CompareActionsPoliciesWithPrune(observed, eventDeclarations(t, p), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +154,7 @@ func TestActionsPolicyReconciliation(t *testing.T) {
 	if !reflect.DeepEqual(comparison.ActionsPolicies[0].After(), p) {
 		t.Fatal("not whole-object update")
 	}
-	unchanged, err := CompareActionsPolicies(observed, eventDeclarations(t, eventPolicy(1, "Build")))
+	unchanged, err := CompareActionsPoliciesWithPrune(observed, eventDeclarations(t, eventPolicy(1, "Build")), false)
 	if err != nil || unchanged.Managed != 1 || unchanged.HasChanges() {
 		t.Fatalf("unchanged %#v %v", unchanged, err)
 	}
@@ -168,7 +164,7 @@ func TestActionsPolicyObservationAndUnsupportedIsolation(t *testing.T) {
 	if _, err := (ActionsPolicyObservation{}).Values(); err == nil {
 		t.Fatal("missing observation accepted")
 	}
-	if _, err := CompareActionsPolicies(ActionsPolicyObservation{}, eventDeclarations(t, eventPolicy(0, "New"))); err == nil {
+	if _, err := CompareActionsPoliciesWithPrune(ActionsPolicyObservation{}, eventDeclarations(t, eventPolicy(0, "New")), false); err == nil {
 		t.Fatal("missing observation compared")
 	}
 	empty, err := NewActionsPolicyObservation(nil)

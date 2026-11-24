@@ -101,14 +101,6 @@ func (d RepositoryDeclaration) WithMergeMethods(state MergeMethodsState) Reposit
 	return d
 }
 
-// CompareMergeMethods uses only declared fields, in the repository's stable order.
-func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaration) Comparison {
-	var result Comparison
-	compareRepositoryFields(&result, mergeMethodsBoolFields[:], current, desired, boolChange)
-	compareRepositoryFields(&result, mergeMethodsStringFields[:], current, desired, stringChange)
-	return result
-}
-
 // ValidSquashMergeCommitTitle recognizes the GitHub API's exact title enum.
 func ValidSquashMergeCommitTitle(value string) bool {
 	return value == "PR_TITLE" || value == "COMMIT_OR_PR_TITLE"

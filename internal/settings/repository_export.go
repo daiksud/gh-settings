@@ -42,8 +42,7 @@ func (group RepositoryExportGroup) Fields() []FieldID {
 }
 
 // ExportDeclaration overlays only a completely acquired group's native values.
-// Unlike Declaration, other groups may be absent. It never manufactures defaults
-// or imports extra values returned outside the requested group.
+// Other groups may be absent. Extra values outside the requested group are ignored.
 func (observation RepositoryObservation) ExportDeclaration(group RepositoryExportGroup, previous RepositoryDeclaration) (RepositoryDeclaration, error) {
 	result := previous
 	var err error

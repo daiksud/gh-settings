@@ -45,7 +45,7 @@ Local HTTP fixtures and dummy credentials verify the requested transitions and f
 ## Test mapping
 
 - [Codec](../../../internal/workspace/ui_general_test.go): true/false, omission, invalid types and encode/decode round trip.
-- [Model](../../../internal/settings/web_commit_signoff_test.go) and [field definitions](../../../internal/settings/repository_fields_test.go): managed values, comparisons, field identity and types.
+- [Model](../../../internal/settings/comparison_test.go) and [field definitions](../../../internal/settings/repository_fields_test.go): managed values, comparisons, field identity and types.
 - [REST](../../../internal/github/web_commit_signoff_test.go): complete boolean observations and exact declared-only PATCH for omission, false, true, mixed declarations and forbidden writes.
 - [Plan](../../../internal/app/web_commit_signoff_test.go) and [export](../../../internal/app/export_test.go): requested REST field and complete state-to-declaration export.
 - [Summary](../../../internal/actions/web_commit_signoff_test.go): native boolean rendering and rejection of invalid types.

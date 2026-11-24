@@ -18,9 +18,6 @@ func TestPRAccessPresenceComparisonAndCompleteObservation(t *testing.T) {
 	if _, err := CompareRepositoryObservation(NewRepositoryObservation(nil, nil, nil), desired); err == nil {
 		t.Fatal("unread false became observed false")
 	}
-	if _, err := observed.Declaration(); err == nil {
-		t.Fatal("partial observation exported")
-	}
 	if result, err := CompareRepositoryObservation(observed, RepositoryDeclaration{HasPullRequests: &state.HasPullRequests}); err != nil || result.Managed != 1 || len(result.Changes) != 0 {
 		t.Fatal(result, err)
 	}

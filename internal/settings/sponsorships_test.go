@@ -28,9 +28,6 @@ func TestSponsorshipsOmissionAndAcquiredFalse(t *testing.T) {
 	if err != nil || got.Managed != 1 || len(got.Changes) != 0 {
 		t.Fatal("observed false not preserved", got, err)
 	}
-	if _, err := observed.Declaration(); err == nil {
-		t.Fatal("partial observation exported")
-	}
 	got, err = CompareRepositoryObservation(observed, RepositoryDeclaration{})
 	if err != nil || got.Managed != 0 || len(got.Changes) != 0 {
 		t.Fatal("omission became managed", got, err)
