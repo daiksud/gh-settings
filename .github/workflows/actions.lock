@@ -10,6 +10,9 @@ workflows:
         - 'actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         - 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'
+    '.github/workflows/commitlint.yml':
+        - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
+        - 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6'
     '.github/workflows/labeler.yml':
         - 'actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13'
     '.github/workflows/pr.yml':

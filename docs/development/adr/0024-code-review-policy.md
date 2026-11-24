@@ -26,10 +26,9 @@ Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.
 **either** a `!` header marker **or** a `BREAKING CHANGE:` footer is sufficient
 for a breaking change. Do not require both. During v0.x, do not require
 obsolete compatibility paths or historical migration guides.
-Reviewers assess actual impact; PRLint only invokes commitlint.
+Reviewers assess actual impact. The `commitlint` check validates message syntax and rejects HTML comments in the PR body.
 
 ## Consequences
 
 Review changes against the current public contract and relevant evidence.
-A successful `pr-message` check establishes formatting, not semantic
-correctness, PR-body completeness, or release approval.
+Reviewers verify the PR body describes the user impact and the checks actually performed. Publication requires an explicit release request.

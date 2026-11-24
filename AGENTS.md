@@ -50,8 +50,9 @@ tests instead of retaining historical contracts alongside the current one.
 This does not waive validation, checkout/target isolation, credential security,
 data protection, honest failure and partial-failure reporting, or the
 immutability of published releases. Incompatible public changes may use either a `!` title marker or a
-`BREAKING CHANGE:` / `BREAKING-CHANGE:` footer, following Conventional Commits. PRLint only runs
-commitlint on the proposed squash message; reviewers assess the actual impact
+`BREAKING CHANGE:` / `BREAKING-CHANGE:` footer, following Conventional Commits.
+The `commitlint` check validates each PR commit and the proposed squash message.
+Remove HTML comments from the PR body before opening or updating it. Reviewers assess the actual impact
 under the [code-review policy](.agents/skills/code-review/SKILL.md).
 
 ## Repository settings changes

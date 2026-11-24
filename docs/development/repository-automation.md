@@ -52,7 +52,8 @@ resource-specific behavior.
 | Workflow | Trigger and responsibility |
 | --- | --- |
 | [`pr.yml`](../../.github/workflows/pr.yml) | Opening, updating, reopening or retargeting a PR runs Linux `screening` on the merge candidate |
-| [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
+| [`commitlint.yml`](../../.github/workflows/commitlint.yml) | Every opened, synchronized, reopened or edited PR validates its commit range, squash message and comment-free body |
+| [`prlint.yml`](../../.github/workflows/prlint.yml) | Retains the previous required check during the Ruleset transition |
 | [`push.yml`](../../.github/workflows/push.yml) | Each main push resolves its version, inspects native candidates and deploys the accepted artifact IDs |
 | [`candidate.yml`](../../.github/workflows/candidate.yml) | Main CI and manual release share Linux screening, native builds and three inspections through a local reusable workflow |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Opening, updating, reopening or retargeting a PR to main runs the `settings-pr` check on the proposed merge declaration |
@@ -150,11 +151,13 @@ announcement](https://github.blog/changelog/2026-10-28-github-actions-workflow-l
 
 ## PR lifecycle
 
-The [PR validation guide](pr-validation.md) describes the triggers, credentials and results of `screening`, `prlint` and `settings-pr`. Main CI separately inspects the built products. Check the [test evidence](testing.md#ci-validation) when reporting what each run established.
+The [PR validation guide](pr-validation.md) describes the triggers, credentials and results of `screening`, `commitlint` and `settings-pr`. Main CI separately inspects the built products. Check the [test evidence](testing.md#ci-validation) when reporting what each run established.
 
 ## Protected main and required checks
 
-The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. The declaration requires `screening`, `prlint` and `settings-pr` from GitHub Actions (App ID `15368`). Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. The declaration requires `screening`, `commitlint` and `settings-pr` from GitHub Actions (App ID `15368`). Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
+
+For the transition from `prlint` to `commitlint`, confirm the new job succeeds on the PR before merging the changed declaration. After merge, dispatch `settings-apply` from `main` and verify the live Ruleset requires `commitlint` from GitHub Actions alongside `screening` and `settings-pr`. Remove the old `prlint` workflow in a follow-up PR after confirming the switch.
 
 The [PR validation guide](pr-validation.md) describes what each required check validates and which credentials it receives.
 

@@ -1,5 +1,5 @@
 <!--
-Write this body as the final squash commit message. Remove template comments and temporary notes before merging.
+Write this body as the final squash commit message. Before opening or updating the PR, remove all HTML comments (including these instructions) and temporary notes.
 -->
 
 ## Why
