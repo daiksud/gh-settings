@@ -223,10 +223,10 @@ These scenarios map to ordinary Go tests, [application export tests](../../../in
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
-| Export from a subdirectory without a settings directory | `TestCheckoutPrepareSaveBindsResolvedRoot` | `TestExportSavesAtCheckoutRoot` |
-| Refresh an existing regular configuration | `TestWriteConfigAtRoot/replace`, `TestCheckoutPrepareSaveBindsResolvedRoot` | `TestExportExistingFile/replace` |
+| Export from a subdirectory without a settings directory | `TestCheckoutPrepareSaveBindsResolvedRoot/create` | `TestExportSavesAtCheckoutRoot` |
+| Refresh an existing regular configuration | `TestCheckoutPrepareSaveBindsResolvedRoot/replace` | `TestExportExistingFile/replace` |
 | Report a failed write | `TestExportStorageFailure` | `TestExportReportsWriteFailure` |
-| Refuse symlink destinations and non-regular files | `TestWriteConfigRejectsUnsafeDestination`, `TestExportStorageFailure` | `TestExportRejectsUnsafeDestination` |
+| Refuse symlink destinations and non-regular files | `TestCheckoutPrepareSaveRejectsUnsafeDestination`, `TestExportStorageFailure` | `TestExportRejectsUnsafeDestination` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export complete repository settings successfully | `TestExportStoredSettings/five_values` | `five-settings` |
 | Export observed Discussions true/false after complete reads | [TestExportStoredSettings](../../../internal/app/export_test.go), [TestDiscussionsReadRequiresBoolean](../../../internal/github/discussions_test.go) | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
