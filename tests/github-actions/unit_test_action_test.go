@@ -17,11 +17,15 @@ func TestUnitTestActionPreservesCleanBuildMetadata(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(checkout, ".github/scripts"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	pythonTest := `import unittest
+	reports := t.TempDir()
+	pythonTest := `import os
+from pathlib import Path
+import unittest
 import fixture_module
 class CacheTest(unittest.TestCase):
     def test_import(self):
         self.assertEqual(fixture_module.VALUE, 42)
+        (Path(os.environ['FIXTURE_REPORTS']) / __name__).touch()
 `
 	for name, content := range map[string]string{
 		"go.mod":                            "module fixture.invalid/cleanbuild\n\ngo 1.26.7\n",
@@ -38,7 +42,7 @@ class CacheTest(unittest.TestCase):
 		t.Helper()
 		command := exec.Command(name, args...)
 		command.Dir = checkout
-		command.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
+		command.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local", "FIXTURE_REPORTS="+reports)
 		output, err := command.CombinedOutput()
 		if err != nil {
 			t.Fatalf("%s %v: %v\n%s", name, args, err, output)
@@ -52,15 +56,15 @@ class CacheTest(unittest.TestCase):
 		"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
 		"commit", "--quiet", "-m", "fixture")
 	revision := strings.TrimSpace(string(run("git", "rev-parse", "HEAD")))
-	pythonSteps := 0
 	for _, s := range action.Runs.Steps {
 		if strings.Contains(s.Run, "python3") && strings.Contains(s.Run, "unittest") {
 			run("bash", "-c", s.Run)
-			pythonSteps++
 		}
 	}
-	if pythonSteps != 2 {
-		t.Fatalf("expected both Python test suites, got %d", pythonSteps)
+	for _, suite := range []string{"test_release_version", "test_release_ci"} {
+		if _, err := os.Stat(filepath.Join(reports, suite)); err != nil {
+			t.Fatalf("Python suite %s did not complete: %v", suite, err)
+		}
 	}
 	if status := run("git", "status", "--porcelain", "--untracked-files=all"); len(status) != 0 {
 		t.Fatalf("Python test steps dirtied the build checkout:\n%s", status)

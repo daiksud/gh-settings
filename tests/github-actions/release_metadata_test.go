@@ -31,15 +31,15 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 	}
 	resolve := workflow.Jobs["resolve"]
 	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read", "actions": "read"}) ||
-		len(resolve.Outputs) != 7 ||
-		resolve.Outputs["ci-run-id"] != "${{ steps.ci.outputs.ci-run-id }}" ||
-		resolve.Outputs["source-sha"] != "${{ github.sha }}" ||
-		resolve.Outputs["version"] != "${{ steps.metadata.outputs.version }}" ||
-		resolve.Outputs["previous-tag"] != "${{ steps.metadata.outputs.previous-tag }}" ||
-		resolve.Outputs["previous-sha"] != "${{ steps.metadata.outputs.previous-sha }}" ||
-		resolve.Outputs["build-matrix"] != "${{ steps.metadata.outputs.build-matrix }}" ||
-		resolve.Outputs["acceptance-matrix"] != "${{ steps.metadata.outputs.acceptance-matrix }}" {
-		t.Fatal("metadata resolution must be read-only and publish one fixed source/version/baseline/matrix tuple")
+		!reflect.DeepEqual(resolve.Outputs, map[string]string{
+			"ci-run-id":         "${{ steps.ci.outputs.ci-run-id }}",
+			"version":           "${{ steps.metadata.outputs.version }}",
+			"previous-tag":      "${{ steps.metadata.outputs.previous-tag }}",
+			"previous-sha":      "${{ steps.metadata.outputs.previous-sha }}",
+			"build-matrix":      "${{ steps.metadata.outputs.build-matrix }}",
+			"acceptance-matrix": "${{ steps.metadata.outputs.acceptance-matrix }}",
+		}) {
+		t.Fatal("metadata resolution must be read-only and report the CI run, version, baseline and matrices")
 	}
 	metadata := findStep(t, job{Steps: resolve.Steps}, "metadata")
 	if metadata.Uses != "./.github/actions/release-metadata" || metadata.Run != "" || metadata.If != "" || metadata.Continue || !reflect.DeepEqual(metadata.Env, map[string]string{

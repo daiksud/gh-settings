@@ -1,5 +1,5 @@
 name: Build
-description: Build one native executable and report its path, source commit and SHA-256.
+description: Build one native executable and report its path and source commit.
 inputs:
   binary-name:
     description: Output executable name.
@@ -13,9 +13,6 @@ outputs:
   binary-path:
     description: Native product executable path.
     value: ${{ steps.build.outputs.binary-path }}
-  binary-sha256:
-    description: SHA-256 of the native executable.
-    value: ${{ steps.build.outputs.binary-sha256 }}
   source-sha:
     description: Checked-out source SHA used to build.
     value: ${{ steps.build.outputs.source-sha }}
@@ -41,10 +38,4 @@ runs:
         [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
         go build -trimpath -ldflags "$ldflags" -o "$RUNNER_TEMP/$BINARY_NAME" .
         printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
-        if command -v sha256sum > /dev/null; then
-          digest="$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)"
-        else
-          digest="$(shasum -a 256 "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)"
-        fi
-        printf 'binary-sha256=%s\n' "$digest" >> "$GITHUB_OUTPUT"
         printf 'source-sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
