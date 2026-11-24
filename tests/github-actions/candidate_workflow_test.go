@@ -124,14 +124,8 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 	if err := yaml.Unmarshal(data, &action); err != nil {
 		t.Fatal(err)
 	}
-	if action.Runs.Using != "composite" || len(action.Inputs) != 4 {
-		t.Fatal("candidate scenarios must use a local composite with explicit producer identity")
-	}
-	for _, name := range []string{"source-sha", "cli-version", "binary-sha256", "binary-path"} {
-		input := action.Inputs[name]
-		if !input.Required || input.Description == "" || input.Default != nil {
-			t.Fatalf("candidate input %s must be explicitly supplied: %+v", name, input)
-		}
+	if action.Runs.Using != "composite" || !action.Inputs["binary-path"].Required {
+		t.Fatal("candidate scenarios must consume an explicitly supplied product binary")
 	}
 	steps := action.Runs.Steps
 	for _, s := range steps {
@@ -139,11 +133,10 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 			t.Fatalf("candidate step changes shell, public Action expansion or ambient credentials: %+v", s)
 		}
 	}
-	if len(steps) == 0 || !strings.Contains(steps[0].Run, "bash .action/tests/github-actions/prepare-candidate-download.sh") || !reflect.DeepEqual(steps[0].Env, map[string]string{
-		"BINARY_PATH": "${{ inputs.binary-path }}", "EXPECTED_SHA256": "${{ inputs.binary-sha256 }}",
-		"SOURCE_SHA": "${{ inputs.source-sha }}", "CLI_VERSION": "${{ inputs.cli-version }}",
-	}) {
-		t.Fatal("candidate verification must consume all four producer inputs before scenarios")
+	if len(steps) == 0 || steps[0].Env["BINARY_PATH"] != "${{ inputs.binary-path }}" ||
+		!strings.Contains(steps[0].Run, "bash .action/tests/github-actions/prepare-candidate-download.sh") ||
+		!strings.Contains(steps[0].Run, `"$BINARY_PATH" "$EXPECTED_CLI_SHA256" "$ACTION_SHA" "$EXPECTED_CLI_VERSION"`) {
+		t.Fatal("candidate fixture preparation must verify the supplied binary against its producer identity")
 	}
 	covered := make(map[string]bool)
 	boundaryChecks := 0
@@ -204,9 +197,7 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 			if scenario.Uses != "./.action" || !reflect.DeepEqual(scenario.With, wantInputs) || scenario.Continue != test.failure || scenario.If != "" || assertion.If != "" || assertion.Continue || assertion.Run == "" {
 				t.Fatalf("actual Action scenario must have a mandatory result assertion: %+v then %+v", scenario, assertion)
 			}
-			wantEnv := map[string]string{
-				"ACTION_SHA": "${{ inputs.source-sha }}", "EXPECTED_CLI_VERSION": "${{ inputs.cli-version }}", "EXPECTED_CLI_SHA256": "${{ inputs.binary-sha256 }}",
-			}
+			wantEnv := map[string]string{}
 			for variable, output := range map[string]string{"CONFIG_SHA": "config-sha", "TARGET": "target", "CLI_VERSION": "cli-version", "CLI_SHA256": "cli-sha256"} {
 				wantEnv[variable] = "${{ steps." + test.id + ".outputs." + output + " }}"
 			}
@@ -226,7 +217,7 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 				wantEnv["PRIVATE_PLAN_OUTCOME"] = "${{ steps." + test.id + ".outputs.plan-outcome }}"
 			}
 			if !reflect.DeepEqual(assertion.Env, wantEnv) {
-				t.Fatalf("scenario %s must verify all four outputs and producer identity: %+v", test.id, assertion)
+				t.Fatalf("scenario %s must verify its own Action outputs: %+v", test.id, assertion)
 			}
 		})
 	}

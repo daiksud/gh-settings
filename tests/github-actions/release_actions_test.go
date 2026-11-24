@@ -199,7 +199,7 @@ func TestReleaseArtifactManifestBehavior(t *testing.T) {
 	}
 }
 
-func TestReleaseCandidateFixtureToolchain(t *testing.T) {
+func TestReleaseCandidateFixtureSetup(t *testing.T) {
 	// The public Action itself consumes a binary, but its bounded API fixture is
 	// compiled from the frozen checkout. A runner's ambient Go may be too old.
 	action, _ := readReleaseAction(t, "release-acceptance")
@@ -214,6 +214,14 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 		}
 		if s.Uses == "./.action/.github/actions/e2e-test" {
 			candidateIndex = i
+			identity := map[string]string{
+				"ACTION_SHA":           "${{ inputs.source-sha }}",
+				"EXPECTED_CLI_VERSION": "${{ inputs.version }}",
+				"EXPECTED_CLI_SHA256":  "${{ steps.artifact.outputs.sha256 }}",
+			}
+			if !reflect.DeepEqual(s.Env, identity) || s.With["binary-path"] != "${{ steps.artifact.outputs.asset-path }}" {
+				t.Fatal("public Action acceptance must receive the verified product and its producer identity")
+			}
 		}
 	}
 	if setupIndex < 0 || candidateIndex <= setupIndex {
