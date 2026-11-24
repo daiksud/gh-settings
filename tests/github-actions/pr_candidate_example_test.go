@@ -13,18 +13,13 @@ import (
 
 func TestPRExamplePreparesOnlyVerifiedSettingsData(t *testing.T) {
 	w, _ := readWorkflow(t, "settings-pr.yml")
-	testCandidatePreparation(t, w)
-}
-
-func testCandidatePreparation(t *testing.T, w workflow) {
-	t.Helper()
 	prepare := findStep(t, w.Jobs["plan"], "candidate")
 	repo := "owner/config"
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
-	modes := []string{"valid", "symlink", "missing", "moved", "wrong-blob", "oversize", "null-size", "api403", "redirect", "unsafe-root", "unfiltered"}
+	modes := []string{"valid", "symlink", "missing", "moved", "wrong-blob", "wrong-size", "oversize", "null-size", "api403", "redirect", "unsafe-root", "unfiltered"}
 	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
 			root := t.TempDir()
@@ -82,7 +77,10 @@ func testCandidatePreparation(t *testing.T, w workflow) {
 			}
 			body := map[string]any{"sha": blob, "encoding": "base64", "size": len(payload), "content": base64.StdEncoding.EncodeToString(payload)}
 			if mode == "wrong-blob" {
-				body["content"] = base64.StdEncoding.EncodeToString([]byte("not the committed blob"))
+				body["content"] = base64.StdEncoding.EncodeToString(bytes.Repeat([]byte("x"), len(payload)))
+			}
+			if mode == "wrong-size" {
+				body["size"] = len(payload) + 1
 			}
 			if mode == "oversize" {
 				body["size"] = 1024*1024 + 1
@@ -112,19 +110,30 @@ sys.exit(subprocess.call([os.environ['REAL_GIT'], *args]))
 			if err := os.WriteFile(filepath.Join(tools, "git"), []byte(wrapper), 0700); err != nil {
 				t.Fatal(err)
 			}
-			pythonTransport := `import io, json, os, urllib.error, urllib.request
-class FixtureOpener:
-    def open(self, request, timeout):
+			pythonTransport := `import email.message, io, os, urllib.request, urllib.response
+class BlobTransport(urllib.request.BaseHandler):
+    def default_open(self, request):
         base = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
-        if timeout != 30 or request.get_header('Authorization') != 'Bearer dummy-app-token':
+        with open(os.environ['FIXTURE_RESPONSE'] + '.requests', 'a') as requests:
+            print(request.full_url, file=requests)
+        if request.timeout != 30 or request.get_header('Authorization') != 'Bearer dummy-app-token':
             raise RuntimeError('unexpected request')
         if request.full_url != base + '/git/blobs/' + os.environ['FIXTURE_BLOB']:
             raise RuntimeError('unexpected URL')
-        if os.environ['FIXTURE_MODE'] in ('api403', 'redirect'):
-            code = 302 if os.environ['FIXTURE_MODE'] == 'redirect' else 403
-            raise urllib.error.HTTPError(request.full_url, code, 'PRIVATE_SERVER_VALUE', {}, None)
-        return io.BytesIO(open(os.environ['FIXTURE_RESPONSE'], 'rb').read())
-urllib.request.build_opener = lambda *args: FixtureOpener()
+        mode = os.environ['FIXTURE_MODE']
+        headers = email.message.Message()
+        status = 200
+        if mode == 'redirect':
+            status = 302
+            headers['Location'] = base + '/redirected'
+        elif mode == 'api403':
+            status = 403
+        with open(os.environ['FIXTURE_RESPONSE'], 'rb') as body:
+            response = urllib.response.addinfourl(io.BytesIO(body.read()), headers, request.full_url, status)
+        response.msg = 'PRIVATE_SERVER_VALUE'
+        return response
+build_opener = urllib.request.build_opener
+urllib.request.build_opener = lambda *handlers: build_opener(BlobTransport(), *handlers)
 `
 			if err := os.WriteFile(filepath.Join(tools, "sitecustomize.py"), []byte(pythonTransport), 0600); err != nil {
 				t.Fatal(err)
@@ -140,6 +149,12 @@ urllib.request.build_opener = lambda *args: FixtureOpener()
 			output, runErr := cmd.CombinedOutput()
 			if strings.Contains(string(output), "dummy-app-token") || strings.Contains(string(output), "PRIVATE_SERVER_VALUE") || strings.Contains(string(output), "touch PWNED") {
 				t.Fatal("credential/data leaked", string(output))
+			}
+			if mode == "redirect" {
+				requests, err := os.ReadFile(response + ".requests")
+				if err != nil || string(requests) != "https://api.github.com/repos/"+repo+"/git/blobs/"+blob+"\n" {
+					t.Fatalf("redirect must stop after the initial blob request: %q, %v", requests, err)
+				}
 			}
 			if mode != "valid" {
 				if runErr == nil || !strings.Contains(string(output), "candidate settings preparation failed") {
