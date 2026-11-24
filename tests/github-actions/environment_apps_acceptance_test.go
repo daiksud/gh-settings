@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,13 +15,11 @@ import (
 )
 
 func TestBuiltCompositeEnvironmentApps(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, failure := range []bool{false, true} {
 		t.Run(fmt.Sprint(failure), func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			const name = "ENVIRONMENT_NAME_CANARY"
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{name: " + name + ", deployment_protection_rules: {custom_rules: [2]}}]}}\n"
 			f.write(filepath.Join(f.caller, ".github/settings.yml"), input)
@@ -111,7 +108,7 @@ func TestBuiltCompositeEnvironmentApps(t *testing.T) {
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			for _, mode := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "apps-explicit-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": mode, "GH_DEBUG": "api"})
+				result := f.run(t, "plan", "apps-explicit-token", map[string]string{"inputs.plan-reporting": mode, "GH_DEBUG": "api"})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -125,7 +122,7 @@ func TestBuiltCompositeEnvironmentApps(t *testing.T) {
 					t.Fatal("raw bindings leaked", result)
 				}
 			}
-			result := f.run(t, "apply", "apps-explicit-token", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "apps-explicit-token", nil)
 			if (result.status == 0) == failure || failure && len(result.outputs) != 0 {
 				t.Fatal(result)
 			}
@@ -133,7 +130,7 @@ func TestBuiltCompositeEnvironmentApps(t *testing.T) {
 				t.Fatal("lost recovery", result.log)
 			}
 			if !failure {
-				again := f.run(t, "apply", "apps-explicit-token", map[string]string{"github.action_ref": version})
+				again := f.run(t, "apply", "apps-explicit-token", nil)
 				if again.status != 0 {
 					t.Fatal(again)
 				}

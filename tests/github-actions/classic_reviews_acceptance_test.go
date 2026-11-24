@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,13 +16,11 @@ import (
 )
 
 func TestBuiltCompositeClassicReviews(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "enable", "zero", "disable", "guarded", "readback-drift"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			desired := scenario != "disable" && scenario != "guarded"
 			group := "{enabled: false}"
 			if desired {
@@ -168,7 +165,7 @@ func TestBuiltCompositeClassicReviews(t *testing.T) {
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			if scenario == "guarded" {
 				for _, operation := range []string{"plan", "apply"} {
-					result := f.run(t, operation, "reviews-fixture-token", map[string]string{"github.action_ref": version})
+					result := f.run(t, operation, "reviews-fixture-token", nil)
 					if result.status == 0 || len(result.outputs) != 0 || !strings.Contains(result.log, "unowned bypass or dismissal") {
 						t.Fatal(result)
 					}
@@ -182,7 +179,7 @@ func TestBuiltCompositeClassicReviews(t *testing.T) {
 				return
 			}
 			for _, mode := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "reviews-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": mode, "GH_DEBUG": "api"})
+				result := f.run(t, "plan", "reviews-fixture-token", map[string]string{"inputs.plan-reporting": mode, "GH_DEBUG": "api"})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -199,7 +196,7 @@ func TestBuiltCompositeClassicReviews(t *testing.T) {
 			if plannedWrites != 0 {
 				t.Fatal("plan mutated", plannedWrites)
 			}
-			result := f.run(t, "apply", "reviews-fixture-token", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "reviews-fixture-token", nil)
 			success := scenario != "readback-drift"
 			if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 				t.Fatal(result)
@@ -208,7 +205,7 @@ func TestBuiltCompositeClassicReviews(t *testing.T) {
 				t.Fatal("uncertain progress lost", result)
 			}
 			if success {
-				if again := f.run(t, "apply", "reviews-fixture-token", map[string]string{"github.action_ref": version}); again.status != 0 {
+				if again := f.run(t, "apply", "reviews-fixture-token", nil); again.status != 0 {
 					t.Fatal(again)
 				}
 			}

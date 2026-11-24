@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,14 +16,12 @@ import (
 func TestBuiltCompositeArchivedVariables(t *testing.T) {
 	const desired = "FIXTURE_ARCHIVED_DESIRED_CANARY"
 	const remote = "FIXTURE_ARCHIVED_REMOTE_CANARY"
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "different", "absent", "denied", "wrong name", "duplicate value", "value alias", "duplicate name", "name alias"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, actions: {variables: [{name: BUILD_CHANNEL, value: " + desired + "}]}, agents: {variables: [{name: MODEL_FLAG, value: " + desired + "}]}}}\n"
 			config := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(config, input)
@@ -110,7 +107,7 @@ func TestBuiltCompositeArchivedVariables(t *testing.T) {
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			if scenario == "matching" {
-				plan := f.run(t, "plan", "archive-vars-fixture", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
+				plan := f.run(t, "plan", "archive-vars-fixture", map[string]string{"inputs.plan-reporting": "status-only"})
 				if plan.status != 0 {
 					t.Fatal("status-only plan failed", plan.status)
 				}
@@ -123,7 +120,7 @@ func TestBuiltCompositeArchivedVariables(t *testing.T) {
 				reads, writes, variableReads = 0, 0, 0
 				mu.Unlock()
 			}
-			result := f.run(t, "apply", "archive-vars-fixture", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "archive-vars-fixture", nil)
 			if (result.status == 0) != (scenario == "matching") {
 				redacted := strings.ReplaceAll(strings.ReplaceAll(result.log, desired, "[redacted]"), remote, "[redacted]")
 				t.Fatal("unexpected Action outcome", result.status, redacted)

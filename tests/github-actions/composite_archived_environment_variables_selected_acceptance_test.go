@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,14 +17,12 @@ func TestBuiltCompositeArchivedEnvironmentSelectedVariables(t *testing.T) {
 	const desired = "COMPOSITE_ENV_DESIRED_CANARY"
 	const remote = "COMPOSITE_ENV_REMOTE_CANARY"
 	const base = "/repos/owner/config/environments/production"
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "different", "denied", "parent drift", "prune"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    general: {danger_zone: {archive_this_repository: true}}\n    environments:\n      - name: production\n        variables: [{name: FIRST, value: " + desired + "}, {name: SECOND, value: " + desired + "}]\n"
 			config := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(config, input)
@@ -93,7 +90,7 @@ func TestBuiltCompositeArchivedEnvironmentSelectedVariables(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			extra := map[string]string{"github.action_ref": version, "GH_DEBUG": "api"}
+			extra := map[string]string{"GH_DEBUG": "api"}
 			if scenario == "prune" {
 				extra["inputs.prune"] = "environment-variables"
 			}

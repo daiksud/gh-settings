@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"net"
@@ -19,12 +18,10 @@ import (
 // The supplied product runs through the actual installer and composite steps;
 // the Unix-socket service is the only invitation recipient.
 func TestBuiltCompositeCollaborators(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
 	f.base["GITHUB_ACTIONS"] = "true"
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 	const input = "version: daiksud/gh-settings@v0\nrepository: {settings: {collaborators: [{username: recipient-canary}]}}\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
 	f.write(path, input)
@@ -88,13 +85,12 @@ func TestBuiltCompositeCollaborators(t *testing.T) {
 		f.base[key] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	extra := map[string]string{"github.action_ref": version}
-	first := f.run(t, "plan", "collaborator-fixture-token", extra)
+	first := f.run(t, "plan", "collaborator-fixture-token", nil)
 	if first.status != 0 || !strings.Contains(first.summary, "send initial invitation") {
 		t.Fatal("initial plan", first)
 	}
 	for i := 0; i < 2; i++ {
-		result := f.run(t, "apply", "collaborator-fixture-token", extra)
+		result := f.run(t, "apply", "collaborator-fixture-token", nil)
 		data, _ := os.ReadFile(path)
 		if result.status != 0 || string(data) != input || len(result.remainingReports) != 0 {
 			t.Fatal("Action apply/file boundary", result, string(data))
@@ -107,13 +103,13 @@ func TestBuiltCompositeCollaborators(t *testing.T) {
 	mu.Unlock()
 	bound := "version: daiksud/gh-settings@v0\nrepository: {settings: {collaborators: [{username: recipient-canary, id: 3123}]}}\n"
 	f.write(path, bound)
-	matching := f.run(t, "plan", "collaborator-fixture-token", extra)
+	matching := f.run(t, "plan", "collaborator-fixture-token", nil)
 	if matching.status != 0 || !strings.Contains(matching.summary, "acceptance pending; no new invitation") {
 		t.Fatal("pending hidden", matching)
 	}
-	private := f.run(t, "plan", "collaborator-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
+	private := f.run(t, "plan", "collaborator-fixture-token", map[string]string{"inputs.plan-reporting": "status-only"})
 	// Artifact hashes may contain identity digits; check the complete output contract separately.
-	wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest, "plan-outcome": "no-difference"}
+	wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": product.version, "cli-sha256": f.digest, "plan-outcome": "no-difference"}
 	public := private.log + private.summary
 	if private.status != 0 || !reflect.DeepEqual(private.outputs, wantOutputs) || strings.Contains(public, "recipient-canary") || strings.Contains(public, "3123") || strings.Contains(public, "7123") || len(private.remainingReports) != 0 {
 		t.Fatal("private plan disclosed actor", private)

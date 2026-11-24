@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,14 +16,12 @@ import (
 )
 
 func TestBuiltCompositeOIDCSubject(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	testCompositeOIDCImmutable(t, product, version)
+	product := suppliedCompositeProduct(t)
+	testCompositeOIDCImmutable(t, product)
 	for _, scenario := range []string{"matching", "changed", "companion drift", "denied readback"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			const input = "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {oidc: {subject_claim: {use_default_template: false, subject_claim_template: [repo, context]}}}}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -96,12 +93,11 @@ func TestBuiltCompositeOIDCSubject(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			opts := map[string]string{"github.action_ref": version}
-			detailed := f.run(t, "plan", "oidc-fixture", opts)
+			detailed := f.run(t, "plan", "oidc-fixture", nil)
 			if detailed.status != 0 || scenario != "matching" && !strings.Contains(detailed.summary, "subject_claim") {
 				t.Fatal("detailed plan", detailed)
 			}
-			private := f.run(t, "plan", "oidc-fixture", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
+			private := f.run(t, "plan", "oidc-fixture", map[string]string{"inputs.plan-reporting": "status-only"})
 			if private.status != 0 || strings.Contains(private.log+private.summary, "subject_claim") || len(private.remainingReports) != 0 {
 				t.Fatal("private report", private)
 			}
@@ -111,7 +107,7 @@ func TestBuiltCompositeOIDCSubject(t *testing.T) {
 				attempts = 2
 			}
 			for i := 0; i < attempts; i++ {
-				result := f.run(t, "apply", "oidc-fixture", opts)
+				result := f.run(t, "apply", "oidc-fixture", nil)
 				if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 					t.Fatal("publication", result)
 				}

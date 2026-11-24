@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,14 +13,12 @@ import (
 )
 
 func TestBuiltCompositeArchivedWorkflowPermissions(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "approval only unknown default", "default differs", "approval differs", "selected normalized", "missing approval", "duplicate default", "alias default", "alias approval", "denied", "identity drift"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			selection := "default_permissions: read_repository_contents_and_packages_permissions, allow_github_actions_to_create_and_approve_pull_requests: false"
 			if scenario == "approval only unknown default" {
 				selection = "allow_github_actions_to_create_and_approve_pull_requests: false"
@@ -108,7 +105,7 @@ func TestBuiltCompositeArchivedWorkflowPermissions(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			result := f.run(t, "apply", "archive-workflow-fixture", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "archive-workflow-fixture", nil)
 			want := scenario == "matching" || scenario == "approval only unknown default"
 			if (result.status == 0) != want || result.status != 0 && len(result.outputs) != 0 {
 				t.Fatalf("unexpected result %+v", result)

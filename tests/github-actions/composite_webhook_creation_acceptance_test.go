@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,14 +16,12 @@ import (
 )
 
 func TestBuiltCompositeWebhookCreation(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"create", "empty-events", "collision", "guard", "HTTP-error", "bad-ack", "readback-failure", "later-failure"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			entry := "{payload_url: 'https://selected.example/new%2f?q=%2F', content_type: application/json, active: false, events: [push, future_event]}"
 			if scenario == "empty-events" {
 				entry = strings.Replace(entry, "[push, future_event]", "[]", 1)
@@ -141,7 +138,7 @@ func TestBuiltCompositeWebhookCreation(t *testing.T) {
 				f.base[k] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			options := map[string]string{"github.action_ref": version}
+			options := map[string]string{}
 			blocked := scenario == "guard" || scenario == "collision"
 			for _, privacy := range []string{"detailed", "status-only"} {
 				options["inputs.plan-reporting"] = privacy
@@ -154,7 +151,7 @@ func TestBuiltCompositeWebhookCreation(t *testing.T) {
 						t.Fatal("failure published success outputs", result)
 					}
 				} else {
-					want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest}
+					want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": product.version, "cli-sha256": f.digest}
 					if privacy == "status-only" {
 						want["plan-outcome"] = "changed"
 					}
@@ -186,7 +183,7 @@ func TestBuiltCompositeWebhookCreation(t *testing.T) {
 					t.Fatal("failed apply published success outputs", result)
 				}
 			} else {
-				want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest}
+				want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": product.version, "cli-sha256": f.digest}
 				if !reflect.DeepEqual(result.outputs, want) {
 					t.Fatal("unexpected outputs", result.outputs)
 				}

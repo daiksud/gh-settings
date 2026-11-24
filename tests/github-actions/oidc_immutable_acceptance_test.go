@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,13 +15,11 @@ import (
 	"testing"
 )
 
-func testCompositeOIDCImmutable(t *testing.T, product []byte, version string) {
+func testCompositeOIDCImmutable(t *testing.T, product compositeProduct) {
 	for _, mode := range []string{"immutable-matching", "immutable-change", "immutable-unknown", "immutable-drift"} {
 		t.Run(mode, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {oidc: {subject_claim: {use_immutable_subject_claim: false}}}}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -89,8 +86,7 @@ func testCompositeOIDCImmutable(t *testing.T, product []byte, version string) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			opts := map[string]string{"github.action_ref": version}
-			exported := f.run(t, "export", "oidc-immutable-fixture", opts)
+			exported := f.run(t, "export", "oidc-immutable-fixture", nil)
 			if exported.status != 0 || len(exported.outputs) != 5 || strings.Contains(exported.log, "PRIVATE_PREFIX_CANARY") {
 				t.Fatal(exported)
 			}
@@ -100,7 +96,7 @@ func testCompositeOIDCImmutable(t *testing.T, product []byte, version string) {
 			}
 			f.write(path, input)
 			for _, privacy := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "oidc-immutable-fixture", map[string]string{"github.action_ref": version, "inputs.plan-reporting": privacy})
+				result := f.run(t, "plan", "oidc-immutable-fixture", map[string]string{"inputs.plan-reporting": privacy})
 				if (result.status != 0) != (mode == "immutable-unknown") || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -111,7 +107,7 @@ func testCompositeOIDCImmutable(t *testing.T, product []byte, version string) {
 					t.Fatal("unselected/raw evidence", result)
 				}
 			}
-			result := f.run(t, "apply", "oidc-immutable-fixture", opts)
+			result := f.run(t, "apply", "oidc-immutable-fixture", nil)
 			success := mode == "immutable-matching" || mode == "immutable-change"
 			if (result.status == 0) != success || success && len(result.outputs) != 4 || !success && len(result.outputs) != 0 {
 				t.Fatal(result)
@@ -120,7 +116,7 @@ func testCompositeOIDCImmutable(t *testing.T, product []byte, version string) {
 				t.Fatal(result)
 			}
 			if success {
-				if repeat := f.run(t, "apply", "oidc-immutable-fixture", opts); repeat.status != 0 {
+				if repeat := f.run(t, "apply", "oidc-immutable-fixture", nil); repeat.status != 0 {
 					t.Fatal(repeat)
 				}
 			}

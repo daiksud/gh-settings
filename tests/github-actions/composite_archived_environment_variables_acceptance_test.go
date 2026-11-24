@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,14 +16,12 @@ import (
 func TestBuiltCompositeArchivedEnvironmentVariables(t *testing.T) {
 	const desired = "FIXTURE_ENV_VAR_DESIRED_CANARY"
 	const other = "FIXTURE_ENV_VAR_OTHER_CANARY"
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "different", "denied", "parent drift"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, environments: [{name: production, variables: [{name: CHANNEL, value: " + desired + "}]}]}}\n"
 			config := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(config, input)
@@ -89,7 +86,7 @@ func TestBuiltCompositeArchivedEnvironmentVariables(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			result := f.run(t, "apply", "archive-env-vars-fixture", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "archive-env-vars-fixture", nil)
 			if (result.status == 0) != (scenario == "matching") || (result.status != 0 && len(result.outputs) != 0) {
 				t.Fatal("unexpected Action outcome", result.status, strings.ReplaceAll(strings.ReplaceAll(result.log, desired, "[redacted]"), other, "[redacted]"))
 			}

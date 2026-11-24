@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,13 +15,11 @@ import (
 )
 
 func TestBuiltCompositeApplyProgressDiagnostic(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"initial-read-failure", "confirmed-removal-before-failure"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			f.write(filepath.Join(f.caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\nrepository: {settings: {moderation: {interaction_limits: {pull_request_limits: {exemption_list: [alice]}}}}}\n")
 			dir, err := os.MkdirTemp("/tmp", "ghs-progress-")
 			if err != nil {
@@ -86,7 +83,7 @@ func TestBuiltCompositeApplyProgressDiagnostic(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			result := f.run(t, "apply", "progress-fixture", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "progress-fixture", nil)
 			if result.status == 0 || len(result.outputs) != 0 {
 				t.Fatal(result)
 			}

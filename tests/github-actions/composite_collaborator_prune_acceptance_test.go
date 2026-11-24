@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,13 +16,11 @@ import (
 )
 
 func TestBuiltCompositeCollaboratorPrune(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
 	f.base["GITHUB_ACTIONS"] = "true"
 	f.base["GH_DEBUG"] = "api"
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 	const input = "version: daiksud/gh-settings@v0\nrepository: {settings: {collaborators: [{username: kept-canary}]}}\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
 	f.write(path, input)
@@ -108,14 +105,14 @@ func TestBuiltCompositeCollaboratorPrune(t *testing.T) {
 		f.base[key] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	extra := map[string]string{"github.action_ref": version, "inputs.prune": "labels,collaborators"}
+	extra := map[string]string{"inputs.prune": "labels,collaborators"}
 	plan := f.run(t, "plan", "installation-prune-fixture-token", extra)
 	if plan.status != 0 || !strings.Contains(plan.summary, "cancel pending invitation id 104") || !strings.Contains(plan.summary, "remove collaborator grant") {
 		t.Fatal(plan)
 	}
-	private := f.run(t, "plan", "installation-prune-fixture-token", map[string]string{"github.action_ref": version, "inputs.prune": "all", "inputs.plan-reporting": "status-only"})
+	private := f.run(t, "plan", "installation-prune-fixture-token", map[string]string{"inputs.prune": "all", "inputs.plan-reporting": "status-only"})
 	// Artifact hashes may contain identity digits; check the complete output contract separately.
-	wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest, "plan-outcome": "changed"}
+	wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": product.version, "cli-sha256": f.digest, "plan-outcome": "changed"}
 	public := private.log + private.summary
 	if private.status != 0 || !reflect.DeepEqual(private.outputs, wantOutputs) || strings.Contains(public, "canary") || strings.Contains(public, "104") || strings.Contains(public, "PRIVATE") || len(private.remainingReports) != 0 {
 		t.Fatal(private)

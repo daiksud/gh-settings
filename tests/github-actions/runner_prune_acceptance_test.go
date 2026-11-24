@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -18,17 +17,15 @@ import (
 
 // Exercises the supplied release-version binary through the actual composite steps.
 func TestBuiltCompositeRunnerPrune(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, tc := range []struct {
 		name, selector string
 		unconfirmed    bool
 	}{{"named", "runners", false}, {"all", "all", false}, {"unconfirmed", "runners", true}} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {runners: [{id: 23, custom_labels: [new-label]}]}}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
@@ -137,12 +134,12 @@ func TestBuiltCompositeRunnerPrune(t *testing.T) {
 				f.base[k] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			opts := map[string]string{"github.action_ref": version, "inputs.prune": tc.selector}
+			opts := map[string]string{"inputs.prune": tc.selector}
 			detail := f.run(t, "plan", "prune-fixture", opts)
 			if detail.status != 0 || !strings.Contains(detail.summary, "runner-24-canary") || !strings.Contains(detail.summary, "candidate-label") || !strings.Contains(detail.summary, "new-label") {
 				t.Fatal(detail)
 			}
-			private := f.run(t, "plan", "prune-fixture", map[string]string{"github.action_ref": version, "inputs.prune": tc.selector, "inputs.plan-reporting": "status-only"})
+			private := f.run(t, "plan", "prune-fixture", map[string]string{"inputs.prune": tc.selector, "inputs.plan-reporting": "status-only"})
 			if private.status != 0 || private.outputs["plan-outcome"] != "changed" || strings.Contains(private.log+private.summary, "canary") || strings.Contains(private.log+private.summary, "candidate-label") || len(private.remainingReports) != 0 {
 				t.Fatal(private)
 			}

@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,14 +15,12 @@ import (
 )
 
 func TestBuiltCompositeArchivedMatching(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "mixed limits duplicate", "mixed limits alias", "mixed empty collections", "mixed empty topics differ", "mixed empty exemptions differ", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown", "ruleset matching", "ruleset differs", "ruleset unknown", "ruleset denied"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			input := "version: daiksud/gh-settings@v0\nrepository: {about: {description: same, topics: [alpha, beta]}, labels: [{id: 7, name: bug, color: '#112233'}], settings: {general: {danger_zone: {archive_this_repository: true}}}}\n"
 			if strings.HasPrefix(scenario, "ruleset ") {
 				input = `version: daiksud/gh-settings@v0
@@ -275,7 +272,7 @@ repository:
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			result := f.run(t, "apply", "archive-fixture", map[string]string{"github.action_ref": version})
+			result := f.run(t, "apply", "archive-fixture", nil)
 			if (result.status == 0) != (scenario == "matching" || scenario == "mixed matching" || scenario == "mixed empty collections" || scenario == "graphql matching" || scenario == "ruleset matching") || (result.status != 0 && len(result.outputs) != 0) {
 				t.Fatalf("unexpected result: %+v", result)
 			}

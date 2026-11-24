@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"net"
@@ -19,14 +18,12 @@ func TestBuiltCompositeArchivedAutolinks(t *testing.T) {
 	const target = "https://fixture-private.example/<num>?q=A%2FB"
 	const private = "UPSTREAM_PRIVATE_AUTOLINK_CANARY"
 	const remoteOnly = "REMOTE_ONLY_AUTOLINK_CANARY"
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "different", "missing", "denied", "duplicate member", "idless", "prune", "owner drift", "archive drift", "mixed", "export flow"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			id := "id: 7, "
 			if scenario == "idless" {
 				id = ""
@@ -127,7 +124,7 @@ func TestBuiltCompositeArchivedAutolinks(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			options := map[string]string{"github.action_ref": version, "GH_DEBUG": "api"}
+			options := map[string]string{"GH_DEBUG": "api"}
 			if scenario == "prune" {
 				options["inputs.prune"] = "autolinks"
 			}
@@ -150,7 +147,7 @@ func TestBuiltCompositeArchivedAutolinks(t *testing.T) {
 				if !strings.Contains(input, "id: 7") || !strings.Contains(input, "reference_prefix: TICKET-") || !strings.Contains(input, "archive_this_repository: true") {
 					t.Fatal("export omitted selected identity or archive state")
 				}
-				plan := f.run(t, "plan", "autolink-fixture", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
+				plan := f.run(t, "plan", "autolink-fixture", map[string]string{"inputs.plan-reporting": "status-only"})
 				if plan.status != 0 {
 					t.Error("plan failed", plan.status)
 				}

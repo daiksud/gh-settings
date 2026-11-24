@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -17,15 +16,13 @@ import (
 )
 
 func TestBuiltCompositeAutolinks(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, scenario := range []string{"matching", "create-prune", "empty-all", "readback-failure", "export"} {
 		t.Run(scenario, func(t *testing.T) {
-			f := newCompositeFixture(t)
+			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
 			f.base["GH_DEBUG"] = "api"
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+
 			entry := "{reference_prefix: NEW_PRIVATE-, target_url: 'https://private.example/<num>?Case=A%2FB', reference_format: numeric}"
 			if scenario == "matching" {
 				entry = "{id: 7, reference_prefix: OLD_PRIVATE-, target_url: 'https://private.example/<num>?Case=A%2FB', reference_format: numeric}"
@@ -113,13 +110,13 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 				f.base[key] = "http://127.0.0.1:1"
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-			options := map[string]string{"github.action_ref": version, "inputs.prune": "autolinks"}
+			options := map[string]string{"inputs.prune": "autolinks"}
 			if scenario == "empty-all" {
 				options["inputs.prune"] = "all"
 			}
 			if scenario == "export" {
 				os.Remove(path)
-				exported := f.run(t, "export", "autolink-installation-fixture-token", map[string]string{"github.action_ref": version})
+				exported := f.run(t, "export", "autolink-installation-fixture-token", nil)
 				if exported.status != 0 || exported.outputs["config-path"] != ".github/settings.yml" || strings.Contains(exported.log+exported.summary, "private.example") {
 					t.Fatal(exported)
 				}

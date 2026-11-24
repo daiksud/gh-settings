@@ -3,7 +3,6 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,11 +14,9 @@ import (
 )
 
 func TestBuiltCompositeEnvironmentSecretAmbiguityStopsPrune(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
+
 	const input = "version: daiksud/gh-settings@v0\nrepository: {settings: {environments: []}}\n"
 	f.write(filepath.Join(f.caller, ".github/settings.yml"), input)
 	state, err := os.MkdirTemp("/tmp", "ghs-secret-integrity-")
@@ -78,7 +75,7 @@ func TestBuiltCompositeEnvironmentSecretAmbiguityStopsPrune(t *testing.T) {
 		f.base[key] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	result := f.run(t, "apply", "fixture-token", map[string]string{"github.action_ref": version, "inputs.prune": "environments", "GH_DEBUG": "api"})
+	result := f.run(t, "apply", "fixture-token", map[string]string{"inputs.prune": "environments", "GH_DEBUG": "api"})
 	if result.status == 0 || len(result.outputs) != 0 || strings.Contains(result.log+result.summary, "PRIVATE_SECRET_NAME_CANARY") {
 		t.Fatalf("ambiguous metadata accepted, outputs published, or private evidence leaked: status=%d", result.status)
 	}

@@ -3,9 +3,7 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -16,11 +14,9 @@ import (
 )
 
 func TestBuiltCompositeClassicPrune(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
-	f := newCompositeFixture(t)
-	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-	f.write(f.base["MOCK_ASSET"], string(product))
-	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+	product := suppliedCompositeProduct(t)
+	f := product.newFixture(t)
+
 	const input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: []}}\n"
 	f.write(filepath.Join(f.caller, ".github/settings.yml"), input)
 	state, err := os.MkdirTemp("/tmp", "ghs-classic-prune-")
@@ -122,7 +118,7 @@ func TestBuiltCompositeClassicPrune(t *testing.T) {
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 	for _, mode := range []string{"detailed", "status-only"} {
-		extra := map[string]string{"github.action_ref": version, "inputs.prune": "branch-protection-rules", "inputs.plan-reporting": mode, "GH_DEBUG": "api"}
+		extra := map[string]string{"inputs.prune": "branch-protection-rules", "inputs.plan-reporting": mode, "GH_DEBUG": "api"}
 		result := f.run(t, "plan", "prune-explicit-token", extra)
 		if result.status != 0 || (mode == "status-only" && result.outputs["plan-outcome"] != "changed") || len(result.remainingReports) != 0 {
 			t.Fatal(result)
@@ -143,7 +139,7 @@ func TestBuiltCompositeClassicPrune(t *testing.T) {
 		}
 		mu.Unlock()
 	}
-	extra := map[string]string{"github.action_ref": version, "inputs.prune": "all"}
+	extra := map[string]string{"inputs.prune": "all"}
 	result := f.run(t, "apply", "prune-explicit-token", extra)
 	if result.status != 0 || result.summary != "" {
 		t.Fatal(result)

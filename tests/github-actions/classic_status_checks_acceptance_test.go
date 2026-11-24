@@ -3,9 +3,7 @@
 package githubactions
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -16,13 +14,11 @@ import (
 )
 
 func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
-	product, version := suppliedCompositeProduct(t)
+	product := suppliedCompositeProduct(t)
 	for _, mode := range []string{"matching", "changed", "post-App-failure"} {
 		t.Run(mode, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
-			f.write(f.base["MOCK_ASSET"], string(product))
-			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
+			f := product.newFixture(t)
+
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: main, require_status_checks_to_pass_before_merging: {enabled: true, require_branches_to_be_up_to_date_before_merging: false, status_checks: [{name: CHECK_NAME_CANARY, accept_updates_from: APP_SOURCE_CANARY}]}}]}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
@@ -124,7 +120,7 @@ func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			for _, privacy := range []string{"detailed", "status-only"} {
-				result := f.run(t, "plan", "status-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": privacy})
+				result := f.run(t, "plan", "status-fixture-token", map[string]string{"inputs.plan-reporting": privacy})
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
@@ -135,8 +131,7 @@ func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
 					t.Fatal(result)
 				}
 			}
-			extra := map[string]string{"github.action_ref": version}
-			result := f.run(t, "apply", "status-fixture-token", extra)
+			result := f.run(t, "apply", "status-fixture-token", nil)
 			bad := mode == "post-App-failure"
 			if (result.status != 0) != bad || bad && len(result.outputs) != 0 || !bad && len(result.outputs) != 4 || strings.Contains(result.log, "PRIVATE_RESOLVER_CANARY") {
 				t.Fatal(result)
@@ -151,7 +146,7 @@ func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
 				}
 				return
 			}
-			repeat := f.run(t, "apply", "status-fixture-token", extra)
+			repeat := f.run(t, "apply", "status-fixture-token", nil)
 			if repeat.status != 0 {
 				t.Fatal(repeat)
 			}
