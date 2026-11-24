@@ -68,12 +68,12 @@ jobs:
     timeout-minutes: 10
     permissions: {contents: read, actions: read}
     outputs:
-      ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
+      ci-run-id: ${{ steps.reuse.outputs.ci-run-id }}
       version: ${{ needs.version.outputs.version }}
       previous-tag: ${{ needs.version.outputs.previous-tag }}
       previous-sha: ${{ needs.version.outputs.previous-sha }}
       release-needed: ${{ needs.version.outputs.release-needed }}
-      ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
+      ci-run-attempt: ${{ steps.reuse.outputs.ci-run-attempt }}
       reused: ${{ steps.reuse.outputs.reused }}
       linux-id: ${{ steps.reuse.outputs.linux-id }}
       macos-id: ${{ steps.reuse.outputs.macos-id }}
@@ -87,22 +87,14 @@ jobs:
       - name: Inventory publication dependencies
         if: ${{ false }}
         uses: $/.github/actions/release-publish
-      - name: Check the latest main validation
-        id: ci
+      - name: Select reusable artifacts from the latest main validation
+        id: reuse
         if: needs.version.outputs.release-needed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.sha }}
-        run: python3 .github/scripts/release-ci.py status
-      - name: Select reusable inspected artifacts
-        id: reuse
-        if: needs.version.outputs.release-needed == 'true'
-        uses: ./.github/actions/release-reuse
-        with:
-          source-sha: ${{ github.sha }}
-          version: ${{ needs.version.outputs.version }}
-          ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
-          ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: python3 .github/scripts/release-ci.py reuse "$VERSION"
   candidate:
     needs: resolve
     if: needs.resolve.outputs.release-needed == 'true' && needs.resolve.outputs.reused == 'false'

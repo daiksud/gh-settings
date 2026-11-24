@@ -25,6 +25,7 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 			Uses        string            `yaml:"uses"`
 			Permissions map[string]string `yaml:"permissions"`
 			With        map[string]string `yaml:"with"`
+			Outputs     map[string]string `yaml:"outputs"`
 			Steps       []step            `yaml:"steps"`
 		}
 	}
@@ -39,10 +40,22 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 		t.Fatal("fresh release candidates must come from the shared workflow at the frozen source and version")
 	}
 	resolve := w.Jobs["resolve"]
-	stepID := func(id string) step { return findStep(t, job{Steps: resolve.Steps}, id) }
-	if stepID("ci").If != "needs.version.outputs.release-needed == 'true'" ||
-		stepID("reuse").If != stepID("ci").If || stepID("reuse").With["ci-run-attempt"] != "${{ steps.ci.outputs.ci-run-attempt }}" {
-		t.Fatal("reuse must follow version resolution and select the checked attempt")
+	reuse := findStep(t, job{Steps: resolve.Steps}, "reuse")
+	if reuse.If != "needs.version.outputs.release-needed == 'true'" ||
+		reuse.Run != `python3 .github/scripts/release-ci.py reuse "$VERSION"` ||
+		reuse.Env["SOURCE_SHA"] != "${{ github.sha }}" || reuse.Env["VERSION"] != "${{ needs.version.outputs.version }}" ||
+		reuse.Env["GH_TOKEN"] != "${{ github.token }}" || reuse.Continue {
+		t.Fatal("release must select artifacts from the inspected deployment for the resolved version and source")
+	}
+	for _, s := range resolve.Steps {
+		if s.ID != reuse.ID && strings.Contains(s.Run, "release-ci.py") {
+			t.Fatal("release resolution repeated its CI lookup")
+		}
+	}
+	for _, key := range []string{"ci-run-id", "ci-run-attempt", "reused", "linux-id", "macos-id"} {
+		if resolve.Outputs[key] != "${{ steps.reuse.outputs."+key+" }}" {
+			t.Fatalf("resolve must forward %s from the same artifact selection", key)
+		}
 	}
 	checkNeeds := func(name string, expected ...string) {
 		t.Helper()
@@ -77,6 +90,15 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 		}
 		if name == "verify-release" && len(last.Env) > 0 {
 			t.Fatal("public release verification must run without ambient credentials")
+		}
+		if name == "release" {
+			recheck := j.Steps[len(j.Steps)-2]
+			if recheck.Env["EXPECTED_RUN"] != "${{ needs.resolve.outputs.ci-run-id }}" ||
+				recheck.Env["EXPECTED_ATTEMPT"] != "${{ needs.resolve.outputs.ci-run-attempt }}" ||
+				!strings.Contains(recheck.Run, `release-ci.py status "$EXPECTED_RUN" "$EXPECTED_ATTEMPT"`) ||
+				recheck.If != "" || recheck.Continue {
+				t.Fatal("publication must recheck the same push run and attempt immediately before publishing")
+			}
 		}
 	}
 }

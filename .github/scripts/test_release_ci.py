@@ -75,7 +75,7 @@ class ReleaseCITests(unittest.TestCase):
     def output(self):
         return (Path(self.temp.name) / "outputs").read_text()
 
-    def ci_responses(self, runs, deployments=None):
+    def ci_responses(self, runs, deployments=None, artifacts=None):
         if deployments is None:
             deployments = [{"name": "deployment", "status": "completed", "conclusion": "success"}]
 
@@ -84,20 +84,24 @@ class ReleaseCITests(unittest.TestCase):
                 self.assertIn("/actions/workflows/push.yml/runs?", route)
                 self.assertIn(f"head_sha={SHA}", route)
                 return runs
+            if key == "artifacts" and artifacts is not None:
+                self.assertIn("/artifacts?", route)
+                return artifacts
             self.assertEqual(key, "jobs")
             self.assertRegex(route, r"/attempts/\d+/jobs\?")
             return deployments
         return mock.patch.object(ci, "api_items", side_effect=response)
 
-    def test_no_ci_run_triggers_full_validation(self):
+    def test_recheck_accepts_the_original_selection(self):
         with self.ci_responses([]):
-            ci.status()
-        self.assertEqual(self.output(), "ci-run-id=\nci-run-attempt=\n")
+            ci.status(("", ""))
+        with self.ci_responses([run(10)]):
+            ci.status(("10", "1"))
 
     def test_latest_successful_ci_run_is_selected(self):
-        with self.ci_responses([run(1, 1), run(4, 4), run(3, 3)]):
-            ci.status()
-        self.assertEqual(self.output(), "ci-run-id=4\nci-run-attempt=1\n")
+        with self.ci_responses([run(1, 1), run(4, 4), run(3, 3)], artifacts=[]):
+            ci.reuse(VERSION)
+        self.assertEqual(self.output(), "ci-run-id=4\nci-run-attempt=1\nreused=false\n")
 
     def test_latest_failed_or_incomplete_run_blocks_release(self):
         for conclusion, status in [
@@ -110,7 +114,7 @@ class ReleaseCITests(unittest.TestCase):
                     run(1, 1), run(2, 2, conclusion, status)
                 ]):
                     with self.assertRaises(ci.Fatal):
-                        ci.status()
+                        ci.reuse(VERSION)
 
     def test_provenance_mismatch_blocks_release(self):
         for key, value in [
@@ -123,11 +127,16 @@ class ReleaseCITests(unittest.TestCase):
                 broken[key] = value
                 with mock.patch.object(ci, "api_items", return_value=[broken]):
                     with self.assertRaises(ci.Fatal):
-                        ci.status()
+                        ci.reuse(VERSION)
 
     def test_changed_selection_blocks_publication(self):
-        for expected in (("9", "1"), ("10", "2"), ("", "")):
-            with self.subTest(expected=expected), self.ci_responses([run(10)]):
+        for runs, expected in [
+            ([run(10)], ("9", "1")),
+            ([{**run(10), "run_attempt": 2}], ("10", "1")),
+            ([run(10)], ("", "")),
+            ([], ("10", "1")),
+        ]:
+            with self.subTest(expected=expected, runs=runs), self.ci_responses(runs):
                 with self.assertRaises(ci.Fatal):
                     ci.status(expected)
 
@@ -135,7 +144,7 @@ class ReleaseCITests(unittest.TestCase):
         for jobs in ([], [{"name": "deployment", "status": "completed", "conclusion": "skipped"}]):
             with self.subTest(jobs=jobs), self.ci_responses([run(10)], jobs):
                 with self.assertRaises(ci.Fatal):
-                    ci.status()
+                    ci.reuse(VERSION)
 
     def test_api_authentication_error_is_not_a_fallback(self):
         completed = subprocess.CompletedProcess(["gh"], 1, "", "403")
@@ -181,22 +190,24 @@ class ReleaseCITests(unittest.TestCase):
         items.append(artifact("deployment-2", 13, archives[13]))
 
     def exercise(self, items, archives, *, probe=False, version=VERSION):
+        Path(os.environ["GITHUB_OUTPUT"]).unlink(missing_ok=True)
         with (
-            mock.patch.object(ci, "select_ci_run", return_value={**run(7), "run_attempt": 2}),
-            mock.patch.object(ci, "api_items", return_value=items),
+            self.ci_responses([{**run(7), "run_attempt": 2}], artifacts=items) as api,
             mock.patch.object(ci, "fetch_archive", side_effect=lambda repo, identifier, token: archives[identifier]),
         ):
             if probe:
                 ci.probe()
             else:
-                ci.reuse("7", "2", version)
+                ci.reuse(version)
+        return [call.args[1] for call in api.call_args_list]
 
     def test_reuses_only_deployed_ids_including_products_from_prior_attempt(self):
         items, archives, _ = self.fixture()
         other = archive_for("linux-amd64", "v2.0.0")
         items.append(artifact("candidate-linux-amd64-2", 15, other))
-        self.exercise(items, archives)
-        self.assertEqual(self.output(), "linux-id=11\nmacos-id=12\nreused=true\n")
+        requests = self.exercise(items, archives)
+        self.assertEqual(requests, ["workflow_runs", "jobs", "artifacts"])
+        self.assertEqual(self.output(), "ci-run-id=7\nci-run-attempt=2\nlinux-id=11\nmacos-id=12\nreused=true\n")
         self.assertEqual({p.name for p in Path(self.temp.name).iterdir()}, {"outputs", "summary"})
 
     def test_missing_expired_duplicate_or_replaced_deployed_item_falls_back(self):
@@ -238,13 +249,13 @@ class ReleaseCITests(unittest.TestCase):
     def test_normal_ci_products_cannot_be_reused_for_opted_in_promotion(self):
         items, archives, _ = self.fixture(version="v0.44.0")
         self.exercise(items, archives, version="v1.0.1")
-        self.assertEqual(self.output(), "reused=false\n")
+        self.assertEqual(self.output(), "ci-run-id=7\nci-run-attempt=2\nreused=false\n")
         self.assertIn("expected v1.0.1, observed v0.44.0", (Path(self.temp.name) / "summary").read_text())
 
     def test_invalid_binary_manifest_warns_and_falls_back(self):
         items, archives, _ = self.fixture(corrupt_binary=True)
         self.exercise(items, archives)
-        self.assertEqual(self.output(), "reused=false\n")
+        self.assertEqual(self.output(), "ci-run-id=7\nci-run-attempt=2\nreused=false\n")
         self.assertIn("binary SHA-256 is invalid", (Path(self.temp.name) / "summary").read_text())
 
     def test_bad_archive_does_not_extract(self):
@@ -254,10 +265,10 @@ class ReleaseCITests(unittest.TestCase):
 
     def test_no_run_triggers_fresh_validation_and_blocks_probe(self):
         with self.ci_responses([]):
-            ci.reuse("", "", VERSION)
+            ci.reuse(VERSION)
             with self.assertRaises(ci.Fatal):
                 ci.probe()
-        self.assertEqual(self.output(), "reused=false\n")
+        self.assertEqual(self.output(), "ci-run-id=\nci-run-attempt=\nreused=false\n")
 
     def test_probe_requires_deployed_linux_id_and_frozen_version(self):
         items, archives, _ = self.fixture()
