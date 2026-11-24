@@ -15,8 +15,8 @@ mise exec -- bun install --frozen-lockfile
 from [go.mod](../../go.mod), and Bun from `packageManager` in
 [package.json](../../package.json). The same manifest declares commitlint,
 its conventional preset and rumdl; [bun.lock](../../bun.lock) fixes their
-resolved dependencies. CI uses setup-go and setup-bun with these information
-sources and installs dependencies with `bun install --frozen-lockfile`.
+resolved dependencies. Build and screening jobs use these manifests; the
+commit-message job pins Bun and the commitlint CLI and installs the locked preset.
 Node.js, npm and local Git hooks are not required. Use `bun run` for the
 package-managed tools; Go commands may run through mise locally.
 
@@ -53,7 +53,7 @@ mise exec -- bun run lint:markdown
 
 ## Pull request messages
 
-Except for [Dependabot-authored PRs](pr-validation.md#message-and-settings-validation), PR titles and bodies are validated by the [independent PRLint workflow](../../.github/workflows/prlint.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+The [commitlint workflow](../../.github/workflows/commitlint.yml) checks each commit in the PR and the proposed squash message. It runs on draft and Dependabot PRs as well. The squash message consists of the PR title, a blank line, and its body, including footers. Use [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```text
 <type>[optional scope][!]: <description>
@@ -63,21 +63,17 @@ Except for [Dependabot-authored PRs](pr-validation.md#message-and-settings-valid
 [optional footers]
 ```
 
-The [commitlint configuration](../../commitlint.config.mjs) only extends the
-`@commitlint/config-conventional` preset. Its defaults apply unchanged,
-including default ignores, style rules, and line-length limits. PRLint adds
-no rules or separate policy tests.
+The [repository configuration](../../commitlint.config.mjs) selects the conventional preset. Its standard rules, ignores and warning behavior apply. Commitlint errors fail the check. A separate check rejects the literal `<!--` anywhere in the PR body, including inside code samples. Remove HTML comments before opening or updating the PR.
 
-Apply the [code-review policy](../../.agents/skills/code-review/SKILL.md) for PR scope and semantic impact. Either breaking marker is sufficient. PRLint itself only invokes commitlint on the title and body; it does not implement additional semantic review rules.
-
-To check a proposed squash message locally after installing the development dependencies:
+After installing the locked dependencies, check the branch commits and the proposed squash message locally. Set `base_sha` and `head_sha` to the PR's base and head commits.
 
 ```sh
+mise exec -- bun run commitlint --default-config --from "$base_sha" --to "$head_sha" --verbose
 printf '%s\n\n%s\n' 'feat(settings): manage repository topics' 'Describe why this changed.' |
-  mise exec -- bun run commitlint --strict
+  mise exec -- bun run commitlint --default-config --verbose
 ```
 
-Keep the PR body consistent with [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). Message validation rechecks title/body edits independently of product builds; the [PR validation guide](pr-validation.md) explains required-check activation and code/base events. Local `git commit` messages are not validated; the final squash message must still be confirmed at merge time.
+Follow the [PR message guidance](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history) when drafting the body. Reviewers confirm the type, scope, compatibility markers and final squash message under the [code-review policy](../../.agents/skills/code-review/SKILL.md).
 
 ## Add an agreed repository field
 

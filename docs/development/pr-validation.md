@@ -11,16 +11,16 @@ on the merge candidate. Lint, unit tests and a native build must all succeed.
 Checkout disables credential persistence, and the job has Contents read permission.
 Concurrent updates to one PR cancel superseded screening runs.
 
-Editing only the PR title or body runs PRLint. Screening and settings validation
+Editing only the PR title or body reruns `commitlint`. Screening and settings validation
 skip that edit under separate display names so a skipped result cannot satisfy
 either required check for a new merge candidate. The [main CI guide](testing/ci.md)
 describes the inspections that run after merge.
 
 ## Message and settings validation
 
-The [PRLint workflow](../../.github/workflows/prlint.yml) checks the current PR title and body together with commitlint, including on title and body edits. It disables checkout credential persistence. A green result verifies message syntax. Reviewers assess scope, compatibility and the actual effect of the change under the [code-review policy](../../.agents/skills/code-review/SKILL.md).
+The [commitlint workflow](../../.github/workflows/commitlint.yml) runs for every opened, reopened, synchronized or edited PR, including drafts and Dependabot updates. It checks out the event's head SHA with full history and a read-only token, with credential persistence disabled. It validates every commit in `base..head` and the title and body together as the proposed squash message. A separate step rejects any HTML comment opener in the PR body, even in code samples.
 
-PRs authored by `dependabot[bot]` skip the `prlint` job. The condition uses the PR author, so a human rerun still skips that job. GitHub treats a skipped job as successful for required-check purposes. The requirement, the other checks and normal review still apply. See [GitHub's job-condition contract](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
+The repository preset supplies the message rules and the normal commitlint warning behavior. Correct any failing commit messages on the PR branch and edit the final title and body as needed. Dependabot updates can include generated HTML comments and overlong lines. Reviewers assess scope, compatibility and the actual effect of the change under the [code-review policy](../../.agents/skills/code-review/SKILL.md).
 
 The [settings-pr workflow](../../.github/workflows/settings-pr.yml) checks newly opened, synchronized, reopened and base-retargeted PRs targeting `main`. Its only job uses the default merge checkout and a Contents-read token on `ubuntu-slim`. The public Action pinned in the PR workflow runs `validate` on `.github/settings.yml` without an Environment or settings token. A passing check means the selected package accepts that declaration. The [manual apply workflow](repository-automation.md#active-settings-workflows) owns remote settings changes.
 

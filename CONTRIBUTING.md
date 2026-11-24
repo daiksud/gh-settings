@@ -45,7 +45,7 @@ The reviewed title and body become the squash commit. Use the [PR template](.git
 - **What changed** for the caller or maintainer. Explain how the change solves the problem and why you chose the approach. Include compatibility or operational effects when relevant.
 - **Verification** of the result. Name the behavior you checked, how you checked it, what you observed and any gap that limits your conclusion.
 
-Use `Closes #123` when the PR completes the issue. Put review requests, temporary status, and detailed logs in comments or check records. Before merging, remove template comments, reconcile the message with the final diff and confirm that the squash commit contains the reviewed title and body.
+Use `Closes #123` when the PR completes the issue. Put review requests, temporary status, and detailed logs in comments or check records. Use Conventional Commits for each commit on the branch. Remove all HTML comments from the PR body before opening or updating the PR. Before merging, reconcile the message with the final diff and confirm that the squash commit contains the reviewed title and body.
 
 ## Where documentation belongs
 

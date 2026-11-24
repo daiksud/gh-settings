@@ -1,0 +1,62 @@
+name: commitlint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: commitlint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  commitlint:
+    name: commitlint
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Check PR body for HTML comments
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [[ "$PR_BODY" == *'<!--'* ]]; then
+            printf '%s\n' '::error::Remove all HTML comments from the PR body before creating or updating the PR.'
+            exit 1
+          fi
+
+      - name: Checkout PR head and history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+
+      - name: Install the locked repository preset
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Validate PR commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          bunx --bun --package @commitlint/cli@21.2.4 commitlint
+          --default-config --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+
+      - name: Validate proposed squash message
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" |
+            bunx --bun --package @commitlint/cli@21.2.4 commitlint --default-config --verbose

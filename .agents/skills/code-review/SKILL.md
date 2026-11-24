@@ -24,7 +24,7 @@ Review the proposed change against its actual base and public contracts. Apply t
 
 ## Review the complete squash message
 
-Treat the PR title as the header and the PR body as the body/footers of **one** [Conventional Commits 1.0.0 message](https://www.conventionalcommits.org/en/v1.0.0/). Review `PR_TITLE + "\n\n" + PR_BODY`; do not require a second Conventional Commits header in the PR body or require rewriting every local commit.
+Treat the PR title as the header and the PR body as the body/footers of **one** [Conventional Commits 1.0.0 message](https://www.conventionalcommits.org/en/v1.0.0/). Review `PR_TITLE + "\n\n" + PR_BODY`; keep the body and footers attached to that header. The PR workflow also checks the individual commits in the proposed range.
 
 ### Title and type
 
@@ -86,8 +86,8 @@ Conventional Commits marks a breaking change with **either** a `!` immediately
 before the title colon (`type!:` or `type(scope)!:`) **or** a
 `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer. Either marker form is sufficient; do not require both a header marker and a footer,
 automatic migration, or upgrade guides during v0.x. Reviewers assess whether
-the PR accurately describes the user impact. PRLint only checks the title
-and body together with commitlint, not a separate semantic policy.
+the PR accurately describes the user impact. The `commitlint` check validates
+the PR commits and proposed squash message and rejects HTML comments in the PR body.
 An internal-only change is not automatically a public breaking change.
 
 ## Check the affected implementation contracts

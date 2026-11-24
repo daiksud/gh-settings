@@ -32,6 +32,6 @@ Generate notes locally from the same committed interval. A reviewed `Release-wit
 
 ## Consequences
 
-Reviewers must reconcile the proposed squash title, body, and compatibility footers with the actual user impact before merging. Preserve that reviewed message in the squash commit. Later PR edits cannot alter either version calculation or the release notes. PRLint remains commitlint-only.
+Reviewers must reconcile the proposed squash title, body, and compatibility footers with the actual user impact before merging. Preserve that reviewed message in the squash commit. Later PR edits cannot alter either version calculation or the release notes.
 
 Version calculation does not authorize publication. Computation, API, history, or immutable-identity mismatches fail before remote tag/release creation. Existing publication gates, immutable artifacts, and matching-draft recovery remain required. See the [maintainer release contract](../releases.md) for executable steps and evidence limits.
