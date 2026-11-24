@@ -17,27 +17,6 @@ func TestUISecurityImmutableControlAndMetadata(t *testing.T) {
 			t.Fatal(got, err)
 		}
 	}
-	for _, test := range []struct {
-		o       settings.ImmutableReleasesObservation
-		enabled bool
-		owner   *bool
-	}{
-		{settings.NewImmutableReleasesObservation(true, true), true, securityUIPtr(true)},
-		{settings.NewImmutableReleasesObservation(true, false), true, securityUIPtr(false)},
-		{settings.NewImmutableReleasesObservation(false, false), false, securityUIPtr(false)},
-		{settings.NewDisabledImmutableReleasesObservation(), false, nil},
-	} {
-		base := uimodel.SecuritySettings{AdvancedSecurity: &uimodel.AdvancedSecurity{SecretProtection: securityUIPtr(false)}, GeneralReleases: &uimodel.SecurityGeneralReleases{}}
-		view, err := WithSecurityImmutableObservation(base, test.o)
-		if err != nil || *view.Settings.GeneralReleases.EnableReleaseImmutability != test.enabled || !reflect.DeepEqual(view.EnforcedByOwner, test.owner) || view.Settings.AdvancedSecurity.SecretProtection == nil || base.GeneralReleases.EnableReleaseImmutability != nil {
-			t.Fatal(view, base, err)
-		}
-	}
-	for _, o := range []settings.ImmutableReleasesObservation{{}, settings.NewImmutableReleasesObservation(false, true)} {
-		if _, err := WithSecurityImmutableObservation(uimodel.SecuritySettings{}, o); err == nil {
-			t.Fatal("invalid/unacquired state accepted")
-		}
-	}
 	d, err := SecurityDeclaration(uimodel.SecuritySettings{GeneralReleases: &uimodel.SecurityGeneralReleases{EnableReleaseImmutability: securityUIPtr(false)}})
 	if err != nil {
 		t.Fatal(err)
@@ -89,9 +68,9 @@ func TestUISecurityImmutableExactToggleAnd404(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		projected, err := WithSecurityImmutableObservation(uimodel.SecuritySettings{}, initial)
-		if err != nil || *projected.Settings.GeneralReleases.EnableReleaseImmutability == value {
-			t.Fatal(projected, err)
+		enabled, enforced, ownerKnown, err := initial.Values()
+		if err != nil || enabled == value || enforced || ownerKnown != enabled {
+			t.Fatalf("enabled=%t enforced=%t ownerKnown=%t err=%v", enabled, enforced, ownerKnown, err)
 		}
 		d, err := SecurityDeclaration(uimodel.SecuritySettings{GeneralReleases: &uimodel.SecurityGeneralReleases{EnableReleaseImmutability: &value}})
 		if err != nil {

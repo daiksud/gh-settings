@@ -16,16 +16,9 @@ func TestUISecurityReportingControl(t *testing.T) {
 		if err != nil || !reflect.DeepEqual(got, settings.SecurityDeclaration{PrivateVulnerabilityReporting: &value}) {
 			t.Fatal(got, err)
 		}
-		base := uimodel.SecuritySettings{AdvancedSecurity: &uimodel.AdvancedSecurity{SecretProtection: securityUIPtr(false)}}
-		view, err := WithSecurityReportingObservation(base, settings.NewPrivateReportingObservation(value))
-		if err != nil || view.AdvancedSecurity.PrivateVulnerabilityReporting == nil || *view.AdvancedSecurity.PrivateVulnerabilityReporting != value || view.AdvancedSecurity.SecretProtection == nil || *view.AdvancedSecurity.SecretProtection || base.AdvancedSecurity.PrivateVulnerabilityReporting != nil {
-			t.Fatal(view, base, err)
-		}
-	}
-	if _, err := WithSecurityReportingObservation(uimodel.SecuritySettings{}, settings.PrivateReportingObservation{}); err == nil {
-		t.Fatal("unacquired defaulted")
 	}
 }
+
 func TestUISecurityReportingExactToggle(t *testing.T) {
 	for _, value := range []bool{false, true} {
 		calls := 0

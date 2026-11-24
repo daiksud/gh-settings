@@ -22,8 +22,12 @@ func TestPagesLifecycleUIAndExport(t *testing.T) {
 	if err != nil || !d.Delete() {
 		t.Fatal(d, err)
 	}
-	view, err := PagesObservation(settings.NewAbsentPagesObservation())
-	if err != nil || !reflect.DeepEqual(view.Pages, ui) {
+	policy, err := settings.NewAbsentPagesObservation().Declaration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := UIFromExportDeclaration(settings.Declaration{Pages: policy})
+	if err != nil || !reflect.DeepEqual(view.Settings.Pages, &ui) {
 		t.Fatal(view, err)
 	}
 	for _, branch := range []string{"None", "NONE", "nOne"} {
@@ -253,7 +257,11 @@ func TestPagesReadEndpointSpecificAbsenceAndUnexpectedSuccess(t *testing.T) {
 	if absent, _ := observed.Absent(); absent {
 		t.Fatal("literal reserved branch inferred absence")
 	}
-	if _, err := PagesObservation(observed); err == nil {
+	policy, err := observed.Declaration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := UIFromExportDeclaration(settings.Declaration{Pages: policy}); err == nil {
 		t.Fatal("exported contradictory reserved source")
 	}
 }

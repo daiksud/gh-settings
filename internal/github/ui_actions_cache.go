@@ -19,10 +19,10 @@ func WithActionsCachePolicyUI(ui uimodel.ActionsGeneral, policy settings.Actions
 			cache = *ui.Cache
 		}
 		if policy.CacheRetentionDays != nil {
-			cache.CacheRetention = copyUIActionsValue(policy.CacheRetentionDays)
+			cache.CacheRetention = copyUIValue(policy.CacheRetentionDays)
 		}
 		if policy.CacheSizeGB != nil {
-			cache.CacheSizeEvictionLimit = copyUIActionsValue(policy.CacheSizeGB)
+			cache.CacheSizeEvictionLimit = copyUIValue(policy.CacheSizeGB)
 		}
 		ui.Cache = &cache
 	}

@@ -56,9 +56,9 @@ func TestUISecurityScanningExactRequestsAndRawReads(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ui, err := WithSecurityScanningObservation(uimodel.SecuritySettings{}, initial)
-		if err != nil || *ui.AdvancedSecurity.SecretProtection != test.beforeUI[0] || *ui.AdvancedSecurity.PushProtection != test.beforeUI[1] {
-			t.Fatal(ui, err)
+		scanning, push, err := initial.Values()
+		if err != nil || [2]bool{scanning, push} != test.beforeUI {
+			t.Fatalf("scanning=%t push=%t err=%v", scanning, push, err)
 		}
 		d, err := SecurityDeclaration(uimodel.SecuritySettings{AdvancedSecurity: &test.ui})
 		if err != nil {
@@ -113,7 +113,7 @@ func TestUISecurityDependenciesAndFailedAcquisition(t *testing.T) {
 		if err == nil {
 			t.Fatal("unsupported data accepted")
 		}
-		if _, err := WithSecurityScanningObservation(uimodel.SecuritySettings{}, raw); err == nil {
+		if _, err := raw.Declaration(); err == nil {
 			t.Fatal("failure defaulted")
 		}
 	}

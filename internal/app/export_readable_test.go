@@ -90,8 +90,6 @@ func TestReadableExportVariableInventoriesAndPerEnvironmentRetention(t *testing.
 				switch mode {
 				case "failed":
 					return settings.VariableInventory{}, errors.New("later page failed")
-				case "unacquired":
-					return settings.VariableInventory{}, nil
 				case "unsupported-empty":
 					return settings.NewVariableInventory([]settings.RepositoryVariable{{Name: "EMPTY", Value: ""}})
 				}

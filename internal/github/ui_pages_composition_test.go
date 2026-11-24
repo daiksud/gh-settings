@@ -2,11 +2,13 @@ package github
 
 import (
 	"encoding/json"
-	"github.com/cli/go-gh/v2/pkg/repository"
-	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 func TestUIPagesExactExistingSiteUpdates(t *testing.T) {
@@ -57,8 +59,16 @@ func TestUIPagesExactExistingSiteUpdates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err := PagesObservation(raw)
-		if err != nil || string(*view.Pages.BuildAndDeployment.Source) != test.beforeUI || view.Public != test.public {
+		state, err := raw.Values()
+		if err != nil || state.Public != test.public {
+			t.Fatal(state, err)
+		}
+		policy, err := raw.Declaration()
+		if err != nil {
+			t.Fatal(err)
+		}
+		view, err := UIFromExportDeclaration(settings.Declaration{Pages: policy})
+		if err != nil || view.Settings.Pages == nil || string(*view.Settings.Pages.BuildAndDeployment.Source) != test.beforeUI {
 			t.Fatal(view, err)
 		}
 		d, err := PagesDeclaration(test.ui)
@@ -93,7 +103,7 @@ func TestUIPagesUnavailableIsNotAbsent(t *testing.T) {
 		if err == nil || calls != 1 {
 			t.Fatal(calls, err)
 		}
-		if _, err := PagesObservation(raw); err == nil {
+		if _, err := raw.Declaration(); err == nil {
 			t.Fatal("failed read became absent/defaulted site")
 		}
 	}

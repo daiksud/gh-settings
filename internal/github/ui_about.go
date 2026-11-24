@@ -21,13 +21,6 @@ func AboutDeclaration(about uimodel.About) (settings.Declaration, error) {
 	return result, nil
 }
 
-// AboutObservation projects values from the existing complete API readers.
-// Call it only after both repository and topics acquisition succeeded.
-func AboutObservation(repository settings.RepositoryState, topics []string) uimodel.About {
-	names := settings.SortedTopics(topics)
-	return uimodel.About{Description: copyUIValue(&repository.Description), Website: copyUIValue(&repository.Homepage), Topics: &names}
-}
-
 func copyUIValue[T any](value *T) *T {
 	if value == nil {
 		return nil

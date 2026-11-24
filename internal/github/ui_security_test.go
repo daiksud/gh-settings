@@ -41,21 +41,4 @@ func TestUISecurityScanningControls(t *testing.T) {
 	if !*got.SecretScanning {
 		t.Fatal("desired value aliases caller")
 	}
-	for _, v := range []bool{false, true} {
-		view, err := WithSecurityScanningObservation(uimodel.SecuritySettings{}, settings.NewSecretScanningObservation(v, v))
-		if err != nil || view.AdvancedSecurity == nil || *view.AdvancedSecurity.SecretProtection != v || *view.AdvancedSecurity.PushProtection != v {
-			t.Fatal(view, err)
-		}
-	}
-	if _, err := WithSecurityScanningObservation(uimodel.SecuritySettings{}, settings.SecretScanningObservation{}); err == nil {
-		t.Fatal("unacquired state defaulted")
-	}
-	// A complete inconsistent source is an observation, not a valid declaration.
-	raw, err := WithSecurityScanningObservation(uimodel.SecuritySettings{}, settings.NewSecretScanningObservation(false, true))
-	if err != nil || *raw.AdvancedSecurity.SecretProtection || !*raw.AdvancedSecurity.PushProtection {
-		t.Fatal(raw, err)
-	}
-	if _, err := SecurityDeclaration(raw); err == nil {
-		t.Fatal("raw inconsistency became desired state")
-	}
 }

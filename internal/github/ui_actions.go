@@ -37,7 +37,7 @@ func ActionsExecutionPolicyUI(policy settings.ActionsPolicyDeclaration) (uimodel
 }
 
 func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclaration, error) {
-	result := settings.ActionsPolicyDeclaration{SHAPinningRequired: copyUIActionsValue(ui.RequireActionsToBePinnedToAFullLengthCommitSHA)}
+	result := settings.ActionsPolicyDeclaration{SHAPinningRequired: copyUIValue(ui.RequireActionsToBePinnedToAFullLengthCommitSHA)}
 	if ui.ActionsPermissions != nil {
 		enabled, allowed, valid := settings.ActionsPermissionsValueForChoice(*ui.ActionsPermissions)
 		if !valid {
@@ -46,8 +46,8 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 		result.Enabled = &enabled
 		result.AllowedActions = allowed
 	}
-	result.SelectedActions.GitHubOwnedAllowed = copyUIActionsValue(ui.AllowActionsCreatedByGitHub)
-	result.SelectedActions.VerifiedAllowed = copyUIActionsValue(ui.AllowActionsByMarketplaceVerifiedCreators)
+	result.SelectedActions.GitHubOwnedAllowed = copyUIValue(ui.AllowActionsCreatedByGitHub)
+	result.SelectedActions.VerifiedAllowed = copyUIValue(ui.AllowActionsByMarketplaceVerifiedCreators)
 	if ui.AllowOrBlockSpecifiedActionsAndReusableWorkflows != nil {
 		patterns := append([]string{}, (*ui.AllowOrBlockSpecifiedActionsAndReusableWorkflows)...)
 		result.SelectedActions.PatternsAllowed = &patterns
@@ -56,16 +56,16 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 		return settings.ActionsPolicyDeclaration{}, fmt.Errorf("selected action controls require the selected non-owner %s choice or omission", settings.ActionsPermissionsPath)
 	}
 	if ui.Cache != nil {
-		result.CacheRetentionDays = copyUIActionsValue(ui.Cache.CacheRetention)
-		result.CacheSizeGB = copyUIActionsValue(ui.Cache.CacheSizeEvictionLimit)
+		result.CacheRetentionDays = copyUIValue(ui.Cache.CacheRetention)
+		result.CacheSizeGB = copyUIValue(ui.Cache.CacheSizeEvictionLimit)
 	}
 	var err error
 	result.DefaultWorkflowPermissions, err = declareUIActionsWorkflow(ui.WorkflowPermissions)
 	if err != nil {
 		return settings.ActionsPolicyDeclaration{}, err
 	}
-	result.CanApprovePullRequestReviews = copyUIActionsValue(ui.AllowGitHubActionsToCreateAndApprovePullRequests)
-	result.RetentionDays = copyUIActionsValue(ui.CheckWorkflowRunStatusArtifactAndLogRetention)
+	result.CanApprovePullRequestReviews = copyUIValue(ui.AllowGitHubActionsToCreateAndApprovePullRequests)
+	result.RetentionDays = copyUIValue(ui.CheckWorkflowRunStatusArtifactAndLogRetention)
 	result.ForkApprovalPolicy, err = declareUIActionsForkApproval(ui.ApprovalForRunningForkPullRequestWorkflowsFromContributors)
 	if err != nil {
 		return settings.ActionsPolicyDeclaration{}, err
@@ -92,20 +92,12 @@ func ActionsExecutionObservation(state settings.ActionsPolicyState) (PreparedAct
 	if !valid {
 		return PreparedActionsExecution{}, fmt.Errorf("Actions execution policy is outside UI choices")
 	}
-	ui := uimodel.ActionsGeneral{ActionsPermissions: &choice, RequireActionsToBePinnedToAFullLengthCommitSHA: copyUIActionsValue(&state.SHAPinningRequired)}
+	ui := uimodel.ActionsGeneral{ActionsPermissions: &choice, RequireActionsToBePinnedToAFullLengthCommitSHA: copyUIValue(&state.SHAPinningRequired)}
 	if state.Enabled && state.AllowedActions == "selected" && state.Selected != nil {
-		ui.AllowActionsCreatedByGitHub = copyUIActionsValue(&state.Selected.GitHubOwnedAllowed)
-		ui.AllowActionsByMarketplaceVerifiedCreators = copyUIActionsValue(&state.Selected.VerifiedAllowed)
+		ui.AllowActionsCreatedByGitHub = copyUIValue(&state.Selected.GitHubOwnedAllowed)
+		ui.AllowActionsByMarketplaceVerifiedCreators = copyUIValue(&state.Selected.VerifiedAllowed)
 		patterns := append([]string{}, state.Selected.PatternsAllowed...)
 		ui.AllowOrBlockSpecifiedActionsAndReusableWorkflows = &patterns
 	}
 	return PreparedActionsExecution{General: ui, Raw: raw}, nil
-}
-
-func copyUIActionsValue[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
 }
