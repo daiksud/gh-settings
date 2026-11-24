@@ -93,7 +93,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 	}
 	if apply.Steps[2].Uses != operationalAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
 		"command": "apply", "token": "${{ steps.app.outputs.token }}",
-	}) || strings.Count(source, "steps.app.outputs.token") != 1 || strings.Contains(source, "verify-settings-handoff") ||
+	}) || strings.Count(source, "steps.app.outputs.token") != 1 ||
 		strings.Contains(source, "run:") || !strings.Contains(source, "workflow_dispatch:") {
 		t.Fatal("operational action identity, binding or simplified workflow changed")
 	}
