@@ -27,7 +27,6 @@ func TestBuiltCompositeArchivedAutolinks(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			id := "id: 7, "
 			if scenario == "idless" {
 				id = ""

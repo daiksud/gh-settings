@@ -24,7 +24,6 @@ func TestBuiltCompositeWorkflowPermissions(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			const input = "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      general:\n        workflow_permissions:\n          default_permissions: read_repository_contents_and_packages_permissions\n          allow_github_actions_to_create_and_approve_pull_requests: true\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)

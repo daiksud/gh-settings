@@ -119,16 +119,14 @@ printf 'linux-binary' > "$RELEASE_DIR/gh-settings-linux-amd64"
 MACOS_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-darwin-arm64" | cut -d ' ' -f 1)"
 LINUX_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-linux-amd64" | cut -d ' ' -f 1)"
 export MACOS_SHA256 LINUX_SHA256
-mkdir -p "$fixture/source/scripts/release-metadata" "$fixture/source/scripts/release-publisher" "$fixture/source/action"
+mkdir -p "$fixture/source/scripts/release-metadata" "$fixture/source/scripts/release-publisher"
 cp "$repo_root/scripts/publish-release.sh" "$fixture/source/scripts/publish-release.sh"
 cp "$repo_root/scripts/release-publisher/main.go" "$fixture/source/scripts/release-publisher/main.go"
 cp "$repo_root/scripts/release-metadata/main.go" "$fixture/source/scripts/release-metadata/main.go"
-printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
 git -C "$fixture/source" init --quiet
 git -C "$fixture/source" config user.name Fixture
 git -C "$fixture/source" config user.email fixture@example.invalid
 git -C "$fixture/source" config commit.gpgsign false
-git -C "$fixture/source" add action/cli-version
 git -C "$fixture/source" commit --quiet --allow-empty -m 'chore: initialize release fixture'
 git -C "$fixture/source" -c tag.gpgsign=false tag v1.2.2
 printf 'temporary change\n' > "$fixture/source/change.txt"

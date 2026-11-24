@@ -23,7 +23,6 @@ func TestBuiltCompositeEnvironmentApps(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			const name = "ENVIRONMENT_NAME_CANARY"
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{name: " + name + ", deployment_protection_rules: {custom_rules: [2]}}]}}\n"
 			f.write(filepath.Join(f.caller, ".github/settings.yml"), input)

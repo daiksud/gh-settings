@@ -40,7 +40,7 @@ func TestPRConsumerPlan(t *testing.T) {
 			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
 			f.base["MOCK_PLAN_OUTCOME"] = test.outcome
 			result := f.call(t, job.Steps[2], context, nil)
-			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": f.digest}
+			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": fixtureCLIVersion, "cli-sha256": f.digest}
 			calls := "plan\n"
 			if test.status != 0 {
 				want = map[string]string{}
@@ -100,7 +100,7 @@ func TestMainConsumerApply(t *testing.T) {
 				t.Fatalf("single-job execution order or unexpected prepare/Summary: %+v", result)
 			}
 			if test.status == 0 {
-				want := map[string]string{"config-sha": result.applied.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.applied.digest}
+				want := map[string]string{"config-sha": result.applied.sha, "target": "owner/config", "cli-version": fixtureCLIVersion, "cli-sha256": result.applied.digest}
 				if !reflect.DeepEqual(result.applied.outputs, want) {
 					t.Fatalf("apply checkout/release identity=%v, want %v", result.applied.outputs, want)
 				}

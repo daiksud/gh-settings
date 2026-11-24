@@ -15,7 +15,7 @@ func TestRootCompositeExport(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := f.run(t, "export", "fixture-token", map[string]string{"GH_TOKEN": "ambient-fixture", "GITHUB_TOKEN": "ambient-fixture", "GH_DEBUG": "api"})
-	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest, "config-path": ".github/settings.yml"}
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": fixtureCLIVersion, "cli-sha256": result.digest, "config-path": ".github/settings.yml"}
 	if result.status != 0 || !reflect.DeepEqual(result.outputs, want) || result.calls != "export\n" || result.metadataCalls != "action metadata\n" {
 		t.Fatalf("export result: %+v", result)
 	}

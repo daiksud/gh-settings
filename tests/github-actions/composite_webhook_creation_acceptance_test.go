@@ -25,7 +25,6 @@ func TestBuiltCompositeWebhookCreation(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			entry := "{payload_url: 'https://selected.example/new%2f?q=%2F', content_type: application/json, active: false, events: [push, future_event]}"
 			if scenario == "empty-events" {
 				entry = strings.Replace(entry, "[push, future_event]", "[]", 1)

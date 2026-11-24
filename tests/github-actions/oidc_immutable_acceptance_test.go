@@ -23,7 +23,6 @@ func testCompositeOIDCImmutable(t *testing.T, product []byte, version string) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {oidc: {subject_claim: {use_immutable_subject_claim: false}}}}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)

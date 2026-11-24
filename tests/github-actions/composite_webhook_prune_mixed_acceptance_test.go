@@ -31,7 +31,6 @@ func testCompositeWebhookPruneMixed(t *testing.T, product []byte, version, scena
 	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 	f.write(f.base["MOCK_ASSET"], string(product))
 	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 	input := "version: daiksud/gh-settings@v0\nrepository: {settings: {webhooks: [{id: 7, content_type: application/x-www-form-urlencoded, ssl_verification: false, active: false, events: [push]}, {payload_url: https://created.example/hook, content_type: application/json, ssl_verification: false, active: false, events: [push]}]}}\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
 	f.write(path, input)

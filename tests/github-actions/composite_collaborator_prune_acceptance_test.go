@@ -24,7 +24,6 @@ func TestBuiltCompositeCollaboratorPrune(t *testing.T) {
 	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 	f.write(f.base["MOCK_ASSET"], string(product))
 	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 	const input = "version: daiksud/gh-settings@v0\nrepository: {settings: {collaborators: [{username: kept-canary}]}}\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
 	f.write(path, input)

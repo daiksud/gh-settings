@@ -33,7 +33,7 @@ func TestVerifyAssetsDownloadsBytesAndReportsMissing(t *testing.T) {
 		{name: "download reported success without bytes", omit: "gh-settings-linux-amd64", downloads: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64"}, wantError: "artifact hash mismatch: gh-settings-linux-amd64"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, env := preflightFixture(t)
+			env := preflightFixture(t)
 			identity, err := prepareIdentity(func(key string) string { return env[key] })
 			if err != nil {
 				t.Fatal(err)

@@ -25,7 +25,6 @@ func TestBuiltCompositeClassicForcePush(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			group := "{enabled: true, who_can_force_push: specified_actors, actors: [{type: app, id: A_PRIVATE}]}"
 			if scenario == "everyone" {
 				group = "{enabled: true, who_can_force_push: everyone}"

@@ -23,7 +23,6 @@ func TestBuiltCompositeClassicStatusChecks(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			f.base["GITHUB_ACTIONS"], f.base["GH_DEBUG"] = "true", "api"
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: main, require_status_checks_to_pass_before_merging: {enabled: true, require_branches_to_be_up_to_date_before_merging: false, status_checks: [{name: CHECK_NAME_CANARY, accept_updates_from: APP_SOURCE_CANARY}]}}]}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")

@@ -150,7 +150,7 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			f.git("-C", f.packagePath, "init", "--quiet")
 			f.git("-C", f.packagePath, "add", "action", "tests")
 			f.git("-C", f.packagePath, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: candidate source")
-			source, digest, version := f.git("-C", f.packagePath, "rev-parse", "HEAD"), f.digest, committedCLIVersion(t)
+			source, digest, version := f.git("-C", f.packagePath, "rev-parse", "HEAD"), f.digest, fixtureCLIVersion
 			switch mismatch {
 			case "source":
 				source = strings.Repeat("a", 40)

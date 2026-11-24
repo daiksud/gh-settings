@@ -24,7 +24,6 @@ func TestBuiltCompositeActionsExecution(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      general:\n        actions_permissions:\n          policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows\n          require_actions_to_be_pinned_to_a_full_length_commit_sha: true\n          allow_actions_created_by_github: true\n          allow_actions_by_marketplace_verified_creators: true\n          allow_or_block_specified_actions_and_reusable_workflows: ['keep/*']\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)

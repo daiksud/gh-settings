@@ -15,16 +15,15 @@ const (
 	testManifest      = `{"version":"v1.2.3","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","macos_sha256":"69e398f9f4479aba0fcc353dc9acb6819c0a7d260f6e104ca65aae7ac2c21b85","linux_sha256":"8e05650e3597d536838387f4fb4f08fbd95624760f1ce44bbff4e35de8a353e8","checksums_sha256":"98f9ece90dea10c02544983c6f8bc3e3ccef162fa20869eecebe1df30b297abe"}`
 )
 
-func preflightFixture(t *testing.T) (string, map[string]string) {
+func preflightFixture(t *testing.T) map[string]string {
 	t.Helper()
 	dir := t.TempDir()
-	version := filepath.Join(dir, "cli-version")
-	for name, data := range map[string]string{"cli-version": "v1.2.3\n", "gh-settings-linux-amd64": "linux-binary", "gh-settings-darwin-arm64": "macos-binary"} {
+	for name, data := range map[string]string{"gh-settings-linux-amd64": "linux-binary", "gh-settings-darwin-arm64": "macos-binary"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	return version, map[string]string{
+	return map[string]string{
 		"VERSION": "v1.2.3", "SOURCE_SHA": strings.Repeat("a", 40),
 		"GITHUB_REPOSITORY": "owner/repo", "RELEASE_DIR": dir,
 		"LINUX_SHA256": testLinuxHash, "MACOS_SHA256": testMacosHash,
@@ -32,7 +31,7 @@ func preflightFixture(t *testing.T) (string, map[string]string) {
 }
 
 func TestPreflightExactIdentityBytes(t *testing.T) {
-	_, env := preflightFixture(t)
+	env := preflightFixture(t)
 	identity, err := prepareIdentity(func(key string) string { return env[key] })
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +51,7 @@ func TestPreflightExactIdentityBytes(t *testing.T) {
 }
 
 func TestPreflightPreservesSymlinkDirectoryTraversal(t *testing.T) {
-	_, env := preflightFixture(t)
+	env := preflightFixture(t)
 	directory := env["RELEASE_DIR"]
 	child := filepath.Join(directory, "child")
 	if err := os.Mkdir(child, 0700); err != nil {
@@ -98,7 +97,7 @@ func TestPreflightRejectsInvalidInputsBeforeChecksumWrite(t *testing.T) {
 		{name: "Linux fails before macOS", remove: []string{"gh-settings-linux-amd64", "gh-settings-darwin-arm64"}, want: "artifact hash mismatch: gh-settings-linux-amd64"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, env := preflightFixture(t)
+			env := preflightFixture(t)
 			dir := env["RELEASE_DIR"]
 			for key, value := range test.env {
 				env[key] = value

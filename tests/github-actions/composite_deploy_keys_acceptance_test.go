@@ -22,7 +22,6 @@ func TestBuiltCompositeDeployKeys(t *testing.T) {
 	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 	f.write(f.base["MOCK_ASSET"], string(product))
 	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 	const publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB"
 	const input = "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    deploy_keys:\n      - title: deployment-title-canary\n        key: " + publicKey + " source-comment\n        allow_write_access: true\n"
 	path := filepath.Join(f.caller, ".github/settings.yml")
