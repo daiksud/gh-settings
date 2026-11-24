@@ -98,43 +98,51 @@ func TestCheckoutRepositoryUsesItsDirectory(t *testing.T) {
 }
 
 func TestCheckoutPrepareSaveBindsResolvedRoot(t *testing.T) {
-	root := t.TempDir()
-	nested := filepath.Join(root, "nested")
-	if err := os.Mkdir(nested, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if output, err := exec.Command("git", "init", "--quiet", root).CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, output)
-	}
-	github := filepath.Join(root, ".github")
-	if err := os.Mkdir(github, 0700); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(github, "settings.yml")
-	before := "version: daiksud/gh-settings@v0\nrepository: {}\n"
-	if err := os.WriteFile(path, []byte(before), 0600); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(t.TempDir())
-	_, save, err := NewCheckout(nested).PrepareSave()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if data, err := os.ReadFile(path); err != nil || string(data) != before {
-		t.Fatalf("destination changed during resolution: %q %v", data, err)
-	}
-	other := t.TempDir()
-	t.Chdir(other)
-	disabled := false
-	if err := save(uimodel.Repository{Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}}); err != nil {
-		t.Fatal(err)
-	}
-	want := "version: daiksud/gh-settings@v0\nrepository:\n    settings:\n        general:\n            features:\n                issues: false\n"
-	if data, err := os.ReadFile(path); err != nil || string(data) != want {
-		t.Fatalf("saved=%q error=%v, want %q", data, err, want)
-	}
-	if _, err := os.Lstat(filepath.Join(other, ".github")); !os.IsNotExist(err) {
-		t.Fatalf("unrelated destination exists: %v", err)
+	for _, mode := range []string{"create", "replace"} {
+		t.Run(mode, func(t *testing.T) {
+			existing := mode == "replace"
+			root := t.TempDir()
+			nested := filepath.Join(root, "nested")
+			if err := os.Mkdir(nested, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if output, err := exec.Command("git", "init", "--quiet", root).CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v: %s", err, output)
+			}
+			path := filepath.Join(root, SettingsPath)
+			before := "version: daiksud/gh-settings@v0\nrepository: {}\n"
+			if existing {
+				github := filepath.Dir(path)
+				if err := os.Mkdir(github, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(before), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Chdir(t.TempDir())
+			_, save, err := NewCheckout(nested).PrepareSave()
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if (existing && (err != nil || string(data) != before)) || (!existing && !os.IsNotExist(err)) {
+				t.Fatalf("destination changed during resolution: %q %v", data, err)
+			}
+			other := t.TempDir()
+			t.Chdir(other)
+			disabled := false
+			if err := save(uimodel.Repository{Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}}); err != nil {
+				t.Fatal(err)
+			}
+			want := "version: daiksud/gh-settings@v0\nrepository:\n    settings:\n        general:\n            features:\n                issues: false\n"
+			if data, err := os.ReadFile(path); err != nil || string(data) != want {
+				t.Fatalf("saved=%q error=%v, want %q", data, err, want)
+			}
+			if _, err := os.Lstat(filepath.Join(other, ".github")); !os.IsNotExist(err) {
+				t.Fatalf("unrelated destination exists: %v", err)
+			}
+		})
 	}
 }
 

@@ -3,6 +3,7 @@ package workspace
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -62,44 +63,7 @@ func TestReadConfigErrors(t *testing.T) {
 	}
 }
 
-func TestWriteConfigAtRoot(t *testing.T) {
-	tests := []struct {
-		name    string
-		present bool
-	}{{name: "create"}, {name: "replace", present: true}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			root := t.TempDir()
-			path := filepath.Join(root, ".github", "settings.yml")
-			if test.present {
-				if err := os.Mkdir(filepath.Dir(path), 0700); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, []byte("existing configuration\n"), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			nested := filepath.Join(root, "nested")
-			if err := os.Mkdir(nested, 0700); err != nil {
-				t.Fatal(err)
-			}
-			t.Chdir(nested)
-			input := []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n")
-			if err := WriteConfig(root, input); err != nil {
-				t.Fatal(err)
-			}
-			got, err := os.ReadFile(path)
-			if err != nil || !bytes.Equal(got, input) {
-				t.Fatalf("saved=%q error=%v, want %q", got, err, input)
-			}
-			if _, err := os.Lstat(filepath.Join(nested, ".github")); !os.IsNotExist(err) {
-				t.Fatalf("subdirectory destination exists: %v", err)
-			}
-		})
-	}
-}
-
-func TestWriteConfigRejectsUnsafeDestination(t *testing.T) {
+func TestCheckoutPrepareSaveRejectsUnsafeDestination(t *testing.T) {
 	tests := []struct{ name, want string }{
 		{"parent symlink", ".github must be a directory"},
 		{"file symlink", ".github/settings.yml must be a regular file"},
@@ -108,6 +72,9 @@ func TestWriteConfigRejectsUnsafeDestination(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			root, outside := t.TempDir(), t.TempDir()
+			if output, err := exec.Command("git", "init", "--quiet", root).CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v: %s", err, output)
+			}
 			sentinel := filepath.Join(outside, "settings.yml")
 			if err := os.WriteFile(sentinel, []byte("external configuration\n"), 0600); err != nil {
 				t.Fatal(err)
@@ -137,19 +104,9 @@ func TestWriteConfigRejectsUnsafeDestination(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			disabled := false
-			for _, save := range []func() error{
-				func() error {
-					return WriteConfig(root, []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n"))
-				},
-				func() error {
-					return saveDeclaration(root, uimodel.Repository{Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}})
-				},
-			} {
-				err = save()
-				if err == nil || !strings.Contains(err.Error(), test.want) {
-					t.Fatalf("error=%v, want %q", err, test.want)
-				}
+			_, save, err := NewCheckout(root).PrepareSave()
+			if err == nil || !strings.Contains(err.Error(), test.want) || save != nil {
+				t.Fatalf("save present=%t, error=%v, want %q", save != nil, err, test.want)
 			}
 			after, err := os.Lstat(observed)
 			if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() {
