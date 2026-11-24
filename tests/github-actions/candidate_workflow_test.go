@@ -25,15 +25,24 @@ func TestPRScreeningOnly(t *testing.T) {
 		t.Fatal("PR screening must build the CLI with its development version")
 	}
 	screening, _ := readReleaseAction(t, "screening")
-	var actions []string
-	for _, step := range screening.Runs.Steps {
-		if step.If != "" || step.Continue {
-			t.Fatal("every screening check must report its result")
-		}
-		actions = append(actions, step.Uses)
+	checks := []string{
+		"gofmt -l .", "go mod verify", "go vet ./...", "bun run lint:markdown",
+		"go test -race", "test_release_version.py", "test_release_ci.py",
+		"bash tests/release.sh", "bash tests/github-actions/action-install.sh",
 	}
-	if !reflect.DeepEqual(actions, []string{"./.github/actions/lint", "./.github/actions/unit-test", "./.github/actions/build"}) {
-		t.Fatalf("screening must lint, test and then build once: %v", actions)
+	steps := screening.Runs.Steps
+	if len(steps) != len(checks)+1 {
+		t.Fatal("screening must report each check and then build once")
+	}
+	for i, check := range checks {
+		s := steps[i]
+		if s.Name == "" || s.If != "" || s.Continue || s.Shell != "bash" || !strings.Contains(s.Run, check) {
+			t.Fatalf("screening must run and report %q at step %d", check, i+1)
+		}
+	}
+	build := steps[len(checks)]
+	if build.Uses != "./.github/actions/build" || build.With["version"] != "${{ inputs.version }}" || build.If != "" || build.Continue {
+		t.Fatal("all screening checks must pass before building the selected version")
 	}
 }
 

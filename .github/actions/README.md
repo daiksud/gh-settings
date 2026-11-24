@@ -3,8 +3,8 @@
 Each child directory defines a composite Action in `action.yml`. The [repository workflows](../workflows/README.md)
 select the runner, event and permissions. These Actions group the steps a job runs.
 
-- The [screening Action](screening/action.yml) runs [lint](lint/action.yml), [unit tests](unit-test/action.yml)
-  and the [native CLI build](build/action.yml) on Linux. The macOS candidate uses the same native build.
+- The [screening Action](screening/action.yml) runs lint, unit tests and offline fixtures
+  before the [native CLI build](build/action.yml) on Linux. The macOS candidate uses the same native build.
   [Candidate packaging](package-candidate/action.yml) uploads each binary with its identity manifest.
 - [Release acceptance](release-acceptance/action.yml) verifies a transferred artifact and
   passes the binary to the [CLI integration tests](integration-test/action.yml) or

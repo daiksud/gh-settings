@@ -9,10 +9,10 @@ import (
 	"testing"
 )
 
-func TestUnitTestActionPreservesCleanBuildMetadata(t *testing.T) {
+func TestScreeningPreservesCleanBuildMetadata(t *testing.T) {
 	// Exercise the Action's actual commands with importing test fixtures, then
 	// inspect a real binary from the same clean Git checkout.
-	action, _ := readReleaseAction(t, "unit-test")
+	action, _ := readReleaseAction(t, "screening")
 	checkout := filepath.Join(t.TempDir(), "source")
 	if err := os.MkdirAll(filepath.Join(checkout, ".github/scripts"), 0700); err != nil {
 		t.Fatal(err)

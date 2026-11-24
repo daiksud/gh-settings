@@ -13,4 +13,4 @@ candidate Action against GitHub.
   before and after the candidate Action runs against a test repository. See the
   [verification workflow](../workflows/verify-public-action.yml) for the apply and restore sequence.
 
-The [unit-test Action](../actions/unit-test/action.yml) contains the commands CI uses to run both Python test suites.
+The [screening Action](../actions/screening/action.yml) runs both Python test suites before building the CLI.
