@@ -12,36 +12,13 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-func TestUIRulesetCollectionPresenceAndIdentity(t *testing.T) {
+func TestUIRulesetCollectionPresence(t *testing.T) {
 	if got, err := RulesetsDeclaration(nil); err != nil || got != nil {
 		t.Fatal(got, err)
 	}
 	empty := []uimodel.Ruleset{}
 	if got, err := RulesetsDeclaration(&empty); err != nil || got == nil || got.Len() != 0 {
 		t.Fatal(got, err)
-	}
-	policy := apiRulesetBase()
-	zulu := apiRulesetBase()
-	zulu.Name = "Zulu"
-	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 8, Policy: zulu}, {ID: 7, Policy: policy}}, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := RulesetsObservation(observed)
-	if err != nil || got.ExcludedPush != 2 || len(got.Rulesets) != 2 || got.Rulesets[0].ID == nil || *got.Rulesets[0].ID != 7 || got.Rulesets[1].RulesetName != "Zulu" {
-		t.Fatal(got, err)
-	}
-	if _, err := RulesetsObservation(settings.RulesetObservation{}); err == nil {
-		t.Fatal("missing acquisition accepted")
-	}
-	policy.Name = "Unrepresentable"
-	policy.BypassActors = rulesetPtr([]settings.BypassActor{{ActorType: "RepositoryRole", ActorID: rulesetPtr(int64(99)), BypassMode: rulesetPtr("always")}})
-	partial, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: apiRulesetBase()}, {ID: 8, Policy: policy}}, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, err := RulesetsObservation(partial); err == nil || !reflect.DeepEqual(got, PreparedRulesets{}) {
-		t.Fatal("partial UI collection returned", got, err)
 	}
 }
 
@@ -73,11 +50,17 @@ func TestUIRulesetsRawReadComposition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := RulesetsObservation(raw)
-	if err != nil || len(got.Rulesets) != 1 || got.ExcludedPush != 0 {
+	policies, err := raw.ExportDeclarations()
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := uiExportBase()
+	source.Rulesets = &policies
+	got, err := UIFromExportDeclaration(source)
+	if err != nil || got.Settings == nil || got.Settings.Rulesets == nil || len(*got.Settings.Rulesets) != 1 {
 		t.Fatal(got, err)
 	}
-	ui := got.Rulesets[0]
+	ui := (*got.Settings.Rulesets)[0]
 	if ui.ID == nil || *ui.ID != 7 || ui.RulesetName != "Policy" || *ui.BypassList == nil || *(*ui.BypassList)[0].Role != "maintain" || (*ui.Rules.RequireCodeScanningResults.CodeScanningTools)[0].ToolName != "CodeQL" || *ui.Rules.RequireAPullRequestBeforeMerging.RequiredApprovals != 1 || *(*ui.Rules.RequireStatusChecksToPass.RequiredStatusChecks)[0].Source.App != 17 {
 		t.Fatalf("mapped policy=%+v", ui)
 	}
@@ -104,7 +87,7 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 			other.Name = "Unlisted"
 			states = []settings.RulesetState{{ID: 7, Policy: apiRulesetBase()}, {ID: 8, Policy: other}}
 		}
-		observed, err := settings.NewRulesetObservation(states, 0)
+		observed, err := settings.NewRulesetObservation(states, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

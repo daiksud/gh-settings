@@ -16,7 +16,7 @@ func TestRulesetQualityObservationDistinguishesAbsenceAndOwnsBothRecords(t *test
 	for _, raw := range []string{"FUTURE_SEVERITY", "", " \t", "warnings_and_higher"} {
 		state := normalizedQualityState(7, "first", raw)
 		other := normalizedQualityState(9, "other", "OTHER_SEVERITY")
-		observed, err := NewRulesetObservation([]RulesetState{state, other}, 0)
+		observed, err := NewRulesetObservation([]RulesetState{state, other}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestRulesetQualityObservationDistinguishesAbsenceAndOwnsBothRecords(t *test
 		only := normalizedQualityState(11, "quality only", raw)
 		only.Policy.Enforcement = rsText("active")
 		only.EnforcementNormalization = ObservationNormalization{}
-		independent, err := NewRulesetObservation([]RulesetState{only}, 0)
+		independent, err := NewRulesetObservation([]RulesetState{only}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +116,7 @@ func TestRulesetQualityObservationRejectsIncompleteAndCrossRecordForgery(t *test
 		if raw, err := state.RawEnforcement(); err == nil || raw != "" {
 			t.Fatal("cross-record forgery returned enforcement", raw, err)
 		}
-		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, 0)
+		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, nil)
 		if err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
 			t.Fatal("invalid partial collection escaped", observed, err)
 		}

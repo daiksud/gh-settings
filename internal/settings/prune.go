@@ -114,7 +114,7 @@ func ReconcileRulesetsWithPrune(current RulesetObservation, desired *RulesetDecl
 	if err != nil {
 		return nil, err
 	}
-	if len(current.unmanagedIDs) != 0 || current.excludedPush != 0 {
+	if len(current.unmanagedIDs) != 0 {
 		return nil, fmt.Errorf("cannot prune Rulesets with inherited, Push or other unmanaged inventory objects")
 	}
 	keep := map[int64]bool{}

@@ -70,7 +70,7 @@ func (p *RuleParameters) hasAnalysis() bool {
 func (p *RuleParameters) hasCoverage() bool {
 	return p != nil && (p.MinimumCoverage != nil || p.MaxCoverageDrop != nil)
 }
-func reviewActorKey(a ReviewActor) string { return fmt.Sprintf("%s:%d", a.Type, a.ID) }
+
 func checkKey(c RequiredStatusCheck) string {
 	if c.IntegrationID == nil {
 		return c.Context + "\x00"

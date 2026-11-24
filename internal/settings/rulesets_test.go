@@ -24,7 +24,7 @@ func rsDesired(t *testing.T, values ...RulesetDeclaration) *RulesetDeclarations 
 }
 func rsObserved(t *testing.T, values ...RulesetState) RulesetObservation {
 	t.Helper()
-	o, e := NewRulesetObservation(values, 0)
+	o, e := NewRulesetObservation(values, nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -86,13 +86,13 @@ func TestRulesetsRejectInvalidAndIncompleteState(t *testing.T) {
 	if _, err := ReconcileRulesets(RulesetObservation{}, rsDesired(t, basicPolicy("selected"))); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatal(err)
 	}
-	if _, err := NewRulesetObservation([]RulesetState{{ID: 1, Policy: basicPolicy("a")}, {ID: 2, Policy: basicPolicy("a")}}, 0); err == nil {
+	if _, err := NewRulesetObservation([]RulesetState{{ID: 1, Policy: basicPolicy("a")}, {ID: 2, Policy: basicPolicy("a")}}, nil); err == nil {
 		t.Fatal("ambiguous names accepted")
 	}
 	for _, mutate := range []func(*RulesetDeclaration){func(d *RulesetDeclaration) { d.Rules = nil }, func(d *RulesetDeclaration) { d.BypassActors = nil }, func(d *RulesetDeclaration) { d.Conditions.RefName.Exclude = nil }} {
 		d := basicPolicy("a")
 		mutate(&d)
-		if _, err := NewRulesetObservation([]RulesetState{{ID: 1, Policy: d}}, 0); err == nil {
+		if _, err := NewRulesetObservation([]RulesetState{{ID: 1, Policy: d}}, nil); err == nil {
 			t.Fatal("incomplete observation accepted")
 		}
 	}

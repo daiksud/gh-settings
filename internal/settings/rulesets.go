@@ -54,7 +54,6 @@ type RulesetState struct {
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
 	entries      []RulesetState
-	excludedPush int
 	unmanagedIDs []int64
 }
 
@@ -312,17 +311,11 @@ func (d RulesetDeclarations) Values() []RulesetDeclaration {
 }
 
 func (d RulesetDeclarations) Len() int { return len(d.entries) }
-func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObservation, error) {
-	return NewRulesetObservationWithUnmanagedIDs(entries, excludedPush, nil)
-}
 
-// NewRulesetObservationWithUnmanagedIDs retains inventory identities that cannot
-// be selected for mutation. They must never be mistaken for confirmed absence.
-func NewRulesetObservationWithUnmanagedIDs(entries []RulesetState, excludedPush int, unmanagedIDs []int64) (RulesetObservation, error) {
-	if excludedPush < 0 {
-		return RulesetObservation{}, fmt.Errorf("invalid excluded push count")
-	}
-	out := RulesetObservation{entries: make([]RulesetState, 0, len(entries)), excludedPush: excludedPush}
+// NewRulesetObservation retains inventory identities that cannot be selected for
+// mutation. They must never be mistaken for confirmed absence.
+func NewRulesetObservation(entries []RulesetState, unmanagedIDs []int64) (RulesetObservation, error) {
+	out := RulesetObservation{entries: make([]RulesetState, 0, len(entries))}
 	names := map[string]bool{}
 	ids := map[int64]bool{}
 	for _, id := range unmanagedIDs {
@@ -355,7 +348,6 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 	}
 	return out, nil
 }
-func (o RulesetObservation) ExcludedPush() int { return o.excludedPush }
 
 // ExportDeclarations returns complete supported Ruleset declarations.
 func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {

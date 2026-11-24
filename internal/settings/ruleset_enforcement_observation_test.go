@@ -15,14 +15,14 @@ func TestRulesetEnforcementObservationOwnsProvenancePerID(t *testing.T) {
 	for _, raw := range []string{"FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		t.Run(raw, func(t *testing.T) {
 			input := []RulesetState{normalizedEnforcementState(7, "first", raw), normalizedEnforcementState(9, "second", "OTHER_MODE")}
-			observed, err := NewRulesetObservation(input, 2)
+			observed, err := NewRulesetObservation(input, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			*input[0].Policy.Enforcement = "active"
 			input[0].EnforcementNormalization.RawValue = "mutated"
 			values, err := observed.Values()
-			if err != nil || len(values) != 2 || values[0].ID != 7 || values[1].ID != 9 || observed.ExcludedPush() != 2 {
+			if err != nil || len(values) != 2 || values[0].ID != 7 || values[1].ID != 9 {
 				t.Fatal(values, err)
 			}
 			got, err := values[0].RawEnforcement()
@@ -74,7 +74,7 @@ func TestRulesetEnforcementObservationRejectsForgedOrIncompleteEvidence(t *testi
 		if raw, err := state.RawEnforcement(); err == nil || raw != "" {
 			t.Fatal("invalid raw accessor", state, raw, err)
 		}
-		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, 0)
+		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, nil)
 		if err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
 			t.Fatal("partial invalid observation escaped", observed, err)
 		}

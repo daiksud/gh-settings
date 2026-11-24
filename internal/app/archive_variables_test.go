@@ -88,7 +88,7 @@ func TestArchivedVariablesMatchRequiresCompleteSelectedObservations(t *testing.T
 				}
 				d.Rulesets = &policies
 				writer.ReadRulesets = func(repository.Repository) (settings.RulesetObservation, error) {
-					return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+					return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 				}
 			}
 			if scenario == "matching environment" || scenario == "environment differs" || scenario == "variable differs with environment" {

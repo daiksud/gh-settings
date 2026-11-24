@@ -41,7 +41,7 @@ func TestRulesetCreationCannotRecordAnAlreadyKnownID(t *testing.T) {
 	recorded := false
 	result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: &declarations}, nil }, checkoutRepository, Writer{
 		ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
-			return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+			return settings.NewRulesetObservation([]settings.RulesetState{state}, nil)
 		},
 		Ruleset:   func(repository.Repository, settings.RulesetChange) (int64, error) { return 7, nil },
 		CreatedID: func(string, string, int64) error { recorded = true; return nil },
@@ -75,7 +75,7 @@ func TestRulesetCreationRecordsIDsAndPreservesEarlierLabelRecovery(t *testing.T)
 					return 17, nil
 				},
 				ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
-					return settings.NewRulesetObservation(nil, 0)
+					return settings.NewRulesetObservation(nil, nil)
 				},
 				Ruleset: func(_ repository.Repository, change settings.RulesetChange) (int64, error) {
 					calls = append(calls, "create "+change.Name())
@@ -137,7 +137,7 @@ func TestRulesetUnverifiedCreationReportsIDWithoutWritebackOrLaterWork(t *testin
 	calls := []string{}
 	result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: policies}, nil }, checkoutRepository, Writer{
 		ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
-			return settings.NewRulesetObservation(nil, 0)
+			return settings.NewRulesetObservation(nil, nil)
 		},
 		Ruleset: func(_ repository.Repository, change settings.RulesetChange) (int64, error) {
 			calls = append(calls, change.Name())
@@ -171,7 +171,7 @@ func TestRulesetReadbackFailureStopsPruneAndLaterResources(t *testing.T) {
 		},
 		ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
 			calls = append(calls, "inventory")
-			return settings.NewRulesetObservation([]settings.RulesetState{state, unlisted}, 0)
+			return settings.NewRulesetObservation([]settings.RulesetState{state, unlisted}, nil)
 		},
 		Ruleset: func(_ repository.Repository, change settings.RulesetChange) (int64, error) {
 			calls = append(calls, change.Operation())

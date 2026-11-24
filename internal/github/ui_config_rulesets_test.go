@@ -65,7 +65,7 @@ func TestUIConfigRulesetExactRequests(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			observed, err := settings.NewRulesetObservation(states, 0)
+			observed, err := settings.NewRulesetObservation(states, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

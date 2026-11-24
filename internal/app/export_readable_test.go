@@ -133,7 +133,7 @@ func TestReadableExportVariableInventoriesAndPerEnvironmentRetention(t *testing.
 func TestReadableExportInfoFailureAndProjectionFailure(t *testing.T) {
 	r := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
 	r.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
-		return settings.NewRulesetObservation(nil, 0)
+		return settings.NewRulesetObservation(nil, nil)
 	}
 	prior := exportPrior(t)
 	var saved settings.Declaration

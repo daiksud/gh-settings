@@ -24,7 +24,7 @@ func TestRulesetMergeMethodsObservationOwnsRawOrderAndCompanions(t *testing.T) {
 	for _, raw := range [][]string{{"squash", "FUTURE_METHOD", "merge"}, {""}, {" \t"}} {
 		for _, companions := range []bool{false, true} {
 			state := normalizedMergeMethodsState(raw, companions)
-			observed, err := NewRulesetObservation([]RulesetState{state}, 0)
+			observed, err := NewRulesetObservation([]RulesetState{state}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +131,7 @@ func TestRulesetMergeMethodsObservationRejectsForgedOrIncompleteEvidence(t *test
 			if got, err := state.RawBypassActors(); err == nil || got != nil {
 				t.Fatal("cross-record evidence escaped", got, err)
 			}
-			observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, 0)
+			observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, nil)
 			if err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {
 				t.Fatal("partial collection escaped", observed, err)
 			}

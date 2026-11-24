@@ -38,7 +38,7 @@ func TestRulesetCoverageDefaultsAreDeclarationOnly(t *testing.T) {
 			if *p.MinimumCoverage != wantMin || *p.MaxCoverageDrop != wantDrop {
 				t.Fatal("wrong declaration defaults", p)
 			}
-			if _, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: policy}}, 0); (err != nil) != (omit != "neither") {
+			if _, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: policy}}, nil); (err != nil) != (omit != "neither") {
 				t.Fatal("observation fabricated missing threshold", omit, err)
 			}
 			*p.MinimumCoverage = 17
@@ -56,7 +56,7 @@ func TestRulesetCoverageRejectsInvalidAndForeignValues(t *testing.T) {
 			if _, err := NewRulesetDeclarations([]RulesetDeclaration{p}); err == nil {
 				t.Fatal("accepted invalid declared threshold", invalid)
 			}
-			if _, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: p}}, 0); err == nil {
+			if _, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: p}}, nil); err == nil {
 				t.Fatal("accepted invalid observed threshold", invalid)
 			}
 		}

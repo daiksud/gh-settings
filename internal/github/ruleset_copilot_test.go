@@ -61,7 +61,7 @@ func TestCopilotRulesetUIAndExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obs, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: policy}}, 0)
+	obs, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: policy}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

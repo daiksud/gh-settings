@@ -33,7 +33,7 @@ func deploymentsStrictAcquisitionAndUIMapping(t *testing.T, target string) {
 	if !reflect.DeepEqual(*ui.Rules.RequireDeploymentsToSucceed.RequiredDeploymentEnvironments, []string{"staging"}) {
 		t.Fatal(ui)
 	}
-	desired, err := RulesetDeclaration(ui.Ruleset)
+	desired, err := RulesetDeclaration(ui)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func deploymentsStrictAcquisitionAndUIMapping(t *testing.T, target string) {
 		t.Fatal(desired)
 	}
 	ui.Rules.RequireDeploymentsToSucceed = &uimodel.DeploymentsRule{}
-	if _, err := RulesetDeclaration(ui.Ruleset); err == nil {
+	if _, err := RulesetDeclaration(ui); err == nil {
 		t.Fatal("missing environments accepted")
 	}
 	for _, replacement := range []string{`{}`, `{"required_deployment_environments":null}`, `{"required_deployment_environments":[null]}`, `{"required_deployment_environments":[false]}`, `{"required_deployment_environments":["staging"],"future":true}`, `{"Required_deployment_environments":["staging"]}`, `{"required_deployment_environments":["staging","staging"]}`} {
@@ -67,7 +67,7 @@ func deploymentsUpdateAndRemovalRequireIndependentReadback(t *testing.T, target 
 				if err != nil {
 					t.Fatal(err)
 				}
-				obs, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: before}}, 0)
+				obs, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: before}}, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -117,7 +117,7 @@ func deploymentsUpdateAndRemovalRequireIndependentReadback(t *testing.T, target 
 					t.Fatal(requests, err)
 				}
 				if !badReadback {
-					after, _ := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: *changes[0].After()}}, 0)
+					after, _ := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: *changes[0].After()}}, nil)
 					again, err := settings.ReconcileRulesets(after, &declarations)
 					if err != nil || len(again) != 0 {
 						t.Fatal("repeat differs", again, err)

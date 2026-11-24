@@ -194,7 +194,7 @@ func rulesetPolicy(policy *settings.RulesetDeclaration) string {
 	if err != nil {
 		return "unavailable (policy is outside supported UI choices)"
 	}
-	encoded, err := workspace.MarshalUIReport(projected.Ruleset)
+	encoded, err := workspace.MarshalUIReport(projected)
 	if err != nil {
 		return "unavailable (policy cannot be rendered)"
 	}
