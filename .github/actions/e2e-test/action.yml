@@ -1,15 +1,8 @@
 name: E2E test
-description: Exercise the verified candidate public Action with an independent consumer and API fixtures.
+description: >-
+  Exercise the candidate Action with an independent consumer and API fixtures.
+  The caller supplies ACTION_SHA, EXPECTED_CLI_VERSION and EXPECTED_CLI_SHA256 from the verified artifact and checkout.
 inputs:
-  source-sha:
-    description: Exact producer source commit already checked out into .action.
-    required: true
-  cli-version:
-    description: CLI version reported by the producer.
-    required: true
-  binary-sha256:
-    description: SHA-256 reported for the producer binary.
-    required: true
   binary-path:
     description: Path to the existing downloaded producer binary.
     required: true
@@ -19,14 +12,11 @@ runs:
     - name: Prepare the bounded candidate download fixture
       env:
         BINARY_PATH: ${{ inputs.binary-path }}
-        EXPECTED_SHA256: ${{ inputs.binary-sha256 }}
-        SOURCE_SHA: ${{ inputs.source-sha }}
-        CLI_VERSION: ${{ inputs.cli-version }}
       shell: bash
       run: |
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
         bash .action/tests/github-actions/prepare-candidate-download.sh \
-          "$BINARY_PATH" "$EXPECTED_SHA256" "$SOURCE_SHA" "$CLI_VERSION"
+          "$BINARY_PATH" "$EXPECTED_CLI_SHA256" "$ACTION_SHA" "$EXPECTED_CLI_VERSION"
     - name: Check export file and privacy boundaries with the supplied product
       env:
         BINARY_PATH: ${{ inputs.binary-path }}
@@ -54,13 +44,10 @@ runs:
         command: validate
     - name: Assert consumer identity and all public outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
         TARGET: ${{ steps.validate.outputs.target }}
         CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
         CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: |
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
@@ -93,14 +80,11 @@ runs:
         token: plan-fixture-read
     - name: Assert actual plan and Summary bytes
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.plan.outcome }}
         CONFIG_SHA: ${{ steps.plan.outputs.config-sha }}
         TARGET: ${{ steps.plan.outputs.target }}
         CLI_VERSION: ${{ steps.plan.outputs.cli-version }}
         CLI_SHA256: ${{ steps.plan.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert
     - name: Prepare the repository read failure
@@ -115,14 +99,11 @@ runs:
         token: plan-fixture-read
     - name: Require read failure and diagnostic Summary
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.read-failure.outcome }}
         CONFIG_SHA: ${{ steps.read-failure.outputs.config-sha }}
         TARGET: ${{ steps.read-failure.outputs.target }}
         CLI_VERSION: ${{ steps.read-failure.outputs.cli-version }}
         CLI_SHA256: ${{ steps.read-failure.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert read-failure
     - name: Prepare the committed invalid configuration
@@ -137,14 +118,11 @@ runs:
         token: plan-fixture-read
     - name: Require config failure without API access
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.invalid-config.outcome }}
         CONFIG_SHA: ${{ steps.invalid-config.outputs.config-sha }}
         TARGET: ${{ steps.invalid-config.outputs.target }}
         CLI_VERSION: ${{ steps.invalid-config.outputs.cli-version }}
         CLI_SHA256: ${{ steps.invalid-config.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert invalid-config
     - name: Prepare the direct apply declaration and Summary snapshot
@@ -158,14 +136,11 @@ runs:
         token: apply-fixture-write
     - name: Require exact direct PATCH and all public outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.apply.outcome }}
         CONFIG_SHA: ${{ steps.apply.outputs.config-sha }}
         TARGET: ${{ steps.apply.outputs.target }}
         CLI_VERSION: ${{ steps.apply.outputs.cli-version }}
         CLI_SHA256: ${{ steps.apply.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert apply
     - name: Prepare the local write failure
@@ -180,14 +155,11 @@ runs:
         token: apply-fixture-write
     - name: Require write failure and four empty outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.write-failure.outcome }}
         CONFIG_SHA: ${{ steps.write-failure.outputs.config-sha }}
         TARGET: ${{ steps.write-failure.outputs.target }}
         CLI_VERSION: ${{ steps.write-failure.outputs.cli-version }}
         CLI_SHA256: ${{ steps.write-failure.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert apply-write-failure
     - name: Prepare the invalid apply declaration
@@ -202,14 +174,11 @@ runs:
         token: apply-fixture-write
     - name: Require invalid apply failure without API access
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.apply-invalid.outcome }}
         CONFIG_SHA: ${{ steps.apply-invalid.outputs.config-sha }}
         TARGET: ${{ steps.apply-invalid.outputs.target }}
         CLI_VERSION: ${{ steps.apply-invalid.outputs.cli-version }}
         CLI_SHA256: ${{ steps.apply-invalid.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert apply-invalid
     - name: Prepare the empty apply declaration
@@ -223,14 +192,11 @@ runs:
         token: apply-fixture-write
     - name: Require successful empty apply without API access
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.apply-empty.outcome }}
         CONFIG_SHA: ${{ steps.apply-empty.outputs.config-sha }}
         TARGET: ${{ steps.apply-empty.outputs.target }}
         CLI_VERSION: ${{ steps.apply-empty.outputs.cli-version }}
         CLI_SHA256: ${{ steps.apply-empty.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert apply-empty
     - name: Prepare private plan
@@ -245,15 +211,12 @@ runs:
         token: plan-fixture-read
     - name: Verify private privacy and cleanup
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.private.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.private.outputs.plan-outcome }}
         CONFIG_SHA: ${{ steps.private.outputs.config-sha }}
         TARGET: ${{ steps.private.outputs.target }}
         CLI_VERSION: ${{ steps.private.outputs.cli-version }}
         CLI_SHA256: ${{ steps.private.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert private
     - name: Prepare private-read-failure plan
@@ -269,15 +232,12 @@ runs:
         token: plan-fixture-read
     - name: Verify private-read-failure privacy and cleanup
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.private-read-failure.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.private-read-failure.outputs.plan-outcome }}
         CONFIG_SHA: ${{ steps.private-read-failure.outputs.config-sha }}
         TARGET: ${{ steps.private-read-failure.outputs.target }}
         CLI_VERSION: ${{ steps.private-read-failure.outputs.cli-version }}
         CLI_SHA256: ${{ steps.private-read-failure.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert private-read-failure
     - name: Prepare private-invalid-config plan
@@ -293,15 +253,12 @@ runs:
         token: plan-fixture-read
     - name: Verify private-invalid-config privacy and cleanup
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.private-invalid-config.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.private-invalid-config.outputs.plan-outcome }}
         CONFIG_SHA: ${{ steps.private-invalid-config.outputs.config-sha }}
         TARGET: ${{ steps.private-invalid-config.outputs.target }}
         CLI_VERSION: ${{ steps.private-invalid-config.outputs.cli-version }}
         CLI_SHA256: ${{ steps.private-invalid-config.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert private-invalid-config
     - name: Prepare first export
@@ -317,7 +274,6 @@ runs:
         token: export-fixture-read
     - name: Verify first export file and success-only outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.export-first.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.export-first.outputs.plan-outcome }}
         CONFIG_PATH: ${{ steps.export-first.outputs.config-path }}
@@ -325,8 +281,6 @@ runs:
         TARGET: ${{ steps.export-first.outputs.target }}
         CLI_VERSION: ${{ steps.export-first.outputs.cli-version }}
         CLI_SHA256: ${{ steps.export-first.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert-export first
     - name: Prepare repeat export
@@ -342,7 +296,6 @@ runs:
         token: export-fixture-read
     - name: Verify repeat export file and success-only outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.export-repeat.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.export-repeat.outputs.plan-outcome }}
         CONFIG_PATH: ${{ steps.export-repeat.outputs.config-path }}
@@ -350,8 +303,6 @@ runs:
         TARGET: ${{ steps.export-repeat.outputs.target }}
         CLI_VERSION: ${{ steps.export-repeat.outputs.cli-version }}
         CLI_SHA256: ${{ steps.export-repeat.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert-export repeat
     - name: Prepare invalid export
@@ -368,7 +319,6 @@ runs:
         token: export-fixture-read
     - name: Verify invalid export file and success-only outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.export-invalid.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.export-invalid.outputs.plan-outcome }}
         CONFIG_PATH: ${{ steps.export-invalid.outputs.config-path }}
@@ -376,8 +326,6 @@ runs:
         TARGET: ${{ steps.export-invalid.outputs.target }}
         CLI_VERSION: ${{ steps.export-invalid.outputs.cli-version }}
         CLI_SHA256: ${{ steps.export-invalid.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert-export invalid
     - name: Prepare symlink export
@@ -394,7 +342,6 @@ runs:
         token: export-fixture-read
     - name: Verify symlink export file and success-only outputs
       env:
-        ACTION_SHA: ${{ inputs.source-sha }}
         PLAN_OUTCOME: ${{ steps.export-symlink.outcome }}
         PRIVATE_PLAN_OUTCOME: ${{ steps.export-symlink.outputs.plan-outcome }}
         CONFIG_PATH: ${{ steps.export-symlink.outputs.config-path }}
@@ -402,8 +349,6 @@ runs:
         TARGET: ${{ steps.export-symlink.outputs.target }}
         CLI_VERSION: ${{ steps.export-symlink.outputs.cli-version }}
         CLI_SHA256: ${{ steps.export-symlink.outputs.cli-sha256 }}
-        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
-        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert-export symlink
     - name: Stop the owned local repository API
