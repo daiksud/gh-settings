@@ -318,6 +318,32 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	}
 }
 
+func TestCandidateWorkflowCallTrustBoundary(t *testing.T) {
+	const candidate = ".github/workflows/candidate.yml"
+	const call = "jobs:\n  candidate:\n    uses: ./" + candidate + "\n    permissions: {contents: read}\n"
+	for _, test := range []struct {
+		name, caller, callee string
+		valid                bool
+	}{
+		{"read-only", call, "runs-on: ubuntu-slim", true},
+		{"inherited secrets", call + "    secrets: inherit\n", "runs-on: ubuntu-slim", false},
+		{"write access", strings.Replace(call, "contents: read", "contents: write", 1), "runs-on: ubuntu-slim", false},
+		{"protected environment", call, "environment: gh-settings", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			files := map[string][]byte{
+				settingsWorkflowPath:         []byte("on: {workflow_dispatch: null}\njobs:\n  settings-apply:\n    environment: gh-settings\n"),
+				settingsPRWorkflowPath:       []byte(settingsValidationFixture),
+				".github/workflows/push.yml": []byte(test.caller),
+				candidate:                    []byte("on: {workflow_call: null}\njobs:\n  inspect:\n    " + test.callee + "\n"),
+			}
+			if err := checkSettingsEnvironmentScope(files); (err == nil) != test.valid {
+				t.Fatalf("valid=%t, got %v", test.valid, err)
+			}
+		})
+	}
+}
+
 func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 	for _, test := range []struct {
 		name, trigger string
