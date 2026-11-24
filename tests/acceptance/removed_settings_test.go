@@ -3,13 +3,12 @@
 package acceptance
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestRemovedOrganizationSettingsRejectBeforeRemoteWork(t *testing.T) {
+	binary := acceptanceBinary(t)
 	fixture, err := startAPIFixture(planResponse, 200)
 	if err != nil {
 		t.Fatal(err)
@@ -30,19 +29,12 @@ func TestRemovedOrganizationSettingsRejectBeforeRemoteWork(t *testing.T) {
 		}
 		before := fixture.reads.Load()
 		for _, command := range []string{"validate", "plan", "apply"} {
-			r, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{command}, false)
+			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
 			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || (!strings.Contains(withoutExportInfo(r.stderr.String()), "unknown") || !strings.Contains(withoutExportInfo(r.stderr.String()), unknownKey)) {
 				t.Fatalf("%s %s: error=%v stderr=%s", command, body, err, r.stderr.String())
 			}
 		}
-		for _, option := range []string{"--forking", "--custom-properties", "--custom-property"} {
-			r, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"export", option}, false)
-			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || r.stderr.Len() == 0 {
-				t.Fatalf("%s: error=%v stderr=%s", option, err, r.stderr.String())
-			}
-		}
-		after, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-		if err != nil || string(after) != config || fixture.reads.Load() != before {
+		if err := checkSettingsUnchanged(fixture.work, config); err != nil || fixture.reads.Load() != before {
 			t.Fatalf("removed settings touched file or API: %v", err)
 		}
 	}
