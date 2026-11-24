@@ -131,23 +131,15 @@ def run_identity(run):
     return (str(run["id"]), str(run["run_attempt"])) if run else ("", "")
 
 
-def require_selected_run(repo, source, expected):
-    run = select_ci_run(repo, source)
-    if expected is not None and run_identity(run) != expected:
-        raise Fatal("CI run or attempt changed since release resolution")
-    return run
-
-
-def status(expected=None):
+def status(expected):
     repo, source = identity()
-    run = require_selected_run(repo, source, expected)
-    run_id, attempt = run_identity(run)
-    output("ci-run-id", run_id)
-    output("ci-run-attempt", attempt)
+    run = select_ci_run(repo, source)
+    if run_identity(run) != expected:
+        raise Fatal("CI run or attempt changed since release resolution")
     if run:
-        note(f"Verified successful push run {run_id}, attempt {attempt}")
+        note(f"Verified successful push run {run['id']}, attempt {run['run_attempt']}")
     else:
-        note("No matching push run; fresh Screening and Inspection are required", True)
+        note("Confirmed no matching push run")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -315,11 +307,14 @@ def deployed_products(repo, source, run, version=None, targets=TARGETS):
     return observed, products
 
 
-def reuse(run_id, attempt, version):
+def reuse(version):
     repo, source = identity()
     if not VERSION.fullmatch(version):
         raise Fatal("invalid intended release version")
-    run = require_selected_run(repo, source, (run_id, attempt))
+    run = select_ci_run(repo, source)
+    run_id, attempt = run_identity(run)
+    output("ci-run-id", run_id)
+    output("ci-run-attempt", attempt)
     if run is None:
         output("reused", "false")
         note("No push run; run full Screening and Inspection", True)
@@ -355,16 +350,14 @@ def probe():
 def main():
     args = sys.argv[1:]
     try:
-        if args == ["status"]:
-            status()
-        elif len(args) == 3 and args[0] == "status":
+        if len(args) == 3 and args[0] == "status":
             status(tuple(args[1:]))
-        elif len(args) == 4 and args[0] == "reuse":
-            reuse(*args[1:])
+        elif len(args) == 2 and args[0] == "reuse":
+            reuse(args[1])
         elif args == ["probe"]:
             probe()
         else:
-            raise Fatal("usage: release-ci.py status [RUN_ID ATTEMPT] | reuse RUN_ID ATTEMPT VERSION | probe")
+            raise Fatal("usage: release-ci.py status RUN_ID ATTEMPT | reuse VERSION | probe")
     except (Fatal, Unusable) as error:
         print(f"::error::{error}", file=sys.stderr)
         return 1
