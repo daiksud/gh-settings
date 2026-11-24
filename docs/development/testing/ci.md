@@ -6,6 +6,7 @@ Use the [local testing guide](../testing.md) to choose a package or run the nati
 
 The [PR workflow](../../../.github/workflows/pr.yml), named `pr`, runs Screening
 only: source lint, Go race and offline tests, and a native Linux build.
+The PR build reports the Go source default version `dev`.
 Its single `screening` job uses `ubuntu-slim` and reports its result directly.
 Default `pull_request` activities run it when a PR is opened, updated with
 commits, or reopened. Title/body edits and draft/readiness transitions do not

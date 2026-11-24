@@ -55,21 +55,14 @@ type composite struct {
 	} `yaml:"runs"`
 }
 
-func committedCLIVersion(t *testing.T) string {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root(), "action/cli-version"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return strings.TrimSpace(string(data))
-}
+const fixtureCLIVersion = "v1.2.3"
 
 func TestRootCompositeValidate(t *testing.T) {
 	result := runComposite(t, "validate", "unused-fixture-token", map[string]string{"GH_TOKEN": "ambient-fixture", "GITHUB_TOKEN": "ambient-fixture"})
 	if result.status != 0 {
 		t.Fatalf("status=%d\n%s", result.status, result.log)
 	}
-	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest}
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": fixtureCLIVersion, "cli-sha256": result.digest}
 	if !reflect.DeepEqual(result.outputs, want) {
 		t.Fatalf("outputs=%v, want %v", result.outputs, want)
 	}
@@ -113,7 +106,7 @@ func TestRootCompositePlan(t *testing.T) {
 	if result.presentationCalls != "action plan\naction summary\n" || result.calls != "plan\n" {
 		t.Fatalf("presentation calls=%q settings calls=%q", result.presentationCalls, result.calls)
 	}
-	for _, text := range []string{"Settings review", "repository.about.description", `"before"`, `"desired"`, "repository.settings.general.features.issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", committedCLIVersion(t), strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
+	for _, text := range []string{"Settings review", "repository.about.description", `"before"`, `"desired"`, "repository.settings.general.features.issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", fixtureCLIVersion, strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
 		if !strings.Contains(html.UnescapeString(result.summary), text) {
 			t.Errorf("Summary missing %q: %s", text, result.summary)
 		}
@@ -125,7 +118,7 @@ func TestRootCompositePlan(t *testing.T) {
 
 func TestRootCompositeUnmanagedPlan(t *testing.T) {
 	result := runComposite(t, "plan", "fixture-token", map[string]string{"MOCK_PLAN_OUTCOME": "unmanaged"})
-	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest}
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": fixtureCLIVersion, "cli-sha256": result.digest}
 	if result.status != 0 || !reflect.DeepEqual(result.outputs, want) || result.calls != "plan\n" || result.presentationCalls != "action plan\naction summary\n" {
 		t.Fatalf("unmanaged plan: %+v", result)
 	}
@@ -139,7 +132,7 @@ func TestRootCompositeUnmanagedPlan(t *testing.T) {
 
 func TestRootCompositeQuotesPlanData(t *testing.T) {
 	result := runComposite(t, "plan", "fixture-token", map[string]string{"MOCK_DESCRIPTION_BEFORE": "</pre><script>setting</script>\n\n::error::value", "github.actor": "<script>actor</script>\n\n## forged"})
-	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest}
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": fixtureCLIVersion, "cli-sha256": result.digest}
 	if result.status != 0 || !reflect.DeepEqual(result.outputs, want) {
 		t.Fatalf("quoted plan: %+v", result)
 	}
@@ -502,7 +495,7 @@ exec /bin/rm "$@"
 	base["REAL_GIT"] = realGit
 	base["MOCK_TEST_BINARY"] = testBinary
 	base["MOCK_PRESENTATION_CALLS"] = filepath.Join(fixture, "presentation-calls")
-	base["MOCK_CLI_VERSION"] = committedCLIVersion(t)
+	base["MOCK_CLI_VERSION"] = fixtureCLIVersion
 	base["MOCK_METADATA_CALLS"] = filepath.Join(fixture, "metadata-calls")
 	base["MOCK_CHECKSUMS"] = filepath.Join(fixture, "checksums")
 	base["MOCK_DOWNLOAD"] = filepath.Join(fixture, "download")
@@ -541,7 +534,7 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	base["MOCK_CONFIG_SHA"], base["MOCK_CLI_SHA256"] = sha, digest
 	outputDirectory := t.TempDir()
 	values := map[string]string{"inputs.prune": "", "inputs.command": command, "inputs.plan-reporting": "detailed", "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
-		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": committedCLIVersion(t)}
+		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": fixtureCLIVersion}
 	for key, value := range extra {
 		if _, known := values[key]; known && (strings.HasPrefix(key, "github.") || key == "inputs.plan-reporting" || key == "inputs.prune") {
 			values[key] = value

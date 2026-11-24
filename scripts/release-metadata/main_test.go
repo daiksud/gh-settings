@@ -52,9 +52,7 @@ func newFixtureVersion(t *testing.T, version string, messages ...string) fixture
 	mustGit(t, f.root, "config", "user.name", "Fixture")
 	mustGit(t, f.root, "config", "user.email", "fixture@example.invalid")
 	mustGit(t, f.root, "config", "commit.gpgsign", "false")
-	write(t, filepath.Join(f.root, "action/cli-version"), version+"\n")
-	mustGit(t, f.root, "add", ".")
-	mustGit(t, f.root, "commit", "--quiet", "-m", "chore: baseline")
+	mustGit(t, f.root, "commit", "--quiet", "--allow-empty", "-m", "chore: baseline")
 	f.base = mustGit(t, f.root, "rev-parse", "HEAD")
 	mustGit(t, f.root, "-c", "tag.gpgsign=false", "tag", version)
 	for i, message := range messages {

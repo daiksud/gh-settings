@@ -165,7 +165,7 @@ A new workflow run resolves current main again. Existing tags remain immutable, 
 
 ## Action version and availability
 
-A published Action resolves its CLI from its own version tag. Full-SHA pins resolve an exact matching stable tag using public Git refs; untagged commits fail rather than falling back to latest. The installer verifies the release's `SHA256SUMS` and the executable's reported version. The committed `action/cli-version` file is only the local development candidate default; it does not control a published release. Local candidate/verification Actions use the exact accepted binary version. There is no public version or download-URL input.
+A published Action resolves its CLI from its own version tag. Full-SHA pins resolve an exact matching stable tag using public Git refs; untagged commits fail rather than falling back to latest. The installer verifies the release's `SHA256SUMS` and the executable's reported version. When invoking the Action from a local path, set `SETTINGS_CANDIDATE_VERSION` to the exact version under test. Candidate acceptance and post-publication verification supply this version explicitly. There is no public version or download-URL input.
 
 PR CI screens and builds the candidate. Main CI builds release-ready native Linux and macOS products, then inspects those exact products through process acceptance and an exact-source composite with bounded download/API fixtures. This works before publication; [testing](testing.md#ci-validation) distinguishes local/hosted integration from released-download evidence. Source features are not automatically available through an older published Action pin. Publish an explicitly authorized matching package before separately reviewing consumer adoption and permission changes.
 

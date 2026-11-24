@@ -24,7 +24,6 @@ func TestBuiltCompositeRulesetCoverage(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			const input = "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    rulesets:\n      - id: 7\n        ruleset_name: PRIVATE_COVERAGE_RULE\n        enforcement_status: active\n        target_branches: {include_default_branch: true}\n        rules:\n          restrict_code_coverage: {minimum_line_coverage_percentage: 90.25}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)

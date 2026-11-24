@@ -26,7 +26,6 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			entry := "{reference_prefix: NEW_PRIVATE-, target_url: 'https://private.example/<num>?Case=A%2FB', reference_format: numeric}"
 			if scenario == "matching" {
 				entry = "{id: 7, reference_prefix: OLD_PRIVATE-, target_url: 'https://private.example/<num>?Case=A%2FB', reference_format: numeric}"

@@ -22,7 +22,6 @@ func TestBuiltCompositeArchivedOIDC(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			selected := "use_default_template: false, subject_claim_template: [repo, context], use_immutable_subject_claim: false"
 			if mode == "immutable only" {
 				selected = "use_immutable_subject_claim: false"

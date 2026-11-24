@@ -24,7 +24,6 @@ func TestBuiltCompositeArchivedMatching(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			input := "version: daiksud/gh-settings@v0\nrepository: {about: {description: same, topics: [alpha, beta]}, labels: [{id: 7, name: bug, color: '#112233'}], settings: {general: {danger_zone: {archive_this_repository: true}}}}\n"
 			if strings.HasPrefix(scenario, "ruleset ") {
 				input = `version: daiksud/gh-settings@v0

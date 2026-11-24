@@ -53,7 +53,6 @@ func TestBuiltCompositeExport(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			const edited = "version: daiksud/gh-settings@v0\nrepository: {about: {description: concurrent}}\n"
 			var beforeRead func()
@@ -205,7 +204,6 @@ func TestBuiltCandidateExportFixture(t *testing.T) {
 	f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 	f.write(f.base["MOCK_ASSET"], string(product))
 	f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 	if err := os.Symlink(root(), filepath.Join(f.caller, ".action")); err != nil {
 		t.Fatal(err)
 	}

@@ -56,15 +56,18 @@ MOCK
 # The copied package receives only local release-response fixtures.
 installer="$fixture/action/install-cli.sh"
 cp "$repo_root/action/install-cli.sh" "$installer"
-printf 'v0.6.0\n' > "$fixture/action/cli-version"
 printf '%s  gh-settings-linux-amd64\n' "$(sha256sum "$MOCK_ASSET" | cut -d ' ' -f 1)" > "$MOCK_CHECKSUMS"
 cd "$fixture/caller"
+export SETTINGS_ACTION_REF= SETTINGS_CANDIDATE_VERSION=v0.7.0
 binary="$(SETTINGS_ACTION_REF=v0.6.0 bash "$installer")"
 second_binary="$(SETTINGS_ACTION_REF=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bash "$installer")"
 [[ "$binary" == "$RUNNER_TEMP/"* && -x "$binary" ]] || exit 1
 [[ "$("$binary" --version)" == 'gh-settings v0.6.0' ]] || exit 1
 [[ "$(cat "$MOCK_URLS")" == $'https://github.com/daiksud/gh-settings/releases/download/v0.6.0/SHA256SUMS\nhttps://github.com/daiksud/gh-settings/releases/download/v0.6.0/gh-settings-linux-amd64\nhttps://github.com/daiksud/gh-settings/releases/download/v0.6.0/SHA256SUMS\nhttps://github.com/daiksud/gh-settings/releases/download/v0.6.0/gh-settings-linux-amd64' ]] || exit 1
 [[ "$second_binary" == "$RUNNER_TEMP/"* && -x "$second_binary" && "$binary" != "$second_binary" ]] || exit 1
+export SETTINGS_CANDIDATE_VERSION=v0.6.0
+local_binary="$(bash "$installer")"
+[[ "$("$local_binary" --version)" == 'gh-settings v0.6.0' ]] || exit 1
 expect_failure() {
   rm -f "$MOCK_CALLS"
   if PATH="${INSTALLER_PATH:-$PATH}" "$bash_path" "$installer" > "$fixture/output" 2> "$fixture/error"; then
@@ -82,6 +85,12 @@ expect_failure() {
 }
 export RUNNER_TEMP="$fixture/failed runner"
 mkdir -p "$RUNNER_TEMP"
+rm -f "$MOCK_URLS"
+SETTINGS_CANDIDATE_VERSION= expect_failure
+grep -q 'SETTINGS_CANDIDATE_VERSION' "$fixture/error"
+SETTINGS_CANDIDATE_VERSION=dev expect_failure
+grep -q 'vMAJOR.MINOR.PATCH' "$fixture/error"
+[[ ! -e "$MOCK_URLS" ]] || exit 1
 SETTINGS_ACTION_REF=v0.7.0 expect_failure --version
 grep -q 'unexpected CLI version' "$fixture/error"
 SETTINGS_ACTION_REF=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb expect_failure

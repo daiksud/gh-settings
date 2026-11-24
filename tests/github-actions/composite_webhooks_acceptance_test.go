@@ -25,7 +25,6 @@ func TestBuiltCompositeWebhooks(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			entry := "{id: 7, content_type: application/x-www-form-urlencoded}"
 			if scenario == "url" {
 				entry = "{id: 7, payload_url: 'https://selected.example/next%2f?q=%2F'}"

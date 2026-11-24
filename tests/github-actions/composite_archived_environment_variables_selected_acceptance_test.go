@@ -26,7 +26,6 @@ func TestBuiltCompositeArchivedEnvironmentSelectedVariables(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    general: {danger_zone: {archive_this_repository: true}}\n    environments:\n      - name: production\n        variables: [{name: FIRST, value: " + desired + "}, {name: SECOND, value: " + desired + "}]\n"
 			config := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(config, input)

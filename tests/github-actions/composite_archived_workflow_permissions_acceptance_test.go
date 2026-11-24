@@ -22,7 +22,6 @@ func TestBuiltCompositeArchivedWorkflowPermissions(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			selection := "default_permissions: read_repository_contents_and_packages_permissions, allow_github_actions_to_create_and_approve_pull_requests: false"
 			if scenario == "approval only unknown default" {
 				selection = "allow_github_actions_to_create_and_approve_pull_requests: false"

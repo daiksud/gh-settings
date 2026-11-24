@@ -26,7 +26,6 @@ func TestBuiltCompositeWebhookPrune(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			list := "[]"
 			if scenario == "update-before-delete" {
 				list = "[{id: 7, content_type: application/x-www-form-urlencoded}]"

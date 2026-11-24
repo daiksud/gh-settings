@@ -71,6 +71,7 @@ class HistoryFixture(unittest.TestCase):
             ("fix: change API\n\nBREAKING CHANGE: Update usage", "v0.4.0"),
             ("docs: examples\n\n```text\nBREAKING CHANGE: Not a footer\n```", "v0.3.1"),
             ("chore: maintenance", "v0.3.1"),
+            ("build(release): prepare next version", "v0.3.1"),
         ]:
             with self.subTest(message=message):
                 case = tempfile.TemporaryDirectory()
@@ -100,15 +101,6 @@ class HistoryFixture(unittest.TestCase):
         newer = {"id": 2, "tag_name": "v0.2.9", "draft": False,
                  "prerelease": False, "published_at": "2026-10-02T00:00:00Z"}
         self.assertEqual(self.calculate([newer])[:2], ("v0.2.10", "v0.2.9"))
-
-    def test_changed_version_file_counts_as_substantive(self):
-        (self.root / "action").mkdir()
-        (self.root / "action/cli-version").write_text("v0.4.0\n")
-        self.git("add", ".")
-        self.git("commit", "--quiet", "-m", "build(release): prepare next version")
-        self.assertEqual(self.calculate()[0], "v0.3.1")
-        self.commit("fix: actual change")
-        self.assertEqual(self.calculate()[0], "v0.3.1")
 
     def test_retry_with_matching_marker(self):
         sha = self.commit("feat: new feature")

@@ -22,7 +22,6 @@ func TestBuiltCompositeArchivedRetentionRejectsAmbiguous(t *testing.T) {
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
-			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, actions: {general: {check_workflow_run_status_artifact_and_log_retention: 30}}}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
