@@ -52,10 +52,13 @@ func TestUIAboutObservation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := AboutObservation(state, topics)
+	ui, err := UIFromExportDeclaration(settings.Declaration{Repository: state.Declaration(), Topics: settings.TopicsDeclaration{Names: &topics}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := uimodel.About{Description: pointer(""), Website: pointer("https://example.com"), Topics: pointer([]string{"github", "tools"})}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("About=%+v, want %+v", got, want)
+	if !reflect.DeepEqual(ui.About, &want) {
+		t.Fatalf("About=%+v, want %+v", ui.About, want)
 	}
 }
 

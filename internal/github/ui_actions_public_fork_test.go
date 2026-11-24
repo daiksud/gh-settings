@@ -21,20 +21,13 @@ func TestUIActionsPublicForkChoices(t *testing.T) {
 		if err != nil || !reflect.DeepEqual(got, settings.ActionsPolicyDeclaration{ForkApprovalPolicy: &test.api}) {
 			t.Fatal(got, err)
 		}
-		o, err := settings.NewForkApprovalObservation(test.api)
-		if err != nil {
-			t.Fatal(err)
-		}
-		view, err := WithActionsForkApprovalObservation(uimodel.ActionsGeneral{AllowGitHubActionsToCreateAndApprovePullRequests: actionsUIPtr(false)}, o)
+		view, err := WithActionsForkApprovalPolicyUI(uimodel.ActionsGeneral{AllowGitHubActionsToCreateAndApprovePullRequests: actionsUIPtr(false)}, &test.api)
 		if err != nil || *view.ApprovalForRunningForkPullRequestWorkflowsFromContributors != uimodel.ForkApprovalChoice(test.ui) || view.AllowGitHubActionsToCreateAndApprovePullRequests == nil {
 			t.Fatal(view, err)
 		}
 	}
 	if _, err := ActionsDeclaration(uimodel.ActionsGeneral{ApprovalForRunningForkPullRequestWorkflowsFromContributors: actionsUIPtr(uimodel.ForkApprovalChoice("first_time_contributors"))}); err == nil {
 		t.Fatal("API token accepted")
-	}
-	if _, err := WithActionsForkApprovalObservation(uimodel.ActionsGeneral{}, settings.ForkApprovalObservation{}); err == nil {
-		t.Fatal("missing observation defaulted")
 	}
 }
 

@@ -13,7 +13,7 @@ sources:
 
 Use this mapping to connect the Actions General page to stored policy, workflow permissions, retention and fork approval. The [Actions reference](../references/settings/actions/README.md) defines the public declaration.
 
-The [internal UI model](../../internal/settings/uimodel/actions.go) has typed control choices without transport enums or serialization tags. The [public document](../../internal/workspace/ui_settings_document.go) groups these independent controls for the single YAML codec. [Declaration conversion](../../internal/github/ui_actions.go) supplies existing validated adapter inputs. Observation helpers consume acquired values directly, retaining raw latent policy and retention caps outside the UI model. They never call declaration normalization. Overlay helpers preserve unrelated incoming UI fields; they copy newly acquired values rather than claiming a deep copy of the whole incoming tree.
+The [internal UI model](../../internal/settings/uimodel/actions.go) has typed control choices without transport enums or serialization tags. The [public document](../../internal/workspace/ui_settings_document.go) groups these independent controls for the single YAML codec. [Declaration conversion](../../internal/github/ui_actions.go) supplies existing validated adapter inputs. Endpoint readers retain raw policy and retention caps. Export projects validated declarations into their corresponding UI controls.
 
 ## Inventory and paths
 
@@ -35,7 +35,7 @@ The UI prefix `A` below means `repository.settings.actions.general`. Labels and 
 | Workflow permissions | `workflow_permissions.default_permissions` | Workflow `default_workflow_permissions` |
 | Allow GitHub Actions to create and approve pull requests | `workflow_permissions.allow_github_actions_to_create_and_approve_pull_requests` | Workflow `can_approve_pull_request_reviews` |
 
-Runners and other unadopted controls remain outside this family. Cache limits are adopted independently; see the [public contract](../references/settings/actions/general.md#actions-cache-policy). The existing endpoint clients retain their narrow acquisition scopes; observation conversion does not expand API access or follow `selected_actions_url`.
+Runner registrations have a [separate contract](../references/settings/actions/runners.md). Cache limits are adopted independently; see the [public contract](../references/settings/actions/general.md#actions-cache-policy). The existing endpoint clients retain their narrow acquisition scopes; observation conversion does not expand API access or follow `selected_actions_url`.
 
 ## Finite choices
 
@@ -69,7 +69,7 @@ Every desired scalar remains optional, including independent `policy`/SHA/select
 
 Public fork approval retains the public-repository gate. Private-only settings are not mapped to public UI intent.
 
-Retention displays the acquired configured `days`, even when it exceeds the acquired organization cap. `maximum_allowed_days` is adapter metadata, not desired YAML or a substitute configured value. Desired/export validation remains responsible for the cap; the new helper preserves raw observations without validating them as desired state. Writes still send only `days` and verify readback. Bounds remain 1–400 with the acquired tighter cap applied by existing preflight.
+The retention reader records configured `days` and the separate `maximum_allowed_days` cap, including when the configuration exceeds the current cap. Export and write preflight reject a configured or requested value above that cap. YAML contains only the configured days. A write sends `days` in the range 1–400 and verifies readback.
 
 ## Verification
 

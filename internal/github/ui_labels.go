@@ -38,19 +38,3 @@ func LabelsDeclaration(labels *[]uimodel.Label) (*settings.LabelDeclarations, er
 	}
 	return &result, nil
 }
-
-// LabelsObservation requires a completely acquired, validated collection.
-func LabelsObservation(observed settings.LabelObservation) ([]uimodel.Label, error) {
-	entries, err := observed.Values()
-	if err != nil {
-		return nil, err
-	}
-	result := make([]uimodel.Label, len(entries))
-	for i, label := range entries {
-		result[i], err = LabelPolicyUI(settings.LabelDeclaration{ID: &label.ID, Name: label.Name, Color: &label.Color, Description: &label.Description})
-		if err != nil {
-			return nil, err
-		}
-	}
-	return result, nil
-}

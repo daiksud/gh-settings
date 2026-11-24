@@ -1,7 +1,6 @@
 package github
 
 import (
-	"cmp"
 	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
@@ -15,9 +14,9 @@ func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclara
 			ids := slices.Clone(*rules.CustomRules)
 			result.CustomRules = &ids
 		}
-		result.WaitTimer = copyUIEnvironmentValue(rules.WaitTimer)
-		result.PreventSelfReview = copyUIEnvironmentValue(rules.PreventSelfReview)
-		result.CanAdminsBypass = copyUIEnvironmentValue(rules.AllowAdministratorsToBypassConfiguredProtectionRules)
+		result.WaitTimer = copyUIValue(rules.WaitTimer)
+		result.PreventSelfReview = copyUIValue(rules.PreventSelfReview)
+		result.CanAdminsBypass = copyUIValue(rules.AllowAdministratorsToBypassConfiguredProtectionRules)
 		if rules.RequiredReviewers != nil {
 			reviewers := make([]settings.EnvironmentReviewer, 0, len(*rules.RequiredReviewers))
 			for _, reviewer := range *rules.RequiredReviewers {
@@ -58,13 +57,6 @@ func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclara
 	}
 	return validated.Values()[0], nil
 }
-func copyUIEnvironmentValue[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	copied := *value
-	return &copied
-}
 
 func EnvironmentDeclarations(entries []uimodel.Environment) (settings.EnvironmentDeclarations, error) {
 	policies := make([]settings.EnvironmentDeclaration, 0, len(entries))
@@ -99,13 +91,6 @@ func EnvironmentCollectionDeclaration(entries *[]uimodel.Environment) (*settings
 	return &value, nil
 }
 
-// PreparedEnvironment retains resource IDs only as acquired adapter metadata.
-type PreparedEnvironment struct {
-	Environment uimodel.Environment
-	ID          int64
-	Patterns    []settings.EnvironmentPatternState
-}
-
 // EnvironmentPolicyUI projects complete acquired policy without identity metadata.
 func EnvironmentPolicyUI(p settings.EnvironmentDeclaration) (uimodel.Environment, error) {
 	if err := p.ValidateObservationPolicy(); err != nil {
@@ -117,53 +102,15 @@ func EnvironmentPolicyUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 	return EnvironmentReportUI(p)
 }
 
-func EnvironmentsObservation(observation settings.EnvironmentObservation) ([]PreparedEnvironment, error) {
-	states, err := observation.Values()
-	if err != nil {
-		return nil, err
-	}
-	result := make([]PreparedEnvironment, 0, len(states))
-	for _, state := range states {
-		p, err := state.EffectivePolicy()
-		if err != nil {
-			return nil, err
-		}
-		if mode := p.DeploymentBranchPolicy; mode != nil && mode.CustomBranchPolicies {
-			if p.DeploymentBranchPatterns == nil {
-				return nil, fmt.Errorf("custom deployment patterns were not acquired")
-			}
-			// Compare effective identities here; retain the acquired raw evidence
-			// below for later reconciliation and verification of mutation intent.
-			projected := slices.Clone(state.Patterns)
-			for i := range projected {
-				projected[i].RefTypeNormalization = settings.ObservationNormalization{}
-			}
-			changes, err := settings.ReconcileEnvironmentPatterns(projected, p.DeploymentBranchPatterns)
-			if err != nil || len(changes) != 0 {
-				return nil, fmt.Errorf("custom deployment pattern identity metadata is incomplete or inconsistent")
-			}
-		}
-		ui, err := EnvironmentPolicyUI(p)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, PreparedEnvironment{Environment: ui, ID: state.ID, Patterns: slices.Clone(state.Patterns)})
-	}
-	slices.SortFunc(result, func(a, b PreparedEnvironment) int {
-		return cmp.Compare(settings.EnvironmentIdentity(a.Environment.Name), settings.EnvironmentIdentity(b.Environment.Name))
-	})
-	return result, nil
-}
-
 // EnvironmentReportUI projects an already validated complete observation or
 // partial request without turning preserved companions into owned values.
 func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment, error) {
 	ui := uimodel.Environment{Name: p.Name}
 	if p.CustomRules != nil || p.WaitTimer != nil || p.PreventSelfReview != nil || p.CanAdminsBypass != nil || p.Reviewers != nil {
 		protection := &uimodel.EnvironmentDeploymentProtectionRules{
-			WaitTimer:         copyUIEnvironmentValue(p.WaitTimer),
-			PreventSelfReview: copyUIEnvironmentValue(p.PreventSelfReview),
-			AllowAdministratorsToBypassConfiguredProtectionRules: copyUIEnvironmentValue(p.CanAdminsBypass),
+			WaitTimer:         copyUIValue(p.WaitTimer),
+			PreventSelfReview: copyUIValue(p.PreventSelfReview),
+			AllowAdministratorsToBypassConfiguredProtectionRules: copyUIValue(p.CanAdminsBypass),
 		}
 		if p.CustomRules != nil {
 			ids := slices.Clone(*p.CustomRules)
@@ -174,9 +121,9 @@ func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 			for _, reviewer := range *p.Reviewers {
 				switch reviewer.Type {
 				case "User":
-					reviewers = append(reviewers, uimodel.EnvironmentReviewer{Person: copyUIEnvironmentValue(&reviewer.ID)})
+					reviewers = append(reviewers, uimodel.EnvironmentReviewer{Person: copyUIValue(&reviewer.ID)})
 				case "Team":
-					reviewers = append(reviewers, uimodel.EnvironmentReviewer{Team: copyUIEnvironmentValue(&reviewer.ID)})
+					reviewers = append(reviewers, uimodel.EnvironmentReviewer{Team: copyUIValue(&reviewer.ID)})
 				default:
 					return uimodel.Environment{}, fmt.Errorf("environment reviewer is outside UI identities")
 				}

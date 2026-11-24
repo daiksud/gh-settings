@@ -15,7 +15,7 @@ sources:
 
 Use this mapping to check how Source, Branch, folder, custom domain and HTTPS selection translate to Pages API state. The [Pages reference](../references/settings/pages.md) defines the public lifecycle and configuration.
 
-The [UI model](../../internal/settings/uimodel/pages.go) contains display terminology and typed choices without serialization tags. The [adapter](../../internal/github/ui_pages.go) translates desired fields into existing validated Pages inputs and projects acquired configured state directly. `PreparedPages.Public` retains unowned visibility metadata outside desired UI values.
+The [UI model](../../internal/settings/uimodel/pages.go) contains display terminology and typed choices without serialization tags. The [adapter](../../internal/github/ui_pages.go) translates desired fields into validated Pages inputs. Export projects a configured site or confirmed absence into UI fields. The reader retains `PagesState.Public` for write verification.
 
 ## Verified UI inventory
 
@@ -45,7 +45,7 @@ Acquired null domain means known no custom domain, not unacquired. Legacy mode r
 
 ## Existing-site write and failure boundaries
 
-The existing client reads repository identity/archive state and the existing site, validates the complete desired result, refreshes identity before a single PUT, verifies all configured values including omitted companions/Public, and confirms identity again. Only declared members enter the payload; domain clearing sends JSON null. Only 204 is accepted. Repository/site creation, deletion, unpublishing, build triggering, source workflow creation and DNS/certificate management remain unsupported.
+The existing client reads repository identity/archive state and the existing site, validates the complete desired result, refreshes identity before a single PUT, verifies all configured values including omitted companions/Public, and confirms identity again. Only declared members enter the payload; domain clearing sends JSON null. Only 204 is accepted. The [Pages reference](../references/settings/pages.md#pages-configuration) covers site creation and deletion.
 
 Target GET 404 means absent under required permissions; explicit permission failures and other failed reads remain errors. Malformed or incomplete successful responses fail acquisition. Failed preflight attempts no Pages write. Write/status/readback failures retain possible effects and earlier confirmed work; there is no retry, rollback or transaction.
 

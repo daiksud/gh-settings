@@ -2,6 +2,7 @@ package github
 
 import (
 	"fmt"
+
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
@@ -27,9 +28,12 @@ func CheckExportAcquisition(source settings.Declaration) error {
 	if _, err := WithActionsWorkflowPolicyUI(uimodel.ActionsGeneral{}, source.Actions); err != nil {
 		return err
 	}
-	if !source.Pages.Empty() {
-		if _, err := PagesPolicyUI(source.Pages); err != nil {
-			return err
+	if pages := source.Pages; !pages.Empty() && !pages.Delete() {
+		if pages.BuildType == nil || pages.CNAME == nil || pages.HTTPSEnforced == nil {
+			return fmt.Errorf("Pages policy requires complete build type, custom domain and HTTPS values")
+		}
+		if *pages.BuildType == "legacy" && pages.Source == nil {
+			return fmt.Errorf("Pages branch source was not acquired")
 		}
 	}
 	if source.Webhooks != nil {

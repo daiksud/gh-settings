@@ -25,9 +25,6 @@ func TestUILabelPresenceAndValidation(t *testing.T) {
 			t.Fatalf("invalid UI color accepted: %q", color)
 		}
 	}
-	if _, err := LabelsObservation(settings.LabelObservation{}); err == nil {
-		t.Fatal("unacquired labels accepted")
-	}
 }
 
 func TestUILabelReadAndSelectedUpdate(t *testing.T) {
@@ -69,11 +66,6 @@ func TestUILabelReadAndSelectedUpdate(t *testing.T) {
 	observed, err := client.ReadLabels(repo)
 	if err != nil {
 		t.Fatal(err)
-	}
-	got, err := LabelsObservation(observed)
-	want := []uimodel.Label{{ID: pointer(int64(7)), Name: "Old", Color: pointer("#aabbcc"), Description: pointer("")}, {ID: pointer(int64(8)), Name: "Unlisted", Color: pointer("#123456"), Description: pointer("retain")}}
-	if err != nil || !reflect.DeepEqual(got, want) {
-		t.Fatalf("labels=%+v err=%v want %+v", got, err, want)
 	}
 	labels := []uimodel.Label{{ID: pointer(int64(7)), Name: "New", Color: pointer("#00FF11")}}
 	desired, err := LabelsDeclaration(&labels)

@@ -23,9 +23,6 @@ func TestUIActionsRetentionValues(t *testing.T) {
 			t.Fatal("invalid retention accepted")
 		}
 	}
-	if _, err := WithActionsRetentionObservation(uimodel.ActionsGeneral{}, settings.RetentionObservation{}); err == nil {
-		t.Fatal("missing observation became zero")
-	}
 }
 
 func TestUIActionsRetentionRawConfiguredAndCap(t *testing.T) {
@@ -36,11 +33,11 @@ func TestUIActionsRetentionRawConfiguredAndCap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := WithActionsRetentionObservation(uimodel.ActionsGeneral{AllowGitHubActionsToCreateAndApprovePullRequests: actionsUIPtr(false)}, o)
-	if err != nil || view.MaximumAllowedDays != 30 || *view.General.CheckWorkflowRunStatusArtifactAndLogRetention != 90 || view.General.AllowGitHubActionsToCreateAndApprovePullRequests == nil {
-		t.Fatal(view, err)
+	days, limit, err := o.Values()
+	if err != nil || days != 90 || limit != 30 {
+		t.Fatalf("days=%d limit=%d err=%v", days, limit, err)
 	}
-	if err := settings.PrepareRetention(o, *view.General.CheckWorkflowRunStatusArtifactAndLogRetention); err == nil {
+	if err := settings.PrepareRetention(o, days); err == nil {
 		t.Fatal("observed configuration above cap became valid desired value")
 	}
 }

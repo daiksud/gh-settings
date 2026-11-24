@@ -75,9 +75,13 @@ func TestUIEnvironmentExactPUTPreservesOmittedBuiltins(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err := EnvironmentsObservation(raw)
-		if err != nil || len(view) != 1 || view[0].ID != 7 || *view[0].Environment.DeploymentProtectionRules.WaitTimer != 30 || *(*view[0].Environment.DeploymentProtectionRules.RequiredReviewers)[0].Person != 9 || *view[0].Environment.DeploymentBranchesAndTags != "protected_branches_only" {
-			t.Fatal(view, err)
+		states, err := raw.Values()
+		if err != nil || len(states) != 1 || states[0].ID != 7 {
+			t.Fatal(states, err)
+		}
+		policy := states[0].Policy
+		if *policy.WaitTimer != 30 || (*policy.Reviewers)[0].Type != "User" || (*policy.Reviewers)[0].ID != 9 || !policy.DeploymentBranchPolicy.ProtectedBranches {
+			t.Fatal(policy)
 		}
 		d, err := EnvironmentDeclaration(test.ui)
 		if err != nil {
@@ -91,13 +95,13 @@ func TestUIEnvironmentExactPUTPreservesOmittedBuiltins(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err = EnvironmentsObservation(raw)
+		states, err = raw.Values()
 		wantTimer, wantReviewers := 0, 0
 		if test.partial {
 			wantTimer, wantReviewers = 30, 1
 		}
-		if err != nil || *view[0].Environment.DeploymentProtectionRules.WaitTimer != wantTimer || len(*view[0].Environment.DeploymentProtectionRules.RequiredReviewers) != wantReviewers {
-			t.Fatal("explicit controls or preserved companions differ", view, err)
+		if err != nil || len(states) != 1 || *states[0].Policy.WaitTimer != wantTimer || len(*states[0].Policy.Reviewers) != wantReviewers {
+			t.Fatal("explicit controls or preserved companions differ", states, err)
 		}
 	}
 }
@@ -202,9 +206,9 @@ func TestUIEnvironmentTypedPatternCRUDAndPartialFailure(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		view, err := EnvironmentsObservation(raw)
-		if err != nil || len(view) != 1 || view[0].ID != 7 || len(view[0].Patterns) != 2 || view[0].Patterns[0].ID != 41 || view[0].Patterns[1].ID != 42 || len(*view[0].Environment.DeploymentBranchOrTagRules) != 2 {
-			t.Fatal(view, err)
+		states, err := raw.Values()
+		if err != nil || len(states) != 1 || states[0].ID != 7 || len(states[0].Patterns) != 2 || states[0].Patterns[0].ID != 41 || states[0].Patterns[1].ID != 42 || len(*states[0].Policy.DeploymentBranchPatterns) != 2 {
+			t.Fatal(states, err)
 		}
 	}
 }
@@ -231,9 +235,8 @@ func TestUIEnvironmentUnavailableAndUnknownAcquisition(t *testing.T) {
 		if err == nil {
 			t.Fatal("unavailable/unknown accepted")
 		}
-		view, err := EnvironmentsObservation(raw)
-		if err == nil || len(view) != 0 {
-			t.Fatal("failed acquisition defaulted", view, err)
+		if states, err := raw.Values(); err == nil || states != nil {
+			t.Fatal("failed acquisition defaulted", states, err)
 		}
 	}
 }

@@ -27,13 +27,4 @@ func WithActionsForkApprovalPolicyUI(ui uimodel.ActionsGeneral, policy *string) 
 	}
 	ui.ApprovalForRunningForkPullRequestWorkflowsFromContributors = &choice
 	return ui, nil
-
-}
-
-func WithActionsForkApprovalObservation(ui uimodel.ActionsGeneral, observation settings.ForkApprovalObservation) (uimodel.ActionsGeneral, error) {
-	value, err := observation.Value()
-	if err != nil {
-		return uimodel.ActionsGeneral{}, err
-	}
-	return WithActionsForkApprovalPolicyUI(ui, &value)
 }

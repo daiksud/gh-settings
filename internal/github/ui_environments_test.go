@@ -8,6 +8,23 @@ import (
 )
 
 func environmentUIPtr[T any](value T) *T { return &value }
+
+func uiEnvironmentObservedPolicy(name string) settings.EnvironmentDeclaration {
+	return settings.EnvironmentDeclaration{Name: name, WaitTimer: environmentUIPtr(0), PreventSelfReview: environmentUIPtr(false), CanAdminsBypass: environmentUIPtr(false), Reviewers: environmentUIPtr([]settings.EnvironmentReviewer{}), DeploymentBranchPolicyDeclared: true}
+}
+
+func TestUIEnvironmentCollectionPresence(t *testing.T) {
+	absent, err := EnvironmentCollectionDeclaration(nil)
+	if err != nil || absent != nil {
+		t.Fatal(absent, err)
+	}
+	empty := []uimodel.Environment{}
+	present, err := EnvironmentCollectionDeclaration(&empty)
+	if err != nil || present == nil || present.Len() != 0 {
+		t.Fatal(present, err)
+	}
+}
+
 func TestUIEnvironmentBuiltInSingletons(t *testing.T) {
 	for _, test := range []struct {
 		ui   uimodel.EnvironmentDeploymentProtectionRules

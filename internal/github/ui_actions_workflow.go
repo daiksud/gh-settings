@@ -43,6 +43,6 @@ func WithActionsWorkflowObservation(ui uimodel.ActionsGeneral, state settings.Wo
 		return uimodel.ActionsGeneral{}, fmt.Errorf("%s is outside UI choices", settings.WorkflowPermissionsPath)
 	}
 	ui.WorkflowPermissions = &choice
-	ui.AllowGitHubActionsToCreateAndApprovePullRequests = copyUIActionsValue(&state.CanApprovePullRequestReviews)
+	ui.AllowGitHubActionsToCreateAndApprovePullRequests = copyUIValue(&state.CanApprovePullRequestReviews)
 	return ui, nil
 }
