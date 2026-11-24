@@ -12,10 +12,41 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Lint source and Markdown
-      uses: ./.github/actions/lint
-    - name: Run unit tests and offline fixtures
-      uses: ./.github/actions/unit-test
+    - name: Verify Go formatting
+      shell: bash
+      run: |
+        unformatted="$(gofmt -l .)"
+        if [[ -n "$unformatted" ]]; then
+          printf 'Run gofmt on:\n%s\n' "$unformatted"
+          exit 1
+        fi
+    - name: Verify modules
+      shell: bash
+      run: |
+        go mod download
+        go mod verify
+        go mod tidy -diff
+    - name: Static analysis
+      shell: bash
+      run: go vet ./...
+    - name: Check Markdown and local links
+      shell: bash
+      run: bun run lint:markdown
+    - name: Test with race detection
+      shell: bash
+      run: go test -race -count=1 -vet=off ./...
+    - name: Test release version resolution
+      shell: bash
+      run: python3 -B -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
+    - name: Test main CI artifact reuse and integrity
+      shell: bash
+      run: python3 -B -m unittest discover -s .github/scripts -p 'test_release_ci.py' -q
+    - name: Test release recovery without GitHub
+      shell: bash
+      run: bash tests/release.sh
+    - name: Test settings examples without GitHub
+      shell: bash
+      run: bash tests/github-actions/action-install.sh
     - name: Build the native executable
       id: build
       uses: ./.github/actions/build

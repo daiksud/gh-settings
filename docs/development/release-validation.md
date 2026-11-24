@@ -4,7 +4,7 @@ Use the checks below when changing version selection, workflow gates, release no
 
 ## Select a version and commit range
 
-Run the following from the repository root. The [unit-test Action](../../.github/actions/unit-test/action.yml) runs both suites in PR screening and main CI. The `-B` option keeps generated Python bytecode out of the checkout before native builds. A [regression test](../../tests/github-actions/unit_test_action_test.go) checks that the compiled binary records the expected revision and `vcs.modified=false`.
+Run the following from the repository root. The [screening Action](../../.github/actions/screening/action.yml) runs both suites in PR and main CI. The `-B` option keeps generated Python bytecode out of the checkout before native builds. A [regression test](../../tests/github-actions/screening_action_test.go) checks that the compiled binary records the expected revision and `vcs.modified=false`.
 
 ```sh
 python3 -B -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
