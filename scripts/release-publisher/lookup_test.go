@@ -164,11 +164,7 @@ func TestTagIdentityAndLookupBoundary(t *testing.T) {
 			if err != nil {
 				message = err.Error()
 			}
-			want := tagObservation{}
-			if test.exists {
-				want = tagObservation{Exists: true, Type: "commit", SHA: sha}
-			}
-			if message != test.wantError || !reflect.DeepEqual(got, want) || calls != test.calls {
+			if message != test.wantError || got != test.exists || calls != test.calls {
 				t.Fatalf("tag=%+v error=%v calls=%d", got, err, calls)
 			}
 		})
@@ -188,7 +184,7 @@ func TestTagIsReadAgainAtPublication(t *testing.T) {
 	if _, err := inspectTag(observedIdentity(), true, "existing tag targets another commit", gh); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := inspectTag(observedIdentity(), false, "tag changed before publication", gh); err == nil || err.Error() != "tag changed before publication" || got != (tagObservation{}) || reads != 2 {
-		t.Fatalf("tag=%+v error=%v reads=%d", got, err, reads)
+	if exists, err := inspectTag(observedIdentity(), false, "tag changed before publication", gh); err == nil || err.Error() != "tag changed before publication" || exists || reads != 2 {
+		t.Fatalf("tag exists=%v error=%v reads=%d", exists, err, reads)
 	}
 }

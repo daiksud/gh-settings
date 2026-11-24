@@ -11,17 +11,17 @@ import (
 
 func TestVerifyAssetsDownloadsBytesAndReportsMissing(t *testing.T) {
 	for _, test := range []struct {
-		name                         string
-		names                        []any
-		failure, tamper, omit        string
-		apiFailure                   bool
-		verified, missing, downloads []string
-		wantError                    string
+		name                  string
+		names                 []any
+		failure, tamper, omit string
+		apiFailure            bool
+		missing, downloads    []string
+		wantError             string
 	}{
-		{name: "complete", verified: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64", "SHA256SUMS"}, missing: []string{}, downloads: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64", "SHA256SUMS"}},
-		{name: "missing checksum", names: []any{"gh-settings-linux-amd64", "gh-settings-darwin-arm64"}, verified: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64"}, missing: []string{"SHA256SUMS"}, downloads: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64"}},
-		{name: "missing binaries", names: []any{"SHA256SUMS"}, verified: []string{"SHA256SUMS"}, missing: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64"}, downloads: []string{"SHA256SUMS"}},
-		{name: "empty", names: []any{}, verified: []string{}, missing: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64", "SHA256SUMS"}},
+		{name: "complete", downloads: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64", "SHA256SUMS"}},
+		{name: "missing checksum", names: []any{"gh-settings-linux-amd64", "gh-settings-darwin-arm64"}, missing: []string{"SHA256SUMS"}, downloads: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64"}},
+		{name: "missing binaries", names: []any{"SHA256SUMS"}, missing: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64"}, downloads: []string{"SHA256SUMS"}},
+		{name: "empty", names: []any{}, missing: []string{"gh-settings-darwin-arm64", "gh-settings-linux-amd64", "SHA256SUMS"}},
 		{name: "duplicate", names: []any{"gh-settings-linux-amd64", "gh-settings-linux-amd64"}, wantError: "duplicate asset names"},
 		{name: "unexpected", names: []any{"other"}, wantError: "unexpected release asset"},
 		{name: "duplicate before unexpected", names: []any{"other", "other"}, wantError: "duplicate asset names"},
@@ -93,7 +93,7 @@ func TestVerifyAssetsDownloadsBytesAndReportsMissing(t *testing.T) {
 			if err != nil {
 				message = err.Error()
 			}
-			want := assetVerification{Verified: test.verified, Missing: test.missing}
+			want := assetVerification{Missing: test.missing}
 			if test.wantError == "" {
 				if err := json.Unmarshal(body, &want.view); err != nil {
 					t.Fatal(err)

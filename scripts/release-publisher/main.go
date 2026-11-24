@@ -30,15 +30,14 @@ var (
 )
 
 type releaseIdentity struct {
-	Version         string `json:"version"`
-	Commit          string `json:"commit"`
-	Repository      string `json:"repository"`
-	Directory       string `json:"directory"`
-	MacosSHA256     string `json:"macos_sha256"`
-	LinuxSHA256     string `json:"linux_sha256"`
-	ChecksumsSHA256 string `json:"checksums_sha256"`
-	Manifest        string `json:"manifest"`
-	Marker          string `json:"marker"`
+	Version         string
+	Commit          string
+	Repository      string
+	Directory       string
+	MacosSHA256     string
+	LinuxSHA256     string
+	ChecksumsSHA256 string
+	Marker          string
 }
 
 func main() {
@@ -81,11 +80,11 @@ func publishRelease(identity releaseIdentity, root, work string, output io.Write
 			return err
 		}
 	}
-	tag, err := inspectTag(identity, true, "existing tag targets another commit", gh)
+	tagExists, err := inspectTag(identity, true, "existing tag targets another commit", gh)
 	if err != nil {
 		return err
 	}
-	if !tag.Exists {
+	if !tagExists {
 		if observed.Exists {
 			return fmt.Errorf("existing release has no tag; refusing to recreate it")
 		}
@@ -261,8 +260,7 @@ func prepareIdentity(getenv func(string) string) (releaseIdentity, error) {
 	if err != nil {
 		return releaseIdentity{}, fmt.Errorf("encode release manifest: %w", err)
 	}
-	identity.Manifest = string(manifest)
-	identity.Marker = "<!-- gh-settings-release: " + identity.Manifest + " -->"
+	identity.Marker = "<!-- gh-settings-release: " + string(manifest) + " -->"
 	return identity, nil
 }
 
@@ -457,26 +455,20 @@ func lookupRelease(identity releaseIdentity, work string, gh ghAPI) (releaseLook
 	return releaseLookup{Exists: true, ID: id, view: view}, nil
 }
 
-type tagObservation struct {
-	Exists bool   `json:"exists"`
-	Type   string `json:"type"`
-	SHA    string `json:"sha"`
-}
-
-func inspectTag(identity releaseIdentity, optional bool, context string, gh ghAPI) (tagObservation, error) {
+func inspectTag(identity releaseIdentity, optional bool, context string, gh ghAPI) (bool, error) {
 	endpoint := "repos/" + identity.Repository + "/git/ref/tags/" + identity.Version
 	data, err := gh("api", endpoint)
 	if err != nil {
 		var failure *commandError
 		if optional && errors.As(err, &failure) {
 			if bytes.Contains(failure.stderr, []byte("HTTP 404")) {
-				return tagObservation{}, nil
+				return false, nil
 			}
 			copy := *failure
 			copy.context, copy.status = "GitHub API lookup failed: "+endpoint, 1
-			return tagObservation{}, &copy
+			return false, &copy
 		}
-		return tagObservation{}, err
+		return false, err
 	}
 	decode := func(data []byte) (string, string, error) {
 		var view struct {
@@ -492,22 +484,22 @@ func inspectTag(identity releaseIdentity, optional bool, context string, gh ghAP
 	}
 	kind, sha, err := decode(data)
 	if err != nil {
-		return tagObservation{}, fmt.Errorf("decode tag: %w", err)
+		return false, fmt.Errorf("decode tag: %w", err)
 	}
 	if kind == "tag" {
 		data, err = gh("api", "repos/"+identity.Repository+"/git/tags/"+sha)
 		if err != nil {
-			return tagObservation{}, err
+			return false, err
 		}
 		kind, sha, err = decode(data)
 		if err != nil {
-			return tagObservation{}, fmt.Errorf("decode annotated tag: %w", err)
+			return false, fmt.Errorf("decode annotated tag: %w", err)
 		}
 	}
 	if kind != "commit" || sha != identity.Commit {
-		return tagObservation{}, fmt.Errorf("%s", context)
+		return false, fmt.Errorf("%s", context)
 	}
-	return tagObservation{Exists: true, Type: kind, SHA: sha}, nil
+	return true, nil
 }
 
 type releaseState string
@@ -548,9 +540,8 @@ func checkedReleaseState(identity releaseIdentity, view releaseView, checkpoint 
 }
 
 type assetVerification struct {
-	Verified []string
-	Missing  []string
-	view     releaseView
+	Missing []string
+	view    releaseView
 }
 
 func verifyAssets(identity releaseIdentity, id, work string, gh ghAPI) (assetVerification, error) {
@@ -602,7 +593,7 @@ func verifyAssets(identity releaseIdentity, id, work string, gh ghAPI) (assetVer
 	if err != nil {
 		return assetVerification{}, err
 	}
-	result := assetVerification{Verified: []string{}, Missing: []string{}}
+	var result assetVerification
 	for _, asset := range []struct{ name, digest string }{
 		{macosAsset, identity.MacosSHA256}, {linuxAsset, identity.LinuxSHA256}, {checksumsAsset, identity.ChecksumsSHA256},
 	} {
@@ -616,7 +607,6 @@ func verifyAssets(identity releaseIdentity, id, work string, gh ghAPI) (assetVer
 		if err := checkBinary(downloads+"/"+asset.name, asset.digest); err != nil {
 			return assetVerification{}, err
 		}
-		result.Verified = append(result.Verified, asset.name)
 	}
 	if err := json.Unmarshal(data, &result.view); err != nil {
 		return assetVerification{}, fmt.Errorf("decode release: %w", err)

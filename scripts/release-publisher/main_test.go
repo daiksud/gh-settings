@@ -39,7 +39,7 @@ func TestPreflightExactIdentityBytes(t *testing.T) {
 	want := releaseIdentity{
 		Version: "v1.2.3", Commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Repository: "owner/repo", Directory: env["RELEASE_DIR"],
 		MacosSHA256: testMacosHash, LinuxSHA256: testLinuxHash, ChecksumsSHA256: testChecksumsHash,
-		Manifest: testManifest, Marker: "<!-- gh-settings-release: " + testManifest + " -->",
+		Marker: "<!-- gh-settings-release: " + testManifest + " -->",
 	}
 	if identity != want {
 		t.Fatalf("identity=%+v, want %+v", identity, want)
