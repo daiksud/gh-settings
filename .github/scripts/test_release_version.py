@@ -39,9 +39,10 @@ class HistoryFixture(unittest.TestCase):
         self.tag = tag
         self.base = self.git("rev-parse", "HEAD")
 
-    def commit(self, message, empty=False):
+    def commit(self, message, empty=False, path="change"):
         if not empty:
-            file = self.root / "change"
+            file = self.root / path
+            file.parent.mkdir(parents=True, exist_ok=True)
             file.write_text(file.read_text() + "x" if file.exists() else "x")
             self.git("add", ".")
         self.git("commit", "--quiet", "--allow-empty", "-m", message)
@@ -62,24 +63,58 @@ class HistoryFixture(unittest.TestCase):
             os.chdir(old)
 
     def test_version_tiers(self):
-        for message, expected in [
-            ("fix: correct behavior", "v0.3.1"),
-            ("feat(core): add command", "v0.4.0"),
-            ("perf: speed up search", "v0.4.0"),
-            ("refactor!: remove API", "v0.4.0"),
-            ("docs: explain behavior\n\nDEPRECATED: Old usage", "v0.4.0"),
-            ("fix: change API\n\nBREAKING CHANGE: Update usage", "v0.4.0"),
-            ("docs: examples\n\n```text\nBREAKING CHANGE: Not a footer\n```", "v0.3.1"),
-            ("chore: maintenance", "v0.3.1"),
-            ("build(release): prepare next version", "v0.3.1"),
+        for message, expected, compare in [
+            ("fix: correct behavior", "v0.3.1", True),
+            ("feat(core): add command", "v0.4.0", False),
+            ("perf: speed up search", "v0.4.0", False),
+            ("refactor!: remove API", "v0.4.0", False),
+            ("docs: explain behavior\n\nDEPRECATED: Old usage", "v0.4.0", False),
+            ("fix: change API\n\nBREAKING CHANGE: Update usage", "v0.4.0", False),
+            ("docs: examples\n\n```text\nBREAKING CHANGE: Not a footer\n```", "v0.3.1", True),
+            ("chore: maintenance", "v0.3.1", True),
+            ("build(release): prepare next version", "v0.3.1", True),
+            ('Revert "feat: add an old command"', "v0.3.1", True),
+            ("Legacy subject\n\nDEPRECATED: Old usage", "v0.4.0", False),
+            ("Legacy subject\n\nBREAKING CHANGE: Update usage", "v0.4.0", False),
         ]:
             with self.subTest(message=message):
-                case = tempfile.TemporaryDirectory()
-                self.addCleanup(case.cleanup)
                 # Reset the current fixture to its published boundary.
                 self.git("reset", "--hard", self.base)
                 self.commit(message)
-                self.assertEqual(self.calculate()[0], expected)
+                self.assertEqual(self.calculate(), (expected, self.tag, self.base, compare))
+
+    def test_action_patch_depends_on_changes_in_the_shipped_action(self):
+        for path, compare in [
+            ("action.yml", False),
+            ("action/install-cli.sh", False),
+            ("action/runtime/data", False),
+            ("action/README.md", True),
+            ("action/templates/report.md", False),
+            (".github/actions/build/action.yml", True),
+        ]:
+            with self.subTest(path=path):
+                self.git("reset", "--hard", self.base)
+                self.commit("fix: update behavior", path=path)
+                self.assertEqual(self.calculate(), ("v0.3.1", self.tag, self.base, compare))
+
+    def test_action_runtime_removal_and_revert_use_net_endpoints(self):
+        self.base = self.commit("chore: track installer input", path="action/cli-version")
+        self.git("tag", "-f", self.tag)
+        self.git("rm", "action/cli-version")
+        self.git("commit", "--quiet", "-m", "build: remove installer input")
+        self.assertEqual(self.calculate(), ("v0.3.1", self.tag, self.base, False))
+        self.git("revert", "--no-edit", "HEAD")
+        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base, False))
+        self.commit("docs: update usage", path="README.md")
+        self.assertEqual(self.calculate(), ("v0.3.1", self.tag, self.base, True))
+
+    def test_changed_tree_with_empty_message_fails_resolution(self):
+        (self.root / "change").write_text("content")
+        self.git("add", ".")
+        self.git("commit", "--quiet", "--allow-empty-message", "-m", "")
+        sha = self.git("rev-parse", "HEAD")
+        with self.assertRaisesRegex(versioning.ReleaseError, sha):
+            self.calculate()
 
     def test_strongest_signal_wins(self):
         self.commit("fix: correction")
@@ -89,7 +124,7 @@ class HistoryFixture(unittest.TestCase):
 
     def test_empty_commits_and_unpublished_tags(self):
         self.commit("build(release): preparation", empty=True)
-        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base))
+        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base, False))
         self.commit("fix: correction")
         self.git("tag", "v99.0.0")
         self.assertEqual(self.calculate()[0], "v0.3.1")
@@ -109,11 +144,11 @@ class HistoryFixture(unittest.TestCase):
         released = {"id": 2, "tag_name": "v0.4.0", "draft": False,
                     "prerelease": False, "published_at": "2026-10-02T00:00:00Z",
                     "body": "<!-- gh-settings-release: " + json.dumps(manifest) + " -->\nNotes"}
-        self.assertEqual(self.calculate([released], True), ("v0.4.0", "", ""))
-        self.assertEqual(self.calculate([released]), ("v0.4.0", "v0.4.0", sha))
+        self.assertEqual(self.calculate([released], True), ("v0.4.0", "", "", False))
+        self.assertEqual(self.calculate([released]), ("v0.4.0", "v0.4.0", sha, False))
 
     def test_invalid_baseline_and_empty_interval(self):
-        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base))
+        self.assertEqual(self.calculate(), (self.tag, self.tag, self.base, False))
         with self.assertRaisesRegex(versioning.ReleaseError, "valid immutable identity"):
             self.calculate(allow_retry=True)
         self.commit("fix: a change")
@@ -122,20 +157,19 @@ class HistoryFixture(unittest.TestCase):
             self.calculate()
 
     def test_graduation_uses_validated_substantive_interval(self):
-        for message in ("fix: patch", "feat: feature", "perf: speed", "feat!: breaking"):
+        for message in ("fix: patch", "feat: feature", "perf: speed", "feat!: breaking", "docs: usage"):
             with self.subTest(message=message):
                 self.git("reset", "--hard", self.base)
                 self.commit(message)
-                version, previous, sha = self.calculate(graduate_to_v1=True)
-                self.assertEqual((version, previous, sha), ("v1.0.1", "v0.3.0", self.base))
+                self.assertEqual(self.calculate(graduate_to_v1=True), ("v1.0.1", "v0.3.0", self.base, False))
         self.git("reset", "--hard", self.base)
         self.commit("chore: empty", empty=True)
-        self.assertEqual(self.calculate(graduate_to_v1=True), (self.tag, self.tag, self.base))
+        self.assertEqual(self.calculate(graduate_to_v1=True), (self.tag, self.tag, self.base, False))
 
     def test_default_and_opt_in_use_the_same_frozen_interval(self):
         self.commit("feat!: new contract")
-        self.assertEqual(self.calculate(), ("v0.4.0", "v0.3.0", self.base))
-        self.assertEqual(self.calculate(graduate_to_v1=True), ("v1.0.1", "v0.3.0", self.base))
+        self.assertEqual(self.calculate(), ("v0.4.0", "v0.3.0", self.base, False))
+        self.assertEqual(self.calculate(graduate_to_v1=True), ("v1.0.1", "v0.3.0", self.base, False))
 
     def test_promotion_never_duplicates_or_downgrades_published_versions(self):
         self.commit("fix: patch")
@@ -158,7 +192,8 @@ class HistoryFixture(unittest.TestCase):
                 with self.subTest(message=message, enabled=enabled):
                     self.git("reset", "--hard", self.base)
                     self.commit(message)
-                    self.assertEqual(self.calculate(graduate_to_v1=enabled)[0], expected)
+                    self.assertEqual(self.calculate(graduate_to_v1=enabled),
+                                     (expected, self.tag, self.base, message.startswith("fix:")))
 
     def test_promoted_same_source_retry_survives_checkbox_changes(self):
         sha = self.commit("feat: feature")
@@ -171,7 +206,7 @@ class HistoryFixture(unittest.TestCase):
                        "body": "<!-- gh-settings-release: " + json.dumps(marker) + " -->"}
             for enabled in (False, True):
                 with self.subTest(draft=draft, enabled=enabled):
-                    self.assertEqual(self.calculate([release], True, enabled), ("v1.0.1", "", ""))
+                    self.assertEqual(self.calculate([release], True, enabled), ("v1.0.1", "", "", False))
 
     def test_graduation_keeps_immutable_retry(self):
         sha = self.commit("feat: feature")
@@ -180,7 +215,7 @@ class HistoryFixture(unittest.TestCase):
                   "linux_sha256": "b" * 64, "checksums_sha256": "c" * 64}
         release = {"id": 2, "tag_name": "v0.4.0", "draft": True, "prerelease": False,
                    "body": "<!-- gh-settings-release: " + json.dumps(marker) + " -->"}
-        self.assertEqual(self.calculate([release], True, False), ("v0.4.0", "", ""))
+        self.assertEqual(self.calculate([release], True, False), ("v0.4.0", "", "", False))
         with self.assertRaisesRegex(versioning.ReleaseError, "cannot promote an existing v0 release"):
             self.calculate([release], True, True)
         self.assertEqual(self.git("rev-parse", "v0.4.0"), sha)
@@ -188,7 +223,7 @@ class HistoryFixture(unittest.TestCase):
         marker["version"] = "v1.0.0"
         release["tag_name"] = "v1.0.0"
         release["body"] = "<!-- gh-settings-release: " + json.dumps(marker) + " -->"
-        self.assertEqual(self.calculate([release], True, True), ("v1.0.0", "", ""))
+        self.assertEqual(self.calculate([release], True, True), ("v1.0.0", "", "", False))
         duplicate = dict(release, id=3)
         with self.assertRaisesRegex(versioning.ReleaseError, "multiple existing releases"):
             self.calculate([release, duplicate], True, True)
@@ -228,13 +263,17 @@ class HistoryFixture(unittest.TestCase):
         try:
             with mock.patch.dict(os.environ, {"SOURCE_SHA": source, "GITHUB_REPOSITORY": "owner/repo"}), \
                  mock.patch.object(versioning, "read_releases", return_value=self.catalog()):
-                for args in (["--graduate-to-v1"], ["--allow-retry", "--graduate-to-v1"],
-                             ["--graduate-to-v1", "--allow-retry"]):
+                for args, version, compare in (
+                        ([], "v0.3.1", "true"),
+                        (["--graduate-to-v1"], "v1.0.1", "false"),
+                        (["--allow-retry", "--graduate-to-v1"], "v1.0.1", "false"),
+                        (["--graduate-to-v1", "--allow-retry"], "v1.0.1", "false")):
                     output = self.root / "outputs"
                     output.unlink(missing_ok=True)
                     with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}):
                         versioning.main()
-                    self.assertEqual(output.read_text(), f"version=v1.0.1\nprevious-tag=v0.3.0\nprevious-sha={self.base}\nrelease-needed=true\n")
+                    self.assertEqual(output.read_text(), f"version={version}\nprevious-tag=v0.3.0\nprevious-sha={self.base}\n"
+                                                         f"release-needed=true\ncompare-binaries={compare}\n")
                 for args in (["--graduate-to-v1", "--graduate-to-v1"], ["--unknown"], ["--allow-retry=yes"]):
                     with mock.patch.object(versioning.sys, "argv", ["release-version.py", *args]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                         versioning.main()
@@ -251,7 +290,7 @@ class HistoryFixture(unittest.TestCase):
             with mock.patch.dict(os.environ, env), mock.patch.object(versioning, "read_releases", return_value=self.catalog()), \
                  mock.patch.object(versioning.sys, "argv", ["release-version.py", "--allow-retry"]):
                 versioning.main()
-            self.assertEqual(output.read_text(), f"version={self.tag}\nprevious-tag={self.tag}\nprevious-sha={self.base}\nrelease-needed=false\n")
+            self.assertEqual(output.read_text(), f"version={self.tag}\nprevious-tag={self.tag}\nprevious-sha={self.base}\nrelease-needed=false\ncompare-binaries=false\n")
         finally:
             os.chdir(old)
 
@@ -275,8 +314,7 @@ class ParsingTests(unittest.TestCase):
             ("docs: example\n\n~~~\nDEPRECATED: fake\n~~~", False, False),
         ]:
             with self.subTest(message=message):
-                result = versioning.classify(message)
-                self.assertEqual(result[2:], (breaking, minor))
+                self.assertEqual(versioning.classify(message), (breaking, minor))
 
     def test_semver_overflow_and_major(self):
         self.assertEqual(versioning.next_version("v1.2.3", 2), "v2.0.0")

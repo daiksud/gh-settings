@@ -106,12 +106,12 @@ def existing_retry(source, releases):
 
 
 def classify(message):
+    if not message.strip():
+        raise ReleaseError("empty commit message")
     lines = message.replace("\r\n", "\n").split("\n")
     header = HEADER.fullmatch(lines[0])
-    kind = header.group(1).lower() if header else ""
-    scope = header.group(2) if header else ""
     breaking = bool(header and header.group(3))
-    minor = kind in ("feat", "perf")
+    minor = bool(header and header.group(1).lower() in ("feat", "perf"))
     # A trailer must start after a blank line or another trailer, not inside
     # prose or fenced examples. This mirrors the reviewed gh-settings parser.
     in_trailers = False
@@ -135,7 +135,15 @@ def classify(message):
                 blank = False
                 continue
         blank = not line.strip()
-    return kind, scope, breaking, minor
+    return breaking, minor
+
+
+def trees_differ(previous, source, *paths):
+    result = subprocess.run(["git", "diff", "--quiet", "--no-ext-diff", "--no-textconv", "--ignore-submodules=none",
+                             previous, source, "--", *paths], check=False)
+    if result.returncode not in (0, 1):
+        raise ReleaseError(f"cannot compare the committed trees {previous} and {source}")
+    return result.returncode == 1
 
 
 def version_components(version):
@@ -173,7 +181,7 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
         if version:
             if graduate_to_v1 and version_components(version)[0] == 0:
                 raise ReleaseError("cannot promote an existing v0 release at the same source; use a new substantive source commit")
-            return version, "", ""
+            return version, "", "", False
 
     candidates = [release for release in releases if
                   not release["draft"] and not release["prerelease"] and
@@ -182,7 +190,7 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
         raise ReleaseError("initial release requires a separately chosen baseline")
     latest = max(candidates, key=lambda release: (release["published_at"], release["id"]))
     previous_tag = latest["tag_name"]
-    version_components(previous_tag)
+    previous_major, _, _ = version_components(previous_tag)
     previous_sha = resolve_tag(previous_tag)
     if not SHA.fullmatch(previous_sha):
         raise ReleaseError("previous release does not resolve to a commit")
@@ -200,27 +208,34 @@ def calculate(source, releases, allow_retry=False, graduate_to_v1=False):
         sha = fields[i].decode("ascii")
         if not SHA.fullmatch(sha):
             raise ReleaseError("invalid commit in Git log")
-        message = fields[i + 1].decode("utf-8")
-        _, _, breaking, minor = classify(message)
-        # Empty commits do not change the source; every tree change counts.
+        # Ignore empty commits even when their messages carry release signals.
         parents = git("rev-list", "--parents", "-n", "1", sha).split()
-        if len(parents) == 2:
-            difference = subprocess.run(["git", "diff-tree", "--quiet", parents[1], sha], check=False).returncode
-            if difference == 0:
-                continue
-            if difference != 1:
-                raise ReleaseError("cannot compare the committed trees")
+        if len(parents) == 2 and not trees_differ(parents[1], sha):
+            continue
+        try:
+            breaking, minor = classify(fields[i + 1].decode("utf-8"))
+        except ReleaseError as error:
+            raise ReleaseError(f"cannot classify commit {sha}: {error}") from error
         tier = max(tier, 2 if breaking else 1 if minor else 0)
     if tier < 0:
         if allow_retry and source == previous_sha:
             raise ReleaseError("existing release at this source lacks a valid immutable identity")
-        return previous_tag, previous_tag, previous_sha
+        return previous_tag, previous_tag, previous_sha, False
+    compare_binaries = False
+    promoting = graduate_to_v1 and previous_major == 0
+    if tier == 0 and not promoting:
+        if not trees_differ(previous_sha, source):
+            return previous_tag, previous_tag, previous_sha, False
+        # The root Action and its runtime files ship under the same tag as the CLI.
+        # Without a net Action change, the two native builds decide PATCH.
+        compare_binaries = not trees_differ(previous_sha, source, "action.yml", "action/",
+                                            ":(exclude)action/README.md")
     version = next_version(previous_tag, tier, graduate_to_v1)
     if graduate_to_v1 and any(
             version_components(version) <= version_components(release["tag_name"])
             for release in candidates):
         raise ReleaseError("promotion must advance beyond every published stable version")
-    return version, previous_tag, previous_sha
+    return version, previous_tag, previous_sha, compare_binaries
 
 
 def main():
@@ -235,7 +250,8 @@ def main():
         source = os.environ.get("SOURCE_SHA", "")
         if not REPOSITORY.fullmatch(repository):
             raise ReleaseError("invalid repository identity")
-        version, previous_tag, previous_sha = calculate(source, read_releases(repository), allow_retry, graduate_to_v1)
+        version, previous_tag, previous_sha, compare_binaries = calculate(
+            source, read_releases(repository), allow_retry, graduate_to_v1)
         version_components(version)
         if previous_tag or previous_sha:
             version_components(previous_tag)
@@ -243,7 +259,8 @@ def main():
                 raise ReleaseError("invalid resolved predecessor source")
         release_needed = "false" if version == previous_tag else "true"
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-            print(f"version={version}\nprevious-tag={previous_tag}\nprevious-sha={previous_sha}\nrelease-needed={release_needed}", file=output)
+            print(f"version={version}\nprevious-tag={previous_tag}\nprevious-sha={previous_sha}\n"
+                  f"release-needed={release_needed}\ncompare-binaries={str(compare_binaries).lower()}", file=output)
     except (ReleaseError, KeyError, OSError, UnicodeError, ValueError, OverflowError) as error:
         print(f"release-version: {error}", file=sys.stderr)
         sys.exit(1)

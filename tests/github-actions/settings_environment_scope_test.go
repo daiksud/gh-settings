@@ -54,6 +54,21 @@ func TestSettingsEnvironmentScope(t *testing.T) {
 	}
 }
 
+// Local reusable workflows are checked independently, including the callee's jobs.
+func releaseWorkflowTarget(caller, job string) string {
+	switch caller {
+	case ".github/workflows/push.yml", ".github/workflows/release.yml":
+		if job == "version" || job == "candidate" {
+			return ".github/workflows/" + job + ".yml"
+		}
+	case ".github/workflows/version.yml":
+		if job == "linux" || job == "macos" {
+			return ".github/workflows/version-compare.yml"
+		}
+	}
+	return ""
+}
+
 func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	found := 0
 	probeFound := 0
@@ -129,16 +144,15 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				return fmt.Errorf("%s: retired check %q must not be recreated", path, checkName)
 			}
 			if target := job["uses"]; target != nil {
-				const candidate = ".github/workflows/candidate.yml"
-				_, tracked := workflows[candidate]
-				allowedCaller := path == ".github/workflows/push.yml" || path == ".github/workflows/release.yml"
-				if !allowedCaller || jobName != "candidate" || target.Kind != yaml.ScalarNode ||
-					target.Value != "./"+candidate || !tracked || job["secrets"] != nil || job["environment"] != nil {
-					return fmt.Errorf("%s: jobs.%s: only the reviewed local candidate workflow can be called without secrets", path, jobName)
+				expected := releaseWorkflowTarget(path, jobName)
+				_, tracked := workflows[expected]
+				if expected == "" || target.Kind != yaml.ScalarNode || target.Value != "./"+expected ||
+					!tracked || job["secrets"] != nil || job["environment"] != nil {
+					return fmt.Errorf("%s: jobs.%s: unapproved reusable workflow or credential sharing", path, jobName)
 				}
 				permissions, err := settingsYAMLMap(job["permissions"])
 				if err != nil || len(permissions) != 1 || permissions["contents"] == nil || permissions["contents"].Value != "read" {
-					return fmt.Errorf("%s: jobs.%s: candidate call requires contents: read", path, jobName)
+					return fmt.Errorf("%s: jobs.%s: reusable workflow call requires contents: read", path, jobName)
 				}
 			}
 			environment, present := job["environment"]

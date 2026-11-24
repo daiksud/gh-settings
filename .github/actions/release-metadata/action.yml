@@ -10,7 +10,7 @@ inputs:
     default: 'false'
 outputs:
   version:
-    description: Automatically calculated release version.
+    description: Candidate version, pending native comparison when compare-binaries is true.
     value: ${{ steps.resolve.outputs.version }}
   previous-tag:
     description: Previous published stable tag, empty only for an immutable retry.
@@ -19,8 +19,11 @@ outputs:
     description: Previous published stable source, empty only for an immutable retry.
     value: ${{ steps.resolve.outputs.previous-sha }}
   release-needed:
-    description: True for a new version or an immutable retry, false for an empty change interval.
+    description: True for a candidate or an immutable retry. A provisional patch also requires a changed native binary.
     value: ${{ steps.resolve.outputs.release-needed }}
+  compare-binaries:
+    description: True when the frozen predecessor and source need native Linux and macOS binary comparison to decide PATCH.
+    value: ${{ steps.resolve.outputs.compare-binaries }}
 runs:
   using: composite
   steps:

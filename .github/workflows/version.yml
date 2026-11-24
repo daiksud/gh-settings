@@ -1,0 +1,112 @@
+name: Resolve version
+on:
+  workflow_call:
+    inputs:
+      promote-to-v1:
+        description: Request the initial stable v1 promotion.
+        type: boolean
+        default: false
+    outputs:
+      version:
+        description: Version to build for the frozen source.
+        value: ${{ jobs.resolve.outputs.version }}
+      previous-tag:
+        description: Previous published stable tag, empty for an immutable retry.
+        value: ${{ jobs.resolve.outputs.previous-tag }}
+      previous-sha:
+        description: Previous published stable source, empty for an immutable retry.
+        value: ${{ jobs.resolve.outputs.previous-sha }}
+      release-needed:
+        description: Whether this source needs a release or an immutable retry.
+        value: ${{ jobs.resolve.outputs.release-needed }}
+permissions:
+  contents: read
+jobs:
+  classify:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      previous-tag: ${{ steps.metadata.outputs.previous-tag }}
+      previous-sha: ${{ steps.metadata.outputs.previous-sha }}
+      release-needed: ${{ steps.metadata.outputs.release-needed }}
+      compare-binaries: ${{ steps.metadata.outputs.compare-binaries }}
+    steps:
+      - name: Checkout frozen main and complete history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the frozen release interval
+        id: metadata
+        uses: ./.github/actions/release-metadata
+        with:
+          source-sha: ${{ github.sha }}
+          promote-to-v1: ${{ inputs.promote-to-v1 }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+  linux:
+    needs: classify
+    if: needs.classify.outputs.compare-binaries == 'true'
+    permissions: {contents: read}
+    uses: ./.github/workflows/version-compare.yml
+    with:
+      target: linux-amd64
+      previous-sha: ${{ needs.classify.outputs.previous-sha }}
+      previous-tag: ${{ needs.classify.outputs.previous-tag }}
+  macos:
+    needs: classify
+    if: needs.classify.outputs.compare-binaries == 'true'
+    permissions: {contents: read}
+    uses: ./.github/workflows/version-compare.yml
+    with:
+      target: darwin-arm64
+      previous-sha: ${{ needs.classify.outputs.previous-sha }}
+      previous-tag: ${{ needs.classify.outputs.previous-tag }}
+  resolve:
+    needs: [classify, linux, macos]
+    if: ${{ !cancelled() && needs.classify.result == 'success' }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    permissions: {}
+    outputs:
+      version: ${{ steps.select.outputs.version }}
+      previous-tag: ${{ steps.select.outputs.previous-tag }}
+      previous-sha: ${{ steps.select.outputs.previous-sha }}
+      release-needed: ${{ steps.select.outputs.release-needed }}
+    steps:
+      - name: Select the version before building release products
+        id: select
+        shell: bash
+        env:
+          VERSION: ${{ needs.classify.outputs.version }}
+          PREVIOUS_TAG: ${{ needs.classify.outputs.previous-tag }}
+          PREVIOUS_SHA: ${{ needs.classify.outputs.previous-sha }}
+          RELEASE_NEEDED: ${{ needs.classify.outputs.release-needed }}
+          COMPARE_BINARIES: ${{ needs.classify.outputs.compare-binaries }}
+          LINUX_RESULT: ${{ needs.linux.result }}
+          LINUX_CHANGED: ${{ needs.linux.outputs.changed }}
+          MACOS_RESULT: ${{ needs.macos.result }}
+          MACOS_CHANGED: ${{ needs.macos.outputs.changed }}
+        run: |
+          [[ -n "$VERSION" && ( "$RELEASE_NEEDED" == true || "$RELEASE_NEEDED" == false ) ]] || {
+            echo 'missing release classification' >&2; exit 1
+          }
+          if [[ -z "$PREVIOUS_TAG" || -z "$PREVIOUS_SHA" ]]; then
+            [[ -z "$PREVIOUS_TAG" && -z "$PREVIOUS_SHA" && "$RELEASE_NEEDED/$COMPARE_BINARIES" == true/false ]] || {
+              echo 'missing frozen release boundary' >&2; exit 1
+            }
+          fi
+          case "$COMPARE_BINARIES/$LINUX_RESULT/$MACOS_RESULT" in
+            false/skipped/skipped) ;;
+            true/success/success)
+              case "$LINUX_CHANGED/$MACOS_CHANGED" in
+                false/false) VERSION="$PREVIOUS_TAG"; RELEASE_NEEDED=false ;;
+                true/false|false/true|true/true) ;;
+                *) echo 'missing native comparison result' >&2; exit 1 ;;
+              esac ;;
+            *) echo 'native comparisons did not complete as required' >&2; exit 1 ;;
+          esac
+          printf 'version=%s\nprevious-tag=%s\nprevious-sha=%s\nrelease-needed=%s\n' \
+            "$VERSION" "$PREVIOUS_TAG" "$PREVIOUS_SHA" "$RELEASE_NEEDED" >> "$GITHUB_OUTPUT"

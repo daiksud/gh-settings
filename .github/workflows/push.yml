@@ -10,34 +10,17 @@ concurrency:
   group: push-${{ github.sha }}
   cancel-in-progress: true
 jobs:
-  resolve:
-    runs-on: ubuntu-slim
-    timeout-minutes: 10
+  version:
     permissions: {contents: read}
-    outputs:
-      version: ${{ steps.metadata.outputs.version }}
-    steps:
-      - name: Checkout frozen main and history
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Resolve the candidate version for this commit
-        id: metadata
-        uses: ./.github/actions/release-metadata
-        with:
-          source-sha: ${{ github.sha }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+    uses: ./.github/workflows/version.yml
   candidate:
-    needs: resolve
+    needs: version
     permissions: {contents: read}
     uses: ./.github/workflows/candidate.yml
     with:
-      version: ${{ needs.resolve.outputs.version }}
+      version: ${{ needs.version.outputs.version }}
   deployment:
-    needs: [resolve, candidate]
+    needs: [version, candidate]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -45,7 +28,7 @@ jobs:
     steps:
       - name: Require successful screening and inspection
         env:
-          RESOLUTION: ${{ needs.resolve.result }}
+          RESOLUTION: ${{ needs.version.result }}
           CANDIDATE: ${{ needs.candidate.result }}
         run: '[[ "$RESOLUTION" == success && "$CANDIDATE" == success ]]'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,7 +37,7 @@ jobs:
           persist-credentials: false
       - name: Record the inspected artifact IDs and archive digests
         env:
-          VERSION: ${{ needs.resolve.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
           LINUX_ID: ${{ needs.candidate.outputs.linux-id }}
           MACOS_ID: ${{ needs.candidate.outputs.macos-id }}
           LINUX_DIGEST: ${{ needs.candidate.outputs.linux-digest }}

@@ -116,8 +116,8 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 		steps := doc.Runs.Steps
 		if workflowFile {
 			steps = nil
-			for _, job := range doc.Jobs {
-				if job.Uses != "" && job.Uses != "./.github/workflows/candidate.yml" {
+			for id, job := range doc.Jobs {
+				if job.Uses != "" && job.Uses != "./"+releaseWorkflowTarget(name, id) {
 					return fmt.Errorf("unreviewed reusable workflow: %s", job.Uses)
 				}
 				steps = append(steps, job.Steps...)
@@ -230,7 +230,7 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 }
 
 func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
-	for _, name := range []string{"pr", "push", "candidate", "release"} {
+	for _, name := range []string{"pr", "push", "candidate", "release", "version", "version-compare"} {
 		t.Run(name, func(t *testing.T) {
 			workflow := ".github/workflows/" + name + ".yml"
 			if err := validateWorkspaceActionLock(lockInventoryDiskRead, workflow); err != nil {
@@ -249,7 +249,9 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 				}
 			case "release":
 				required = []string{".github/actions/release-publish/action.yml", "action.yml"}
-			case "push":
+			case "version-compare":
+				required = []string{".github/actions/build/action.yml"}
+			case "version":
 				required = []string{".github/actions/release-metadata/action.yml"}
 			}
 			for _, source := range required {

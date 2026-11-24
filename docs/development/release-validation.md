@@ -11,9 +11,19 @@ python3 -B -m unittest discover -s .github/scripts -p 'test_release_version.py' 
 python3 -B -m unittest discover -s .github/scripts -p 'test_release_ci.py' -q
 ```
 
-The [version tests](../../.github/scripts/test_release_version.py) build temporary Git histories and release catalogs. They cover the stable predecessor selected by publication time, a fixed source, substantive tree changes, successful no-change intervals, missing or unrelated history, and malformed metadata. With no published stable predecessor, version resolution stops and the initial release requires a separately chosen baseline. Cases include breaking, feature, performance, deprecation, maintenance and revert signals. The strongest signal in the complete interval determines the increment. Changing a branch name or editing PR metadata does not change committed history.
+The [version tests](../../.github/scripts/test_release_version.py) use temporary Git histories
+and release catalogs to check release boundaries, immutable retries, breaking
+changes in 0.x and v1, and MINOR signals. They cover differences in the public
+Action package, docs-only edits and changes subsequently reverted by Git. Cases
+with legacy subjects check that compatibility footers retain their meaning and
+ordinary changes reach product comparison. An empty message on a changed tree fails.
 
-The promotion cases cover default-off v0.x calculation, explicit promotion from a validated v0.x baseline to v1.0.1, ordinary calculation after v1, and protection against duplicate or lower published versions. An exact v1 retry keeps its recorded version with either checkbox choice. Requesting promotion for a source already published as v0 fails. See the [version selection rules](releases.md#automatic-version-calculation).
+Run `mise exec -- go test -count=1 ./tests/github-actions` for the workflow
+checks. The PATCH comparisons cover Linux amd64 and macOS arm64. Identical bytes
+on both targets keep the previous version. A difference on either target
+selects PATCH, and an unavailable comparison fails the run. The explicit
+promotion case selects v1.0.1 even for a maintenance-only interval. See the
+[version selection rules](releases.md#automatic-version-calculation).
 
 The [release notes tests](../../scripts/release-metadata/main_test.go) use fixed Git ranges to check category precedence, formal compatibility footers, escaping, migration guidance and commit links. Each substantive first-parent commit appears once. The [withdrawal tests](../../scripts/release-metadata/withdrawals_test.go) cover formal `Release-withdraws:` and `Release-note:` footers, earlier unique targets, reasons and invalid references. Marker examples in fences and quoted text do not classify or withdraw a commit. An incomplete range or changed predecessor stops generation before remote mutation. The [release guide](releases.md#release-notes-from-committed-messages) defines the categories and footer syntax.
 

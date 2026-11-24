@@ -1,0 +1,115 @@
+name: Compare native binaries
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: Native linux-amd64 or darwin-arm64 release target.
+        type: string
+        required: true
+      previous-sha:
+        description: Frozen source of the previous published stable release.
+        type: string
+        required: true
+      previous-tag:
+        description: Same version to embed in both comparison builds.
+        type: string
+        required: true
+    outputs:
+      changed:
+        description: Whether the target's normalized binary changed.
+        value: ${{ jobs.compare.outputs.changed }}
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  compare:
+    runs-on: ${{ inputs.target == 'linux-amd64' && 'ubuntu-slim' || 'macos-15' }}
+    timeout-minutes: 20
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+    steps:
+      - name: Checkout the frozen main commit and published tags
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select the verified published ancestor
+        id: predecessor
+        env:
+          PREVIOUS_TAG: ${{ inputs.previous-tag }}
+          PREVIOUS_SHA: ${{ inputs.previous-sha }}
+        run: |
+          [[ "$PREVIOUS_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
+          [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          source="$(git rev-parse HEAD)"
+          [[ "$source" == "$GITHUB_SHA" ]] || { echo 'comparison checkout differs from frozen main' >&2; exit 1; }
+          published="$(git rev-parse --verify "refs/tags/$PREVIOUS_TAG^{commit}")"
+          [[ "$published" == "$PREVIOUS_SHA" ]] || { echo 'previous release tag changed' >&2; exit 1; }
+          git merge-base --is-ancestor "$published" "$source" || { echo 'release is outside main history' >&2; exit 1; }
+          git switch --detach "$published"
+      - name: Set up the previous release's Go toolchain
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build using the previous release's recipe
+        id: previous
+        uses: ./.github/actions/build
+        with:
+          version: ${{ inputs.previous-tag }}
+        env:
+          GOFLAGS: -buildvcs=false
+      - name: Preserve the previous binary outside the checkout
+        env:
+          BINARY: ${{ steps.previous.outputs.binary-path }}
+        run: mv "$BINARY" "$RUNNER_TEMP/previous-gh-settings"
+      - name: Checkout the frozen candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up the candidate's Go toolchain
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build using the candidate's recipe
+        id: candidate
+        uses: ./.github/actions/build
+        with:
+          version: ${{ inputs.previous-tag }}
+        env:
+          GOFLAGS: -buildvcs=false
+      - name: Compare normalized native executables
+        id: compare
+        env:
+          BINARY: ${{ steps.candidate.outputs.binary-path }}
+          TARGET: ${{ inputs.target }}
+          VERSION: ${{ inputs.previous-tag }}
+        run: |
+          previous="$RUNNER_TEMP/previous-gh-settings"
+          for binary in "$previous" "$BINARY"; do
+            [[ -s "$binary" && -x "$binary" ]] || { echo 'missing native executable' >&2; exit 1; }
+            reported_version="$("$binary" --version)"
+            [[ "$reported_version" == "gh-settings $VERSION" ]] || { echo 'comparison version mismatch' >&2; exit 1; }
+            metadata="$(go version -m "$binary")"
+            if ! grep -Fxq $'\tbuild\tGOOS='"${TARGET%-*}" <<< "$metadata" ||
+               ! grep -Fxq $'\tbuild\tGOARCH='"${TARGET#*-}" <<< "$metadata"; then
+              echo "comparison binary does not match $TARGET" >&2
+              exit 1
+            fi
+            if grep -q $'^\tbuild\tvcs=' <<< "$metadata"; then
+              echo 'comparison binary includes VCS stamps' >&2
+              exit 1
+            fi
+          done
+          if cmp -s "$previous" "$BINARY"; then
+            changed=false
+          else
+            [[ $? == 1 ]] || { echo 'cannot compare native binaries' >&2; exit 1; }
+            changed=true
+          fi
+          printf 'changed=%s\n' "$changed" >> "$GITHUB_OUTPUT"
