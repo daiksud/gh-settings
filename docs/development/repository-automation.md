@@ -84,11 +84,7 @@ Maintainers choose labels such as `bug` and `enhancement` during triage.
 
 ## Workflow dependency lockfile
 
-[The generated lockfile](../../.github/workflows/actions.lock) covers
-`approve-codex-review`, `pr`, `ci-push`, `labeler`, `prlint`, `release`,
-`settings-apply` and `settings-pr`. The run-only approval
-workflow has an empty dependency list. There is no dedicated lockfile
-verification workflow.
+The [Actions lockfile](../../.github/workflows/actions.lock) records dependencies by workflow path. Workflows containing only shell steps have an empty dependency list.
 
 Use the official `github/gh-actions-lock` CLI at v0.4.1 to regenerate:
 
@@ -119,11 +115,6 @@ Action. Release verification separately checks the published tag out under
 its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
-
-PR Screening and native build jobs use setup-go with `go-version-file: go.mod`
-and setup-bun with `bun-version-file: package.json`. Bun installs the frozen
-package lock for Markdown and message validation. Setup-go owns the standard
-module/compilation cache; no mise-action or custom Go cache Action is used.
 
 `ci-push` and `release` still use the
 [full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
@@ -169,11 +160,7 @@ The [PR validation guide](pr-validation.md) describes the triggers, credentials 
 
 The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. The declaration requires `screening`, `prlint` and `settings-pr` from GitHub Actions (App ID `15368`). Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
 
-| Check | Source and purpose | Limit |
-| --- | --- | --- |
-| `screening` | The [pr workflow](../../.github/workflows/pr.yml) runs source checks, unit tests, and a native Linux build in one job | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
-| `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
-| `settings-pr` | The [PR workflow](../../.github/workflows/settings-pr.yml) validates the default PR merge declaration with its pinned operational consumer, without an Environment or App token | Validate only; no remote settings observation or PR plan is performed |
+The [PR validation guide](pr-validation.md) describes what each required check validates and which credentials it receives.
 
 See [required-check setup](../guides/protect-apply.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
 
@@ -237,8 +224,6 @@ The hosted `settings-pr` check validates the declaration locally. Owner-authenti
 ## Active settings workflows
 
 The active callers use independently pinned released packages; see the [published package and consumer pins](../guides/github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR workflow definition selects the PR validation pin; changes to the pin require review. Before a declaration uses a schema or capability those packages do not support, review the compatible published package pins together with the declaration and verify the resulting PR workflow. The ordinary `pull_request` workflow is candidate-controlled, not a trusted-base validator. Keep the main apply pin compatible with the tracked declaration. Each pinned Action SHA selects the CLI from its matching release tag. Publishing a release or changing examples does not automatically update these callers.
-
-The PR workflow runs [merge validation](#pr-settings-validation) for opened, synchronized and reopened PRs targeting main, including those without settings changes. The `settings-pr` job receives no settings token and produces a validation result. Metadata-only edits are handled by `prlint`.
 
 The apply caller runs only on `workflow_dispatch`, with a job condition requiring
 `refs/heads/main`. Its single `settings-apply` job references Environment `gh-settings`
@@ -323,10 +308,6 @@ do not establish deployed protection.
 it. Unlisted Environments remain unmanaged; removing a declaration does not
 itself delete the live Environment. Deletion is a separate authorized operation.
 
-An earlier zero-difference PR plan does not make a later apply write-free: REST-backed repository controls and Topics reconcile against new complete reads before any PATCH or PUT. Earlier successful writes remain applied if a later operation fails. Assess the exact execution rather than inferring no writes from a prior plan or the generic success message.
-
-There is no prepare/handoff job or main-side pre-approval plan. The validated declaration and exact committed configuration provide review context; direct apply does not consume a saved plan and may overwrite intervening changes to managed values. The presence of `environment: gh-settings` identifies the selected Environment but does not establish whether reviewers are currently configured.
-
 ## Repository Environment scope tests
 
 The ordinary Go suite retains the
@@ -338,7 +319,7 @@ and require a single credential-free validation job in `settings-pr.yml`.
 They reject dynamic Environment names, workflow/job aliases and merges,
 duplicate keys, reusable workflow jobs, and retired check-name collisions.
 
-There is no independent `settings-env` workflow. Candidate code controls the
+Candidate code controls the
 scope tests in PR CI, so a passing result is not a trusted-main policy decision
 or proof of safe privileged step bodies. Review the allowed apply job, its
 referenced Actions, and the tests themselves under the
@@ -347,45 +328,11 @@ do not configure live Environment, token, ruleset, or review settings.
 
 ### Required-check verification
 
-The desired Ruleset requires `screening`, `prlint`, and `settings-pr`,
-all from GitHub Actions (App ID `15368`). The tracked
-[settings declaration](../../.github/settings.yml) names the same three checks.
-
-A green required check alone does not authenticate its workflow identity.
-Verify the current job producer, workflow
-revision, event and candidate SHA, as well as the live Ruleset and its source
-App. Review and merge declaration changes normally, manually apply from `main`,
-and read back the affected rule before reporting it as enforced. The
-[settings change procedure](#repository-settings-changes) owns application;
-PR validation does not authorize or perform apply.
+Read the live Ruleset and compare its check names and source App with the [declaration](../../.github/settings.yml). Inspect the producer, workflow revision, event and candidate SHA for each required job. After changing the declaration, follow the [settings change procedure](#repository-settings-changes) and read back the affected rule.
 
 ## PR settings validation
 
-The `settings-pr` job in
-[settings-pr.yml](../../.github/workflows/settings-pr.yml) validates
-`.github/settings.yml` from GitHub's default `pull_request` merge checkout.
-There is no explicit checkout `with`, merge-parent verification step, or
-`pull_request_target` privileged context. The job has no conditional skip or
-prerequisite job. The default opened, synchronize and reopened activities
-trigger validation.
-
-If the base or head changes, inspect a fresh PR merge candidate and the
-current run. Metadata-only edits remain the responsibility of `prlint`.
-
-It calls only `command: validate`, with no supplied token. The job uses the
-public Action on `ubuntu-slim`, has only Contents read,
-selects no Environment and creates no App token. It does not execute PR scripts
-or local Actions. A validation failure fails the required check. No PR plan or remote settings observation follows validation.
-
-This checks the operational declaration against its actual package contract.
-The separate `screening` job screens and builds the candidate source. Main
-`ci-push` owns process and public Action Inspection of the built products. The candidate decoder still
-rejects obsolete configuration; no compatibility decoder or translation is used.
-The tracked declaration uses the current UI contract. Validation does not
-apply it; a manual dispatch from main performs direct apply after a permitted merge.
-
-Validation does not establish live App visibility or drift. There is no PR
-plan. No validation result authorizes a later apply or locks remote state.
+The [PR validation guide](pr-validation.md#message-and-settings-validation) describes the merge checkout, package selection and permissions for `settings-pr`. After the base or head changes, check the run for the new merge candidate.
 
 ## Codex approval control
 

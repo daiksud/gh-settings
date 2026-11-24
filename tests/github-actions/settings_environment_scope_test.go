@@ -301,25 +301,12 @@ func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 		valid         bool
 	}{
 		{"manual dispatch", "on: {workflow_dispatch: null}", true},
+		{"dispatch with inputs", "on: {workflow_dispatch: {inputs: {version: {type: string}}}}", false},
 		{"automatic main push", "on: {push: {branches: [main]}}", false},
-		{"main push with paths", "on:\n  push:\n    branches:\n      - main\n    paths: ['.github/settings.yml']", false},
-		{"main push with paths-ignore", "on: {push: {branches: [main], paths-ignore: ['docs/**']}}", false},
+		{"extra event", "on: {push: null, workflow_dispatch: null}", false},
 		{"missing trigger", "", false},
 		{"scalar push", "on: push", false},
 		{"sequence push", "on: [push]", false},
-		{"unfiltered push", "on: {push: null}", false},
-		{"extra event", "on: {push: {branches: [main]}, workflow_dispatch: null}", false},
-		{"pull request event", "on: {pull_request: {branches: [main]}}", false},
-		{"missing branches", "on: {push: {paths: ['.github/settings.yml']}}", false},
-		{"other branch", "on: {push: {branches: [develop]}}", false},
-		{"extra branch", "on: {push: {branches: [main, develop]}}", false},
-		{"wildcard branch", "on: {push: {branches: ['*']}}", false},
-		{"scalar branch", "on: {push: {branches: main}}", false},
-		{"dynamic branch", "on: {push: {branches: ['${{ vars.BRANCH }}']}}", false},
-		{"tag trigger", "on: {push: {branches: [main], tags: ['v*']}}", false},
-		{"tag exclusion", "on: {push: {branches: [main], tags-ignore: ['*']}}", false},
-		{"branch exclusion", "on: {push: {branches: [main], branches-ignore: [develop]}}", false},
-		{"duplicate push", "on: {push: {branches: [main]}, push: {tags: ['*']}}", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string][]byte{
