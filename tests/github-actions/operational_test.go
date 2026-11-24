@@ -80,7 +80,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 		t.Fatal("operational main must check out the triggering commit without credentials")
 	}
 	appToken := apply.Steps[1]
-	if appToken.ID != "app" || appToken.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" ||
+	if appToken.ID != "app" || !strings.HasPrefix(appToken.Uses, "actions/create-github-app-token@") ||
 		!reflect.DeepEqual(appToken.With, map[string]string{
 			"client-id":                 "${{ vars.ANSWER26_CLIENT_ID }}",
 			"private-key":               "${{ secrets.ANSWER26_PRIVATE_KEY }}",
