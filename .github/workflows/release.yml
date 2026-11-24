@@ -20,20 +20,10 @@ concurrency:
   group: release-${{ github.repository }}
   cancel-in-progress: false
 jobs:
-  resolve:
+  source:
     runs-on: ubuntu-slim
-    timeout-minutes: 10
-    permissions: {contents: read, actions: read}
-    outputs:
-      ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
-      version: ${{ steps.metadata.outputs.version }}
-      previous-tag: ${{ steps.metadata.outputs.previous-tag }}
-      previous-sha: ${{ steps.metadata.outputs.previous-sha }}
-      release-needed: ${{ steps.metadata.outputs.release-needed }}
-      ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
-      reused: ${{ steps.reuse.outputs.reused }}
-      linux-id: ${{ steps.reuse.outputs.linux-id }}
-      macos-id: ${{ steps.reuse.outputs.macos-id }}
+    timeout-minutes: 3
+    permissions: {contents: read}
     steps:
       - name: Require a main-branch dispatch
         env:
@@ -66,38 +56,51 @@ jobs:
               echo 'dispatched main differs from approved source_sha; refusing a different release source' >&2; exit 1
             }
           fi
-      - name: Checkout frozen main and complete release history
+  version:
+    needs: source
+    permissions: {contents: read}
+    uses: ./.github/workflows/version.yml
+    with:
+      promote-to-v1: ${{ inputs.promote_to_v1 }}
+  resolve:
+    needs: version
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions: {contents: read, actions: read}
+    outputs:
+      ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
+      version: ${{ needs.version.outputs.version }}
+      previous-tag: ${{ needs.version.outputs.previous-tag }}
+      previous-sha: ${{ needs.version.outputs.previous-sha }}
+      release-needed: ${{ needs.version.outputs.release-needed }}
+      ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
+      reused: ${{ steps.reuse.outputs.reused }}
+      linux-id: ${{ steps.reuse.outputs.linux-id }}
+      macos-id: ${{ steps.reuse.outputs.macos-id }}
+    steps:
+      - name: Checkout frozen main for artifact selection
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
           persist-credentials: false
       # Lock the nested Actions used to publish and verify the selected artifacts.
       - name: Inventory publication dependencies
         if: ${{ false }}
         uses: $/.github/actions/release-publish
-      - name: Calculate the version for the frozen main commit
-        id: metadata
-        uses: ./.github/actions/release-metadata
-        with:
-          source-sha: ${{ github.sha }}
-          promote-to-v1: ${{ inputs.promote_to_v1 }}
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Check the latest main validation
         id: ci
-        if: steps.metadata.outputs.release-needed == 'true'
+        if: needs.version.outputs.release-needed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.sha }}
         run: python3 .github/scripts/release-ci.py status
       - name: Select reusable inspected artifacts
         id: reuse
-        if: steps.metadata.outputs.release-needed == 'true'
+        if: needs.version.outputs.release-needed == 'true'
         uses: ./.github/actions/release-reuse
         with:
           source-sha: ${{ github.sha }}
-          version: ${{ steps.metadata.outputs.version }}
+          version: ${{ needs.version.outputs.version }}
           ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
           ci-run-attempt: ${{ steps.ci.outputs.ci-run-attempt }}
   candidate:
@@ -146,7 +149,7 @@ jobs:
     timeout-minutes: 15
     permissions: {contents: write, actions: read}
     steps:
-      - name: Checkout frozen main and complete release history
+      - name: Checkout frozen main for artifact selection
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}

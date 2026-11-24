@@ -8,47 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"go.yaml.in/yaml/v4"
 )
 
 // Execute the source-controlled composite resolver against an isolated release
 // catalog and Git history. The gh stand-in accepts only the expected read call.
 func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
-	for _, name := range []string{"push.yml", "release.yml"} {
-		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var workflow struct {
-			Jobs map[string]struct {
-				Steps []step `yaml:"steps"`
-			} `yaml:"jobs"`
-		}
-		if err := yaml.Unmarshal(data, &workflow); err != nil {
-			t.Fatal(err)
-		}
-		var checkout, metadata step
-		for _, s := range workflow.Jobs["resolve"].Steps {
-			if strings.HasPrefix(s.Uses, "actions/checkout@") {
-				checkout = s
-			}
-			if s.ID == "metadata" {
-				metadata = s
-			}
-		}
-		if checkout.With["ref"] != "${{ github.sha }}" || checkout.With["fetch-depth"] != "0" ||
-			metadata.Uses != "./.github/actions/release-metadata" || metadata.With["source-sha"] != "${{ github.sha }}" || metadata.If != "" || metadata.Continue {
-			t.Fatalf("%s does not resolve metadata from frozen source: %+v %+v", name, checkout, metadata)
-		}
-		wantChoice := ""
-		if name == "release.yml" {
-			wantChoice = "${{ inputs.promote_to_v1 }}"
-		}
-		if metadata.With["promote-to-v1"] != wantChoice {
-			t.Fatalf("%s has unexpected promotion selection: %+v", name, metadata.With)
-		}
-	}
 	fixture := t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()
@@ -149,7 +113,8 @@ func TestReleaseChoiceUsesOneFrozenMetadataResolver(t *testing.T) {
 			if tc.retry {
 				want = "version=v0.4.0\nprevious-tag=\nprevious-sha=\n"
 			}
-			if string(content) != want+"release-needed=true\n" {
+			compareBinaries := !tc.retry && tc.choice == "false"
+			if string(content) != want+fmt.Sprintf("release-needed=true\ncompare-binaries=%t\n", compareBinaries) {
 				t.Fatalf("wrong frozen metadata: %s", content)
 			}
 		})

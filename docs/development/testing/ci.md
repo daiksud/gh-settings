@@ -6,8 +6,9 @@ Use the [local testing guide](../testing.md) to choose a package or run the nati
 
 [PR screening](../pr-validation.md#pr-screening) runs lint, race and offline tests, then builds a Linux CLI reporting `dev`. Its build ends in the PR job.
 
-The [main workflow](../../../.github/workflows/push.yml) resolves the version for the
-exact `main` SHA. The [candidate workflow](../../../.github/workflows/candidate.yml)
+The [main workflow](../../../.github/workflows/push.yml) calls the [version workflow](../../../.github/workflows/version.yml)
+for the exact `main` SHA. A potential PATCH can require native comparison builds
+before the version is known. The [candidate workflow](../../../.github/workflows/candidate.yml)
 runs screening on Linux amd64 and builds macOS arm64 on its native runner.
 It uploads each binary and a source/version/target/SHA-256 manifest. Three
 inspection lanes use those artifact IDs to test the two native binaries and the

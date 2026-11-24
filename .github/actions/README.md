@@ -9,8 +9,10 @@ select the runner, event and permissions. These Actions group the steps a job ru
 - [Release acceptance](release-acceptance/action.yml) verifies a transferred artifact and
   passes the binary to the [CLI integration tests](integration-test/action.yml) or
   [public Action end-to-end tests](e2e-test/action.yml).
+- The [version workflow](../workflows/version.yml) classifies the release interval and compares
+  native binaries when the public Action package matches and a PATCH remains possible.
 - The manual [release workflow](../workflows/release.yml) uses the `release-*` Actions to
-  resolve a version, reuse eligible artifacts, publish verified binaries and check the downloads.
+  reuse eligible artifacts, publish verified binaries and check the downloads.
 
 When changing an external Action dependency, check the
 [dependency inventory](lock-workspace-dependencies/action.yml) and the

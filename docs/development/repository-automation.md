@@ -126,7 +126,7 @@ intact. See [GitHub's local-path guidance](https://docs.github.com/en/actions/ho
 
 [Inventory tests](../../tests/github-actions/actions_lockfile_test.go) compare each workflow's
 generated entries with its directly executed Actions and their nested dependencies.
-The local candidate workflow has its own entries and runs at the caller's commit.
+The candidate and version workflows each have their own entries and run at the caller's commit.
 The tests resolve both the frozen `.action` and published `.published` checkout paths
 to inspect the root Action.
 
@@ -316,8 +316,9 @@ in `.github/workflows/settings-apply.yml/jobs.settings-apply` and the bounded
 `.github/workflows/verify-public-action.yml/jobs.topics` probe, require manual dispatch,
 and require a single credential-free validation job in `settings-pr.yml`.
 They reject dynamic Environment names, workflow/job aliases and merges,
-duplicate keys and retired check-name collisions. Only main CI and release may call
-the repository-local candidate workflow, with Contents read permission and no secrets.
+duplicate keys and retired check-name collisions. Main CI and release call the local candidate and version workflows. The latter
+calls the native comparison workflow. These calls require Contents read permission
+and run without secrets.
 
 Candidate code controls the
 scope tests in PR CI, so a passing result is not a trusted-main policy decision

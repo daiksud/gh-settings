@@ -11,47 +11,49 @@ import (
 )
 
 func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var workflow struct {
-		On   map[string]yaml.Node `yaml:"on"`
-		Jobs map[string]struct {
-			Permissions map[string]string `yaml:"permissions"`
-			Outputs     map[string]string `yaml:"outputs"`
-			Steps       []step            `yaml:"steps"`
-		} `yaml:"jobs"`
-	}
-	if err := yaml.Unmarshal(data, &workflow); err != nil {
-		t.Fatal(err)
-	}
-	if len(workflow.On) != 1 || strings.Contains(string(data), "inputs.version") {
-		t.Fatal("version calculation must not add a publication trigger or manual version override")
-	}
-	resolve := workflow.Jobs["resolve"]
-	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read", "actions": "read"}) {
-		t.Fatal("metadata resolution must be read-only")
-	}
-	for _, key := range []string{"version", "previous-tag", "previous-sha", "release-needed"} {
-		if resolve.Outputs[key] != "${{ steps.metadata.outputs."+key+" }}" {
-			t.Fatalf("resolve must forward %s from the frozen release metadata", key)
+	for _, name := range []string{"release", "push"} {
+		var workflow struct {
+			On   map[string]yaml.Node
+			Jobs map[string]struct {
+				Uses        string
+				Needs       yaml.Node
+				With        map[string]string
+				Permissions map[string]string
+				Outputs     map[string]string
+			}
 		}
-	}
-	metadata := findStep(t, job{Steps: resolve.Steps}, "metadata")
-	if metadata.Uses != "./.github/actions/release-metadata" || metadata.Run != "" || metadata.If != "" || metadata.Continue || !reflect.DeepEqual(metadata.Env, map[string]string{
-		"GH_TOKEN": "${{ github.token }}",
-	}) || !reflect.DeepEqual(metadata.With, map[string]string{"source-sha": "${{ github.sha }}", "promote-to-v1": "${{ inputs.promote_to_v1 }}"}) {
-		t.Fatal("resolve must derive release metadata from the frozen source without success overrides")
-	}
-	var checkout step
-	for _, s := range resolve.Steps {
-		if strings.HasPrefix(s.Uses, "actions/checkout@") {
-			checkout = s
+		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name+".yml"))
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
-	if checkout.With["ref"] != "${{ github.sha }}" || checkout.With["fetch-depth"] != "0" || checkout.With["persist-credentials"] != "false" {
-		t.Fatal("version calculation requires complete frozen history without persisted credentials")
+		if err := yaml.Unmarshal(data, &workflow); err != nil {
+			t.Fatal(err)
+		}
+		version := workflow.Jobs["version"]
+		if version.Uses != "./.github/workflows/version.yml" || !reflect.DeepEqual(version.Permissions, map[string]string{"contents": "read"}) {
+			t.Fatalf("%s must resolve versions using the shared read-only workflow", name)
+		}
+		if name == "push" {
+			if len(version.With) != 0 || workflow.Jobs["candidate"].With["version"] != "${{ needs.version.outputs.version }}" {
+				t.Fatal("main must build the version calculated without a promotion override")
+			}
+			continue
+		}
+		if len(workflow.On) != 1 || workflow.On["workflow_dispatch"].Kind == 0 || strings.Contains(string(data), "inputs.version") {
+			t.Fatal("version resolution must preserve explicit manual publication")
+		}
+		if version.Needs.Value != "source" || !reflect.DeepEqual(version.With, map[string]string{"promote-to-v1": "${{ inputs.promote_to_v1 }}"}) {
+			t.Fatal("resolve after checking the source and forward the explicit graduation choice")
+		}
+		resolve := workflow.Jobs["resolve"]
+		if resolve.Needs.Value != "version" {
+			t.Fatal("select artifacts after final version resolution")
+		}
+		for _, key := range []string{"version", "previous-tag", "previous-sha", "release-needed"} {
+			if resolve.Outputs[key] != "${{ needs.version.outputs."+key+" }}" {
+				t.Fatalf("artifact selection lost frozen %s", key)
+			}
+		}
 	}
 }
 

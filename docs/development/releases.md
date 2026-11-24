@@ -4,34 +4,55 @@ The [manual release workflow](../../.github/workflows/release.yml) selects a ver
 
 ## Automatic version calculation
 
-The standard-library Python [release-version.py](../../.github/scripts/release-version.py) calculates a candidate version from the last published stable release through the fixed source SHA. Main CI and manual release use the same committed metadata Action. CI uses normal calculation; manual release can explicitly opt into initial v1 promotion. There is **no preparation PR, committed release-version update, arbitrary version input, or automatic publication on merge**. Branch names do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
+Main CI and manual release call the same [version workflow](../../.github/workflows/version.yml).
+It fixes the source SHA and the last published stable release, then reads the complete
+commit messages in that interval. The CLI, the settings YAML it accepts and the
+public root Action share one version. The release series started at `v0.1.0`
+and publishes stable `vMAJOR.MINOR.PATCH` tags.
 
-| Committed change | Selected increment |
+| Strongest signal in a substantive commit | Normal increment |
 | --- | --- |
-| Header `!` or compatibility footer `BREAKING CHANGE:` / `BREAKING-CHANGE:` | MAJOR from v1.0.0 |
-| `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
-| Any other substantive commit, including maintenance and reverts | PATCH |
+| Any type with a header `!` or a formal `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer | MINOR during 0.x, MAJOR from v1 |
+| `feat`, user-facing `perf`, or a formal `DEPRECATED:` footer for a public interface | MINOR |
+| A change to either shipped CLI executable or the public Action package | PATCH |
+| Identical products at the two endpoints | Keep the previous version |
 
-The release dispatch checkbox **Promote to v1** (`promote_to_v1`) defaults to off.
-Unchecked, normal v0.x calculation demotes breaking changes to MINOR. Checked,
-the shared metadata Action passes `--graduate-to-v1`: a validated v0.x baseline
-with substantive changes selects **v1.0.1**, not v1.0.0. From v1 onward both
-choices retain normal SemVer; for example, a patch after v1.0.1 selects v1.0.2.
-An opted-in new calculation must advance beyond every published stable version;
-an older publication boundary cannot reset or duplicate an existing v1 release.
-An exact immutable v1 retry retains its recorded version with either checkbox
-choice. Unchecked dispatch also retains an exact v0 retry. Checking promotion for
-an existing same-source v0 release stops instead of silently retrying v0 or adding
-a conflicting second stable tag. That promotion needs a new substantive source
-commit; the existing release and tag remain unchanged.
+The [classifier](../../.github/scripts/release-version.py) ignores empty commits and
+fenced examples of compatibility footers. A `fix`, `refactor`, dependency update
+or build change can produce a PATCH. Compare the frozen endpoint trees for the
+root `action.yml` and the runtime files under `action/`. The directory guide
+is documentation. A change to the installer alone qualifies for a PATCH.
+Git-generated revert subjects and other legacy subjects use the same product
+comparison. Their formal compatibility and deprecation footers still count.
+An empty message on a commit that changes the tree stops resolution.
 
-The strongest signal wins once. Empty commits are ignored; every tree change
-counts, including a release-preparation-named commit. With only empty commits
-since the baseline, main deploys binaries with the baseline version and the new
-source SHA. A manual release for that source completes without publication.
-The release list, stable baseline, complete history
-and ancestor relationship must validate; drafts, prereleases, unpublished tags
-and code-fenced footer examples do not establish the published boundary.
+When a PATCH depends on the CLI, build the previous release and the target SHA
+on the same native runner for each supported platform. Each comparison starts
+at the frozen main SHA and verifies the previous tag still resolves to the
+selected ancestor before running its build recipe. The two diagnostic builds
+use runner-local Go caches. For these comparisons,
+both builds use the previous release's version and disable Go VCS stamping.
+Each checkout supplies its own Go version, dependencies and build recipe. Keep
+release compiler and linker options in the [shared build Action](../../.github/actions/build/action.yml)
+so comparisons exercise the recipe that builds the shipped product. Compare all
+remaining bytes, including Go's build ID derived from its inputs. A difference on either platform selects PATCH. Both comparisons must succeed.
+The candidate workflow then builds and inspects the distributable binaries
+with the selected version and normal source identity.
+
+Changes confined to documentation, tests or CI that leave both products identical
+carry forward to the next release's notes. Main CI still inspects the binaries
+for the new SHA with the previous version. A manual release skips publication.
+Missing stable baseline, incomplete history, unrelated predecessor or a failed
+comparison stops resolution. Drafts, prereleases and unpublished tags cannot
+supply the stable baseline.
+
+The **Promote to v1** checkbox defaults to off. Selecting it from a v0.x
+baseline with substantive changes chooses `v1.0.1`, including a maintenance-only
+interval. The deleted immutable `v1.0.0` release reserved that tag name.
+A source already published as v0 needs a new substantive commit to graduate.
+An exact immutable v1 retry keeps its recorded version. Once the first v1
+release passes public verification, remove the checkbox and its one-time
+calculation path in a follow-up PR. [Promotion decision](https://github.com/daiksud/gh-settings/pull/863)
 
 The resolver is read-only. A compatible exact immutable gh-settings release retry retains its recorded source, tag and version using its embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
 
@@ -116,8 +137,8 @@ an earlier substantive first-parent commit in the same frozen release interval.
 Its entry moves out of feature/fix/compatibility categories into Withdrawn before
 release, retaining its original commit link, the withdrawal reason, and a link to
 the annotating commit. Its obsolete migration and clarification footers are omitted. This does not
-subtract its version signal: the Python resolver still considers every committed
-change. Partial removals must use a clarification explaining what remains rather
+subtract its version signal: the classifier still considers breaking, feature, performance and deprecation
+signals across the complete interval. PATCH compares the final products. Partial removals must use a clarification explaining what remains rather
 than claiming the entire entry was withdrawn. The generator does not infer
 withdrawals from matching subjects, Git diffs, PR labels, or `revert` headers.
 

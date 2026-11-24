@@ -40,7 +40,7 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	}
 	resolve := w.Jobs["resolve"]
 	stepID := func(id string) step { return findStep(t, job{Steps: resolve.Steps}, id) }
-	if stepID("ci").If != "steps.metadata.outputs.release-needed == 'true'" ||
+	if stepID("ci").If != "needs.version.outputs.release-needed == 'true'" ||
 		stepID("reuse").If != stepID("ci").If || stepID("reuse").With["ci-run-attempt"] != "${{ steps.ci.outputs.ci-run-attempt }}" {
 		t.Fatal("reuse must follow version resolution and select the checked attempt")
 	}
@@ -201,7 +201,7 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 		dispatch.Inputs["promote_to_v1"].Required || dispatch.Inputs["promote_to_v1"].Type != "boolean" || dispatch.Inputs["promote_to_v1"].Default {
 		t.Fatal("release must retain the optional source SHA and default-off promotion boolean")
 	}
-	resolveNode := workflow.Jobs["resolve"]
+	resolveNode := workflow.Jobs["source"]
 	var resolve struct {
 		Steps []step `yaml:"steps"`
 		If    string `yaml:"if"`
