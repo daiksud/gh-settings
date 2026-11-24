@@ -70,10 +70,10 @@ func TestCandidateWorkflowInspectsNativeBuildsByID(t *testing.T) {
 			action = "./.github/actions/screening"
 		}
 		if !reflect.DeepEqual(job.Permissions, map[string]string{"contents": "read"}) ||
-			checkout.With["ref"] != "${{ inputs.source-sha }}" || checkout.With["persist-credentials"] != "false" ||
+			checkout.With["ref"] != "${{ github.sha }}" || checkout.With["persist-credentials"] != "false" ||
 			build.Uses != action || build.With["version"] != "${{ inputs.version }}" || build.Continue || build.If != "" ||
 			transfer.Uses != "./.github/actions/package-candidate" || transfer.With["binary-path"] != "${{ steps.build.outputs.binary-path }}" ||
-			transfer.With["target"] != target || transfer.With["source-sha"] != "${{ inputs.source-sha }}" || transfer.With["version"] != "${{ inputs.version }}" {
+			transfer.With["target"] != target || transfer.With["source-sha"] != "${{ github.sha }}" || transfer.With["version"] != "${{ inputs.version }}" {
 			t.Fatalf("native %s screening must package the frozen versioned build", osName)
 		}
 	}

@@ -106,7 +106,6 @@ jobs:
     permissions: {contents: read}
     uses: ./.github/workflows/candidate.yml
     with:
-      source-sha: ${{ github.sha }}
       version: ${{ needs.resolve.outputs.version }}
   select:
     needs: [resolve, candidate]

@@ -35,7 +35,7 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	candidate := w.Jobs["candidate"]
 	if candidate.Uses != "./.github/workflows/candidate.yml" || candidate.Needs.Value != "resolve" ||
 		candidate.If != "needs.resolve.outputs.release-needed == 'true' && needs.resolve.outputs.reused == 'false'" ||
-		candidate.With["source-sha"] != "${{ github.sha }}" || candidate.With["version"] != "${{ needs.resolve.outputs.version }}" {
+		len(candidate.With) != 1 || candidate.With["version"] != "${{ needs.resolve.outputs.version }}" {
 		t.Fatal("fresh release candidates must come from the shared workflow at the frozen source and version")
 	}
 	resolve := w.Jobs["resolve"]

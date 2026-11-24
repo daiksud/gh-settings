@@ -2,10 +2,6 @@ name: candidate
 on:
   workflow_call:
     inputs:
-      source-sha:
-        description: Exact main commit to build and inspect.
-        type: string
-        required: true
       version:
         description: Resolved version to embed before inspection.
         type: string
@@ -38,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.source-sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       # Include dependencies of the frozen workspace composites in actions.lock.
       - if: ${{ false }}
@@ -62,7 +58,7 @@ jobs:
         with:
           target: linux-amd64
           version: ${{ inputs.version }}
-          source-sha: ${{ inputs.source-sha }}
+          source-sha: ${{ github.sha }}
           binary-path: ${{ steps.build.outputs.binary-path }}
   screening-macos:
     runs-on: macos-15
@@ -74,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.source-sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
@@ -91,7 +87,7 @@ jobs:
         with:
           target: darwin-arm64
           version: ${{ inputs.version }}
-          source-sha: ${{ inputs.source-sha }}
+          source-sha: ${{ github.sha }}
           binary-path: ${{ steps.build.outputs.binary-path }}
   inspection:
     needs: [screening-linux, screening-macos]
@@ -115,7 +111,7 @@ jobs:
       - name: Check out the producer separately from the consumer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.source-sha }}
+          ref: ${{ github.sha }}
           path: .action
           persist-credentials: false
       - name: Inspect the transferred candidate
@@ -123,5 +119,5 @@ jobs:
         with:
           target: ${{ matrix.target }}
           version: ${{ inputs.version }}
-          source-sha: ${{ inputs.source-sha }}
+          source-sha: ${{ github.sha }}
           artifact-id: ${{ matrix.artifact-id }}
