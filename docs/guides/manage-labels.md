@@ -30,8 +30,8 @@ repository:
   labels:
     - id: 42
       name: bug
-      color: '#b60205'
       description: Something isn't working
+      color: '#b60205'
 ```
 
 Use your label's actual ID, name and description. Choose a different color

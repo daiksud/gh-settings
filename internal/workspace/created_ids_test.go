@@ -23,7 +23,19 @@ func writebackFixture(t *testing.T, input string) (string, string) {
 }
 
 func TestCreatedIDWritebackRetainsExistingValuesCommentsAndEarlierIDs(t *testing.T) {
-	input := "# consumer configuration\nversion: daiksud/gh-settings@v0\nrepository:\n  about: {description: keep}\n  labels:\n    - name: old\n      id: 4\n      color: '#abcdef'\n    - name: new # keep this comment\n      color: '#123456'\n    - {name: later, color: '#fedcba'}\n"
+	input := `# consumer configuration
+version: daiksud/gh-settings@v0
+repository:
+  about: {description: keep}
+  labels:
+    - name: old
+      id: 4
+      color: '#abcdef'
+    - name: new # keep this comment
+      color: '#123456'
+      description: New label
+    - {name: later, color: '#fedcba'}
+`
 	root, path := writebackFixture(t, input)
 	record := createdIDRecorder(root, []byte(input))
 	if err := record("labels", "new", 17); err != nil {
@@ -41,6 +53,11 @@ func TestCreatedIDWritebackRetainsExistingValuesCommentsAndEarlierIDs(t *testing
 			t.Fatalf("lost comment: %s", data)
 		}
 	}
+	checkLabelFieldOrder(t, data,
+		[]string{"name", "id", "color"},
+		[]string{"id", "name", "color", "description"},
+		[]string{"id", "name", "color"},
+	)
 	var document struct {
 		Repository struct {
 			About  map[string]string

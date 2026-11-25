@@ -23,6 +23,7 @@ Current source uses `repository.labels` with ID-selected ownership. The [setting
 
 - Follow every labels page and require positive unique IDs and complete supported values. Nullable response descriptions normalize to empty strings.
 - Export adopts IDs and complete supported fields only after all label pages succeed; unavailable acquisition emits info and retains prior Labels while independent reads continue.
+- Export writes each label's fields in the order `id`, `name`, `description`, `color`. Input YAML accepts the fields in any order.
 - Plan shows creates, ID-bound updates and default-derived changes. It never writes configuration.
 - Apply reads fresh labels after ordinary resources, preflights all label changes, and performs creates/updates in stable identity order, then fixed prune deletions when requested.
 - Matching selected objects emit no mutation. Resolve update paths from the observed ID/current name, check ID again before PATCH, and verify response identity and supported settings.
@@ -49,7 +50,7 @@ Current source uses `repository.labels` with ID-selected ownership. The [setting
 
 - Given `triage` is absent and the declaration requests it by name without an ID
 - When CLI apply creates it and independently confirms ID 42 with writeback enabled
-- Then the declaration records ID 42 for `triage`
+- Then `id: 42` is the first field in the `triage` entry and its existing fields keep their order
 - And the CLI leaves the change uncommitted
 
 ## API and permissions

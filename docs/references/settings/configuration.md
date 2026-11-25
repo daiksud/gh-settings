@@ -24,8 +24,8 @@ repository:
     topics: [github-cli, settings-as-code]
   labels:
     - name: bug
-      color: '#d73a4a'
       description: Something is not working
+      color: '#d73a4a'
   settings:
     general:
       features: {issues: true}

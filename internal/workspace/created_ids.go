@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -69,7 +70,11 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		if mappingValue(selected, "id") != nil {
 			return fmt.Errorf("refusing to replace an existing ID for %q", name)
 		}
-		selected.Content = append(selected.Content,
+		position := len(selected.Content)
+		if collection == "labels" {
+			position = 0
+		}
+		selected.Content = slices.Insert(selected.Content, position,
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "id"},
 			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.FormatInt(id, 10)})
 		var encoded bytes.Buffer
