@@ -50,6 +50,44 @@ repository:
 	}
 }
 
+func TestActionsExportOrder(t *testing.T) {
+	input := `version: daiksud/gh-settings@v0
+repository:
+  settings:
+    actions:
+      variables: []
+      oidc: {subject_claim: {use_default_template: true}}
+      policies: []
+      runners: []
+      general: {check_workflow_run_status_artifact_and_log_retention: 30}
+`
+	model, err := DecodeConfig([]byte(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := EncodeConfig(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := loadYAMLRoot(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := mappingValue(root, "repository")
+	actions := mappingValue(mappingValue(repository, "settings"), "actions")
+	if actions == nil {
+		t.Fatalf("missing Actions mapping in export:\n%s", encoded)
+	}
+	var keys []string
+	for i := 0; i < len(actions.Content); i += 2 {
+		keys = append(keys, actions.Content[i].Value)
+	}
+	want := []string{"general", "runners", "policies", "oidc", "variables"}
+	if !reflect.DeepEqual(keys, want) {
+		t.Errorf("exported Actions keys = %v, want %v", keys, want)
+	}
+}
+
 func TestUIConfigActionsRejectInvalidSyntax(t *testing.T) {
 	for _, controls := range []string{
 		"enabled: true", "allowed_actions: selected", "default_workflow_permissions: read",

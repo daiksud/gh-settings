@@ -1,6 +1,6 @@
 # GitHub Actions settings
 
-Choose the part of the repository's Actions configuration you want to manage. All paths in the table are relative to `repository.settings.actions`.
+Choose the part of the repository's Actions configuration you want to manage. The table lists paths relative to `repository.settings.actions` in the order `gh settings export` writes them.
 
 | GitHub setting | YAML | What you can declare |
 | --- | --- | --- |
