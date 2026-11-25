@@ -57,7 +57,6 @@ allows it under its required-permissions precondition. Missing data is not false
 | `repository.settings.actions.runners` | Administration read for complete runner inventory, detail and labels. | Administration write for selected custom labels and explicit runner prune, plus complete readback. | Prune deregisters unlisted runner IDs. This does not create runners or issue registration tokens. [API](https://docs.github.com/en/rest/actions/self-hosted-runners). |
 | `repository.settings.actions.policies` | Administration WRITE for policy list/detail GET, including event/actor policies and export/plan. | Administration write, with complete preflight/readback and explicit policy-prune guards. | A read-only plan operation still uses a credential capable of writing policies. [API](https://docs.github.com/en/rest/actions/policies#list-repository-actions-policies). |
 | `repository.settings.actions.oidc` | Actions read. | Actions write, including complete selected/fresh companion observation. | Subject template and immutable-claim settings do not configure the external cloud trust policy. [API](https://docs.github.com/en/rest/actions/oidc). |
-| `repository.settings.actions.variables` | Variables read for list/selected names. | Variables write, including explicit actions-variables prune. | Separate from Agent variables. Selected values are plaintext, not secrets. [API](https://docs.github.com/en/rest/actions/variables). |
 
 ## Webhooks, Copilot, Pages and deploy keys
 
@@ -78,14 +77,20 @@ allows it under its required-permissions precondition. Missing data is not false
 | `repository.settings.advanced_security.private_vulnerability_reporting` | Metadata read and public-repository applicability. | Administration write and applicable actor authorization. | This is independent of the repository security_and_analysis block. [API](https://docs.github.com/en/rest/repos/repos#check-if-private-vulnerability-reporting-is-enabled-for-a-repository). |
 | `repository.settings.advanced_security.secret_protection` | Complete security_and_analysis visibility. GET repository lists Metadata read, but selected security fields additionally require applicable owner/admin/security-manager visibility. | Administration write PLUS applicable security authority/entitlement and complete selected-state readback. | A successful ordinary repository GET is insufficient evidence. Missing, null or denied security data never means false. [API](https://docs.github.com/en/rest/repos/repos#update-a-repository). |
 
-## Environments and Agents variables
+## Environments
 
 | YAML paths | Export / plan acquisition | Apply / explicit prune | Conditions and official contract |
 | --- | --- | --- | --- |
 | `repository.settings.environments[].name`<br>`repository.settings.environments[].deployment_branches_and_tags`<br>`repository.settings.environments[].deployment_branch_or_tag_rules`<br>`repository.settings.environments[].deployment_protection_rules.required_reviewers`<br>`repository.settings.environments[].deployment_protection_rules.prevent_self_review`<br>`repository.settings.environments[].deployment_protection_rules.wait_timer`<br>`repository.settings.environments[].deployment_protection_rules.allow_administrators_to_bypass_configured_protection_rules` | Actions read for environment identity, policy, patterns and current protection state. | Actions read PLUS Administration write. Parent environment prune additionally needs Environments read for child variable/secret metadata. | No secret values are acquired. Parent prune requires complete known protection/child inventories and independent absence confirmation. [API](https://docs.github.com/en/rest/deployments/environments). |
 | `repository.settings.environments[].deployment_protection_rules.custom_rules` | Actions read for configured protection bindings; available-integration lookup needs Administration read when required for App additions. | Actions read PLUS Administration write; that write grant includes the Administration read lookup boundary. | Selects existing available Apps only; installation/authorization and permission expansion are excluded. Parent prune also requires Environments read. [API](https://docs.github.com/en/rest/deployments/protection-rules). |
 | `repository.settings.environments[].variables` | Environments read PLUS Actions read for parent identity. | Environments write PLUS Actions read; environment-variables prune uses the same child boundary. | If parent policy is also created/changed/pruned, union these grants with the parent row. Variable and secret metadata APIs use Environments; no secret values are managed. [API](https://docs.github.com/en/rest/actions/variables#list-environment-variables). |
-| `repository.settings.agents.variables` | Agent variables read. | Agent variables write, including explicit agents-variables prune. | Independent of Actions Variables; neither permission grants the other family. [API](https://docs.github.com/en/rest/agents/variables). |
+
+## Secrets and variables
+
+| YAML paths | Export / plan acquisition | Apply / explicit prune | Conditions and official contract |
+| --- | --- | --- | --- |
+| `repository.settings.secrets_and_variables.actions.variables` | Variables read. | Variables write, including `--prune actions-variables`. | Applies to Actions repository variables. [API](https://docs.github.com/en/rest/actions/variables). |
+| `repository.settings.secrets_and_variables.agents.variables` | Agent variables read. | Agent variables write, including `--prune agents-variables`. | Applies to Agents repository variables. [API](https://docs.github.com/en/rest/agents/variables). |
 
 ## Existing v0 families outside v1
 
@@ -192,7 +197,6 @@ keys, tokens, private variable values or sensitive endpoints.
 <!-- permission-path v1: repository.settings.actions.runners -->
 <!-- permission-path v1: repository.settings.actions.policies -->
 <!-- permission-path v1: repository.settings.actions.oidc -->
-<!-- permission-path v1: repository.settings.actions.variables -->
 <!-- permission-path v1: repository.settings.webhooks -->
 <!-- permission-path v1: repository.settings.copilot.code_review -->
 <!-- permission-path v1: repository.settings.pages -->
@@ -211,6 +215,7 @@ keys, tokens, private variable values or sensitive endpoints.
 <!-- permission-path v1: repository.settings.environments[].deployment_protection_rules.allow_administrators_to_bypass_configured_protection_rules -->
 <!-- permission-path v1: repository.settings.environments[].deployment_protection_rules.custom_rules -->
 <!-- permission-path v1: repository.settings.environments[].variables -->
-<!-- permission-path v1: repository.settings.agents.variables -->
+<!-- permission-path v1: repository.settings.secrets_and_variables.actions.variables -->
+<!-- permission-path v1: repository.settings.secrets_and_variables.agents.variables -->
 <!-- permission-path v0: repository.settings.autolinks -->
 <!-- permission-path v0: repository.settings.branch_protection_rules -->

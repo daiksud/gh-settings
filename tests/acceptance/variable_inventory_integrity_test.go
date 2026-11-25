@@ -22,7 +22,7 @@ func TestVariableInventoryAmbiguityFailsClosed(t *testing.T) {
 				t.Run(family+"/"+stage+"/"+ambiguity, func(t *testing.T) {
 					var mu sync.Mutex
 					lists, reads, deletes, unexpected := 0, 0, 0, 0
-					base, scope, config := "/repos/owner/current/"+family+"/variables", family+"-variables", "settings: {"+family+": {variables: []}}\n"
+					base, scope, config := "/repos/owner/current/"+family+"/variables", family+"-variables", "settings: {secrets_and_variables: {"+family+": {variables: []}}}\n"
 					if family == "environment" {
 						base, scope = "/repos/owner/current/environments/production/variables", "environment-variables"
 						config = "settings: {environments: [{name: production, variables: []}]}\n"
@@ -142,7 +142,7 @@ func TestVariableInventoryAmbiguousExportRetainsOnlyFailedFamily(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := repositoryInput("settings: {actions: {variables: [{name: OLD_ACTION, value: old-action-value}]}, agents: {variables: [{name: OLD_AGENT, value: old-agent-value}]}}\n")
+	input := repositoryInput("settings: {secrets_and_variables: {actions: {variables: [{name: OLD_ACTION, value: old-action-value}]}, agents: {variables: [{name: OLD_AGENT, value: old-agent-value}]}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}

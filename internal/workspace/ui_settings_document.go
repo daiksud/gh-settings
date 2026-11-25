@@ -18,18 +18,17 @@ type uiSettingsDocument struct {
 	Pages                 *uimodel.Pages
 	AdvancedSecurity      *uiAdvancedSecurityDocument
 	DeployKeys            *[]uimodel.DeployKey
-	Agents                *uimodel.AgentsSettings
+	SecretsAndVariables   *uimodel.SecretsAndVariables
 	Autolinks             *[]uimodel.Autolink
 }
 
 type uiModerationDocument struct{ InteractionLimits *uimodel.InteractionLimits }
 
 type uiActionsDocument struct {
-	General   *uiActionsGeneralDocument
-	Runners   *[]uimodel.RunnerLabels
-	Policies  *[]uimodel.ActionsEventPolicy
-	OIDC      *uimodel.OIDCSettings
-	Variables *[]uimodel.RepositoryVariable
+	General  *uiActionsGeneralDocument
+	Runners  *[]uimodel.RunnerLabels
+	Policies *[]uimodel.ActionsEventPolicy
+	OIDC     *uimodel.OIDCSettings
 }
 
 type uiActionsGeneralDocument struct {
@@ -81,14 +80,14 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 		Environments:          document.Environments,
 		Pages:                 document.Pages,
 		DeployKeys:            document.DeployKeys,
-		Agents:                document.Agents,
+		SecretsAndVariables:   document.SecretsAndVariables,
 		Autolinks:             document.Autolinks,
 	}
 	if document.Moderation != nil {
 		result.InteractionLimits = document.Moderation.InteractionLimits
 	}
 	if document.Actions != nil {
-		result.Actions = &uimodel.ActionsSettings{Runners: document.Actions.Runners, OIDC: document.Actions.OIDC, Variables: document.Actions.Variables, Policies: document.Actions.Policies}
+		result.Actions = &uimodel.ActionsSettings{Runners: document.Actions.Runners, OIDC: document.Actions.OIDC, Policies: document.Actions.Policies}
 		if document.Actions.General != nil {
 			general := document.Actions.General.model()
 			result.Actions.General = &general
@@ -140,14 +139,14 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 		Environments:          model.Environments,
 		Pages:                 model.Pages,
 		DeployKeys:            model.DeployKeys,
-		Agents:                model.Agents,
+		SecretsAndVariables:   model.SecretsAndVariables,
 		Autolinks:             model.Autolinks,
 	}
 	if model.InteractionLimits != nil {
 		result.Moderation = &uiModerationDocument{InteractionLimits: model.InteractionLimits}
 	}
 	if model.Actions != nil {
-		result.Actions = &uiActionsDocument{Runners: model.Actions.Runners, OIDC: model.Actions.OIDC, Variables: model.Actions.Variables, Policies: model.Actions.Policies}
+		result.Actions = &uiActionsDocument{Runners: model.Actions.Runners, OIDC: model.Actions.OIDC, Policies: model.Actions.Policies}
 		if model.Actions.General != nil {
 			general := uiActionsGeneralDocumentFromModel(*model.Actions.General)
 			result.Actions.General = &general

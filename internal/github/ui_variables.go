@@ -32,3 +32,18 @@ func variableValuesUI(variables settings.VariableDeclarations) []uimodel.Reposit
 	}
 	return values
 }
+
+func repositoryVariablesUI(variables *settings.VariableDeclarations) *uimodel.RepositoryVariablesSettings {
+	if variables == nil {
+		return nil
+	}
+	values := variableValuesUI(*variables)
+	return &uimodel.RepositoryVariablesSettings{Variables: &values}
+}
+
+func repositoryVariablesDeclaration(page *uimodel.RepositoryVariablesSettings) (*settings.VariableDeclarations, error) {
+	if page == nil {
+		return nil, nil
+	}
+	return VariablesDeclaration(page.Variables)
+}

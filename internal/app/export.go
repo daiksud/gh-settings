@@ -402,7 +402,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		return func(d *settings.Declaration) { d.Pages = pages }, nil
 	})
 
-	observe("repository.settings.actions.variables", read.Variables != nil, func() (exportAssignment, error) {
+	observe(settings.ActionsVariablesPath, read.Variables != nil, func() (exportAssignment, error) {
 		inventory, err := read.Variables(repo)
 		if err != nil {
 			return nil, err
@@ -410,7 +410,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		values, err := exportVariableInventory(inventory)
 		return func(d *settings.Declaration) { d.Variables = &values }, err
 	})
-	observe("repository.settings.agents.variables", read.AgentVariables != nil, func() (exportAssignment, error) {
+	observe(settings.AgentsVariablesPath, read.AgentVariables != nil, func() (exportAssignment, error) {
 		inventory, err := read.AgentVariables(repo)
 		if err != nil {
 			return nil, err

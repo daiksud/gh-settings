@@ -91,13 +91,14 @@ and allow a silent canonical export with the same unwritable stderr.
 - And standard output is empty
 - And no repository settings are changed
 
-### Scenario: Write Actions settings in sidebar order with variables last
+### Scenario: Write Actions settings and repository variables in sidebar order
 
-- Given the repository has readable Actions General settings, runners, policies, OIDC settings and repository variables
+- Given the repository has readable Actions General settings, runners, policies, OIDC settings, deploy keys and Actions and Agents repository variables
 - When the maintainer runs `gh settings export`
-- Then the keys under `repository.settings.actions` appear in the order `general`, `runners`, `policies`, `oidc`, `variables`
+- Then the keys under `repository.settings.actions` appear in the order `general`, `runners`, `policies`, `oidc`
+- And `repository.settings.secrets_and_variables` follows `deploy_keys` and contains `actions.variables` followed by `agents.variables`
 
-Test mapping: [`TestActionsExportOrder`](../../../internal/workspace/ui_actions_test.go).
+The [Actions export test](../../../internal/workspace/ui_actions_test.go) checks the Actions page order. The [repository variable round-trip test](../../../internal/workspace/ui_agents_variables_test.go) checks the placement of Secrets and variables and its two pages.
 
 ### Scenario: Preserve false and empty string values
 

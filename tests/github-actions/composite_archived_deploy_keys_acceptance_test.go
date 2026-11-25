@@ -33,7 +33,7 @@ func TestBuiltCompositeArchivedDeployKeys(t *testing.T) {
 			}
 			selected := "deploy_keys: [{" + id + "title: build, key: '" + key + " source-comment', allow_write_access: false}]"
 			if scenario == "mixed" {
-				selected += ", actions: {variables: [{name: FLAG, value: FIXTURE_VALUE}]}"
+				selected += ", secrets_and_variables: {actions: {variables: [{name: FLAG, value: FIXTURE_VALUE}]}}"
 			}
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, " + selected + "}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")

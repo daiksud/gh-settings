@@ -6,11 +6,11 @@ import (
 )
 
 func VariableLine(change settings.VariableChange) string {
-	return variableLine("repository.settings.actions.variables", change)
+	return variableLine(settings.ActionsVariablesPath, change)
 }
 
 func AgentVariableLine(change settings.VariableChange) string {
-	return variableLine("repository.settings.agents.variables", change)
+	return variableLine(settings.AgentsVariablesPath, change)
 }
 
 func variableLine(path string, change settings.VariableChange) string {

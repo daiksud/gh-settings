@@ -24,7 +24,7 @@ func TestBuiltCompositeVariableInventoryAmbiguity(t *testing.T) {
 					f.base["GITHUB_ACTIONS"] = "true"
 
 					base, scope := "/repos/owner/config/"+family+"/variables", family+"-variables"
-					settings := family + ": {variables: []}"
+					settings := "secrets_and_variables: {" + family + ": {variables: []}}"
 					if family == "environment" {
 						base, scope = "/repos/owner/config/environments/production/variables", "environment-variables"
 						settings = "environments: [{name: production, variables: []}]"

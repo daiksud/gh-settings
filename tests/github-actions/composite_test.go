@@ -390,7 +390,7 @@ case "$1" in
     status=${MOCK_REMOTE_STATUS:-0}
     if [[ $status == 0 ]]; then
       mkdir -p .github
-      printf 'version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      variables:\n        - name: CANARY\n          value: CANARY-export-variable\n' > .github/settings.yml
+      printf 'version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    secrets_and_variables:\n      actions:\n        variables:\n          - name: CANARY\n            value: CANARY-export-variable\n' > .github/settings.yml
     fi ;;
   apply)
     if [[ -n ${MOCK_EXPECT_PRUNE:-} ]]; then [[ $# == 3 && $2 == --prune && $3 == "$MOCK_EXPECT_PRUNE" && ${SETTINGS_PRUNE:-} == "$MOCK_EXPECT_PRUNE" ]] || exit 97; fi

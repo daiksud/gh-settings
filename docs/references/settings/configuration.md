@@ -33,6 +33,8 @@ repository:
 
 Within `settings`, follow the paths listed in the [settings index](README.md). Keys follow English UI names in snake_case. For example, Moderation contains `interaction_limits.pull_request_limits`. Some controls sit directly on a page, while others live under a section, such as `workflow_permissions.default_permissions` on the Actions General page. The [UI mapping](../../development/ui-repository-mapping.md) records the naming evidence. Use only the documented names and types for your selected [CLI or Action package](../../guides/github-actions.md#published-package-and-consumer-pins).
 
+When upgrading from a release that accepts `settings.actions.variables` or `settings.agents.variables`, move those lists to `settings.secrets_and_variables.actions.variables` and `settings.secrets_and_variables.agents.variables` under `repository`. Preserve omitted lists and explicit empty lists because they select different work during prune. Keep Environment variables with their named entries in `settings.environments`.
+
 ## Configuration semantics
 
 | Declaration | Meaning |

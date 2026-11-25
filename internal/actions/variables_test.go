@@ -21,7 +21,7 @@ func TestRepositoryVariablesPlanPresentation(t *testing.T) {
 	}
 	comparison := settings.Comparison{Managed: 1, Variables: []settings.VariableChange{change}}
 	output := string(cli.RenderComparison(comparison))
-	if !strings.Contains(output, `repository.settings.actions.variables: update "DISPLAY_NAME"`) || !strings.Contains(output, `"old <value>" → "日本語-v2"`) {
+	if !strings.Contains(output, `repository.settings.secrets_and_variables.actions.variables: update "DISPLAY_NAME"`) || !strings.Contains(output, `"old <value>" → "日本語-v2"`) {
 		t.Fatal(output)
 	}
 	path := filepath.Join(t.TempDir(), "report.json")

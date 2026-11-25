@@ -10,7 +10,16 @@ import (
 )
 
 func TestUIAgentsVariablesRoundTrip(t *testing.T) {
-	input := []byte("version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      variables:\n        - name: SHARED\n          value: actions\n    agents:\n      variables:\n        - name: shared\n          value: agents\n")
+	input := []byte(`version: daiksud/gh-settings@v0
+repository:
+  settings:
+    secrets_and_variables:
+      agents:
+        variables: [{name: shared, value: agents}]
+      actions:
+        variables: [{name: SHARED, value: actions}]
+    deploy_keys: []
+`)
 	got, err := DecodeConfig(input)
 	if err != nil {
 		t.Fatal(err)
@@ -29,11 +38,23 @@ func TestUIAgentsVariablesRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(wantDocument, gotDocument) {
 		t.Fatalf("family values changed: %s", encoded)
 	}
+	root, err := loadYAMLRoot(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := mappingValue(mappingValue(root, "repository"), "settings")
+	if settings.Content[0].Value != "deploy_keys" || settings.Content[2].Value != "secrets_and_variables" {
+		t.Fatalf("unexpected settings order:\n%s", encoded)
+	}
+	group := mappingValue(settings, "secrets_and_variables")
+	if group.Content[0].Value != "actions" || group.Content[2].Value != "agents" {
+		t.Fatalf("unexpected variable pages order:\n%s", encoded)
+	}
 }
 
 func TestUIAgentsVariablesDeclaration(t *testing.T) {
 	for _, actions := range []string{"", "actions: {variables: [{name: SHARED, value: actions}]}, "} {
-		model, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {" + actions + "agents: {variables: [{name: shared, value: agents}]}}}\n"))
+		model, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {secrets_and_variables: {" + actions + "agents: {variables: [{name: shared, value: agents}]}}}}\n"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,14 +73,21 @@ func TestUIAgentsVariablesDeclaration(t *testing.T) {
 }
 
 func TestUIAgentsVariablesPresenceAndValidation(t *testing.T) {
-	for _, body := range []string{"{}", "{agents: {}}", "{agents: {variables: []}}"} {
-		got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + body + "}\n"))
+	for _, tc := range []struct {
+		body        string
+		listPresent bool
+	}{
+		{"{}", false},
+		{"{secrets_and_variables: {agents: {}}}", false},
+		{"{secrets_and_variables: {agents: {variables: []}}}", true},
+	} {
+		got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + tc.body + "}\n"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		desired, err := github.DeclarationFromUI(got)
-		if err != nil || !desired.Empty() {
-			t.Fatalf("empty selection managed: %#v %v", desired, err)
+		if err != nil || !desired.Empty() || (desired.AgentsVariables != nil) != tc.listPresent {
+			t.Fatalf("%s: unexpected empty selection: %#v %v", tc.body, desired, err)
 		}
 	}
 	for _, body := range []string{
@@ -73,7 +101,7 @@ func TestUIAgentsVariablesPresenceAndValidation(t *testing.T) {
 		"{variables: [{name: 日本語, value: x}]}", "{variables: [{name: a, value: x}, {name: A, value: y}]}",
 	} {
 		t.Run(body, func(t *testing.T) {
-			got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {agents: " + body + "}}\n"))
+			got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {secrets_and_variables: {agents: " + body + "}}}\n"))
 			if err == nil {
 				_, err = github.DeclarationFromUI(got)
 			}

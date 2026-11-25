@@ -215,9 +215,9 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		case app.EnvironmentVariableUpsert, app.EnvironmentVariableDelete, app.EnvironmentVariablesRead:
 			path = fmt.Sprintf("repository.settings.environments[%q].variables[%q]", op.EnvironmentName, op.VariableName)
 		case app.AgentVariableUpsert, app.AgentVariableDelete, app.AgentVariablesRead:
-			path = "repository.settings.agents.variables"
+			path = settings.AgentsVariablesPath
 		case app.VariableUpsert, app.VariableDelete, app.VariablesRead:
-			path = "repository.settings.actions.variables"
+			path = settings.ActionsVariablesPath
 		case app.RepositoryUpdate:
 			path = "repository"
 		case app.CollaboratorsRead, app.CollaboratorReconcile, app.CollaboratorIdentityBinding, app.CollaboratorCancelInvitation, app.CollaboratorRemove:

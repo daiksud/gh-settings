@@ -5,18 +5,21 @@ title: "Actions repository variables"
 
 # Actions repository variables
 
-`repository.settings.actions.variables` corresponds to **Secrets and variables → Actions → Variables → Repository variables**. Navigation-only sidebar groups are omitted from YAML. This current-source feature manages only explicitly named, non-sensitive repository variables:
+`repository.settings.secrets_and_variables.actions.variables` corresponds to **Secrets and variables → Actions → Variables → Repository variables**. Use it for non-sensitive values shared across the repository.
+
+The same Variables tab also lists **Environment variables**. Its **Manage environment variables** link opens Settings → Environments. Declare those values once under `repository.settings.environments[].variables` for the named [Environment](../environments.md#environment-variables).
 
 ```yaml
 version: daiksud/gh-settings@v0
 repository:
   settings:
-    actions:
-      variables:
-        - name: BUILD_CHANNEL
-          value: stable
-        - name: OPTIONAL_LABEL
-          value: nightly
+    secrets_and_variables:
+      actions:
+        variables:
+          - name: BUILD_CHANNEL
+            value: stable
+          - name: OPTIONAL_LABEL
+            value: nightly
 ```
 
 Both `name` and nonempty string `value` are required. Names contain only ASCII letters, digits and underscores, cannot start with a digit or `GITHUB_` (case insensitive), and are unique ignoring case. Internal identity and export names are uppercase. Missing/null/empty values are invalid; quote values that YAML would interpret as numbers or booleans. Without prune, omission and `[]` select nothing and unlisted variables remain unchanged. `--prune actions-variables` makes a present list authoritative for retention; [] deletes all acquired variables, while omission always remains unmanaged. There is no YAML delete or rename member.
@@ -62,4 +65,4 @@ while retaining every listed parent, including variable-only entries.
 API evidence: [Actions variable lists/deletion](https://docs.github.com/rest/actions/variables)
 and [Agents variable lists/deletion](https://docs.github.com/rest/agents/variables).
 
-[All Actions settings](README.md) · [GitHub App permissions](../permissions.md#actions)
+[Settings index](../README.md) · [GitHub App permissions](../permissions.md#secrets-and-variables)

@@ -65,8 +65,7 @@ repository:
 `
 			}
 			if strings.HasPrefix(scenario, "mixed empty ") {
-				input = strings.Replace(input, "  settings:\n", "  settings:\n    webhooks: []\n    deploy_keys: []\n    rulesets: []\n    branch_protection_rules: []\n    environments: [{name: production, variables: []}]\n    agents: {variables: []}\n", 1)
-				input = strings.Replace(input, "    actions:\n", "    actions:\n      variables: []\n", 1)
+				input = strings.Replace(input, "  settings:\n", "  settings:\n    webhooks: []\n    deploy_keys: []\n    rulesets: []\n    branch_protection_rules: []\n    environments: [{name: production, variables: []}]\n    secrets_and_variables: {actions: {variables: []}, agents: {variables: []}}\n", 1)
 				if scenario == "mixed empty topics differ" {
 					input = strings.Replace(input, "topics: [alpha, beta]", "topics: []", 1)
 				}

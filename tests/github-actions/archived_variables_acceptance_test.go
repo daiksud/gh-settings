@@ -22,7 +22,7 @@ func TestBuiltCompositeArchivedVariables(t *testing.T) {
 			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
 
-			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, actions: {variables: [{name: BUILD_CHANNEL, value: " + desired + "}]}, agents: {variables: [{name: MODEL_FLAG, value: " + desired + "}]}}}\n"
+			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, secrets_and_variables: {actions: {variables: [{name: BUILD_CHANNEL, value: " + desired + "}]}, agents: {variables: [{name: MODEL_FLAG, value: " + desired + "}]}}}}\n"
 			config := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(config, input)
 			dir, err := os.MkdirTemp("/tmp", "ghs-archived-vars-")

@@ -59,7 +59,7 @@ func TestAgentsVariablesPlan(t *testing.T) {
 			}
 			if mode == "denied" || mode == "mixed-denied" || mode == "unacquired" {
 				var failure *PlanError
-				if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Path != "repository.settings.agents.variables" || !reflect.DeepEqual(result, PlanResult{}) {
+				if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Path != "repository.settings.secrets_and_variables.agents.variables" || !reflect.DeepEqual(result, PlanResult{}) {
 					t.Fatal(result, err)
 				}
 				return

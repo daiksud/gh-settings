@@ -75,46 +75,28 @@ func TestReadableSettingsExportLateVariablePageRetainsIntent(t *testing.T) {
 		t.Fatal(err)
 	}
 	binary := acceptanceBinary(t)
-	path := filepath.Join(fixture.work, ".github/settings.yml")
 	for _, existing := range []bool{false, true} {
 		if existing {
-			if err := writeSettingsFile(fixture.work, "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {variables: [{name: KEEP, value: old-intent}]}}}\n"); err != nil {
+			if err := writeSettingsFile(fixture.work, "version: daiksud/gh-settings@v0\nrepository: {settings: {secrets_and_variables: {actions: {variables: [{name: KEEP, value: old-intent}]}}}}\n"); err != nil {
 				t.Fatal(err)
 			}
 		}
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
-		if err != nil || result.runErr != nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "info: export repository.settings.actions.variables:") || strings.Contains(result.stderr.String(), sensitive) || strings.Contains(result.stderr.String(), "acquired-but-incomplete") {
+		if err != nil || result.runErr != nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "info: export repository.settings.secrets_and_variables.actions.variables:") || strings.Contains(result.stderr.String(), sensitive) || strings.Contains(result.stderr.String(), "acquired-but-incomplete") {
 			t.Fatal("inventory failure was not bounded/continued", err, result.stderr.String())
 		}
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var output struct {
-			Repository struct {
-				Settings struct {
-					Actions struct {
-						Variables *[]map[string]string `yaml:"variables"`
-					} `yaml:"actions"`
-					Agents struct {
-						Variables *[]map[string]string `yaml:"variables"`
-					} `yaml:"agents"`
-				} `yaml:"settings"`
-			} `yaml:"repository"`
-		}
-		if err := yaml.Unmarshal(raw, &output); err != nil {
-			t.Fatal(err)
-		}
-		actions := output.Repository.Settings.Actions.Variables
+		settings := exportMap(readExportDocument(t, fixture.work), "repository", "settings", "secrets_and_variables")
+		actions := exportMap(settings, "actions")["variables"]
 		if existing {
-			if actions == nil || len(*actions) != 1 || (*actions)[0]["name"] != "KEEP" || (*actions)[0]["value"] != "old-intent" {
-				t.Fatal("prior collection erased")
+			want := []any{map[string]any{"name": "KEEP", "value": "old-intent"}}
+			if !reflect.DeepEqual(actions, want) {
+				t.Fatal("prior collection erased", actions)
 			}
 		} else if actions != nil {
-			t.Fatal("partial inventory became declaration")
+			t.Fatal("partial inventory became declaration", actions)
 		}
-		if output.Repository.Settings.Agents.Variables == nil || len(*output.Repository.Settings.Agents.Variables) != 0 {
-			t.Fatal("later complete empty inventory lost")
+		if agents := exportMap(settings, "agents")["variables"]; !reflect.DeepEqual(agents, []any{}) {
+			t.Fatal("later complete empty inventory lost", agents)
 		}
 		validated, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"validate"}, false)
 		if err != nil || validated.runErr != nil {
@@ -209,7 +191,7 @@ func TestReadableSettingsExportRetainsPartialActions(t *testing.T) {
 				if !reflect.DeepEqual(got, want) {
 					t.Fatalf("partial controls changed: %#v; want %#v", got, want)
 				}
-				if !reflect.DeepEqual(repo["about"].(map[string]any)["topics"], []any{"fresh"}) || !reflect.DeepEqual(repo["labels"], []any{}) || !reflect.DeepEqual(settings["rulesets"], []any{}) || !reflect.DeepEqual(settings["environments"], []any{}) || !reflect.DeepEqual(settings["agents"].(map[string]any)["variables"], []any{}) {
+				if !reflect.DeepEqual(repo["about"].(map[string]any)["topics"], []any{"fresh"}) || !reflect.DeepEqual(repo["labels"], []any{}) || !reflect.DeepEqual(settings["rulesets"], []any{}) || !reflect.DeepEqual(settings["environments"], []any{}) || !reflect.DeepEqual(exportMap(settings, "secrets_and_variables", "agents")["variables"], []any{}) {
 					t.Fatal("successful independent acquisition was discarded")
 				}
 				validated, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"validate"}, false)

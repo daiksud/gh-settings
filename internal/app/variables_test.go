@@ -133,7 +133,7 @@ func TestRepositoryVariablesApplyProgress(t *testing.T) {
 }
 
 func TestRepositoryVariablesEmptyYAMLBeforeTarget(t *testing.T) {
-	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {variables: [{name: DISPLAY_NAME, value: ''}]}}}\n", false)
+	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {secrets_and_variables: {actions: {variables: [{name: DISPLAY_NAME, value: ''}]}}}}\n", false)
 	resolve := func() (repository.Repository, error) {
 		t.Fatal("resolved invalid empty variable")
 		return repository.Repository{}, nil

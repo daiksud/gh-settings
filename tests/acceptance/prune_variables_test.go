@@ -127,10 +127,11 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := repositoryInput(`settings:
-  actions:
-    variables: [{name: KEEP, value: actions-after}, {name: NEW, value: fixture-created-value}]
-  agents:
-    variables: [{name: KEEP, value: agents-after}, {name: NEW, value: agents-created}]
+  secrets_and_variables:
+    actions:
+      variables: [{name: KEEP, value: actions-after}, {name: NEW, value: fixture-created-value}]
+    agents:
+      variables: [{name: KEEP, value: agents-after}, {name: NEW, value: agents-created}]
   environments:
     - name: prod/blue
       variables: [{name: KEEP, value: environment-after}, {name: NEW, value: environment-created}]
@@ -204,7 +205,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	}
 	mu.Unlock()
 	out := run(false, "apply", "--prune", scopes)
-	if !strings.Contains(out, "agents.variables") || !strings.Contains(out, "earlier successful writes remain applied") {
+	if !strings.Contains(out, "secrets_and_variables.agents.variables") || !strings.Contains(out, "earlier successful writes remain applied") {
 		t.Fatal("unexpected apply or plan output")
 	}
 	mu.Lock()
@@ -223,7 +224,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	}
 	before := environmentReads
 	mu.Unlock()
-	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {actions: {variables: []}}\n")); err != nil {
+	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {secrets_and_variables: {actions: {variables: []}}}\n")); err != nil {
 		t.Fatal(err)
 	}
 	run(true, "apply", "--prune", scopes)
@@ -232,7 +233,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 		t.Fatal("omitted Environment variables were managed")
 	}
 	mu.Unlock()
-	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {agents: {variables: []}}\n")); err != nil {
+	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {secrets_and_variables: {agents: {variables: []}}}\n")); err != nil {
 		t.Fatal(err)
 	}
 	run(true, "apply", "--prune", scopes)

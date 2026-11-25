@@ -55,7 +55,6 @@ func TestActionsExportOrder(t *testing.T) {
 repository:
   settings:
     actions:
-      variables: []
       oidc: {subject_claim: {use_default_template: true}}
       policies: []
       runners: []
@@ -82,7 +81,7 @@ repository:
 	for i := 0; i < len(actions.Content); i += 2 {
 		keys = append(keys, actions.Content[i].Value)
 	}
-	want := []string{"general", "runners", "policies", "oidc", "variables"}
+	want := []string{"general", "runners", "policies", "oidc"}
 	if !reflect.DeepEqual(keys, want) {
 		t.Errorf("exported Actions keys = %v, want %v", keys, want)
 	}
