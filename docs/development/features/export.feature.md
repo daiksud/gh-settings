@@ -91,6 +91,14 @@ and allow a silent canonical export with the same unwritable stderr.
 - And standard output is empty
 - And no repository settings are changed
 
+### Scenario: Write Actions settings in sidebar order with variables last
+
+- Given the repository has readable Actions General settings, runners, policies, OIDC settings and repository variables
+- When the maintainer runs `gh settings export`
+- Then the keys under `repository.settings.actions` appear in the order `general`, `runners`, `policies`, `oidc`, `variables`
+
+Test mapping: [`TestActionsExportOrder`](../../../internal/workspace/ui_actions_test.go).
+
 ### Scenario: Preserve false and empty string values
 
 - Given the repository's description and homepage are empty strings

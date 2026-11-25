@@ -25,10 +25,10 @@ type uiSettingsDocument struct {
 type uiModerationDocument struct{ InteractionLimits *uimodel.InteractionLimits }
 
 type uiActionsDocument struct {
-	Runners   *[]uimodel.RunnerLabels
-	OIDC      *uimodel.OIDCSettings
-	Policies  *[]uimodel.ActionsEventPolicy
 	General   *uiActionsGeneralDocument
+	Runners   *[]uimodel.RunnerLabels
+	Policies  *[]uimodel.ActionsEventPolicy
+	OIDC      *uimodel.OIDCSettings
 	Variables *[]uimodel.RepositoryVariable
 }
 
