@@ -5,6 +5,29 @@ import (
 	"testing"
 )
 
+func checkLabelFieldOrder(t *testing.T, data []byte, want ...[]string) {
+	t.Helper()
+	root, err := loadYAMLRoot(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	labels := mappingValue(mappingValue(root, "repository"), "labels")
+	if labels == nil {
+		t.Fatal("missing repository.labels")
+	}
+	var got [][]string
+	for _, entry := range labels.Content {
+		var keys []string
+		for i := 0; i < len(entry.Content); i += 2 {
+			keys = append(keys, entry.Content[i].Value)
+		}
+		got = append(got, keys)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("label field order = %v, want %v", got, want)
+	}
+}
+
 func TestUIConfigLabelsIdentityAndRoundTrip(t *testing.T) {
 	input := `version: daiksud/gh-settings@v0
 repository:
@@ -31,6 +54,7 @@ repository:
 	if err != nil {
 		t.Fatal(err)
 	}
+	checkLabelFieldOrder(t, data, []string{"id", "name", "description", "color"}, []string{"name", "color"})
 	again, err := DecodeConfig(data)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("label round trip changed intent: %s, %v", data, err)
