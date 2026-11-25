@@ -116,11 +116,10 @@ func TestArchivedRunnerLabelsCLI(t *testing.T) {
 				if scenario == "fold order" {
 					labels = "[ACCELERATED, GPU]"
 				}
-				selected := "actions: {runners: [{id: 23, custom_labels: " + labels + "}]"
+				selected := "actions: {runners: [{id: 23, custom_labels: " + labels + "}]}"
 				if scenario == "mixed" {
-					selected += ", variables: [{name: FLAG, value: FIXTURE_VALUE}]"
+					selected += ", secrets_and_variables: {actions: {variables: [{name: FLAG, value: FIXTURE_VALUE}]}}"
 				}
-				selected += "}"
 				input := repositoryInput("settings: {general: {danger_zone: {archive_this_repository: true}}, " + selected + "}\n")
 				if err := writeSettingsFile(f.work, input); err != nil {
 					t.Fatal(err)

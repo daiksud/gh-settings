@@ -42,7 +42,7 @@ func TestVariableAmbiguousOrdinaryReadFailsWithoutWrite(t *testing.T) {
 				if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 					t.Fatal(err)
 				}
-				input := repositoryInput("settings: {" + family + ": {variables: [{name: FLAG, value: " + desired + "}]}}\n")
+				input := repositoryInput("settings: {secrets_and_variables: {" + family + ": {variables: [{name: FLAG, value: " + desired + "}]}}}\n")
 				if err := writeSettingsFile(fixture.work, input); err != nil {
 					t.Fatal(err)
 				}

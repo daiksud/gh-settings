@@ -170,6 +170,8 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 The [PR validator](../../.github/workflows/settings-pr.yml) and [main apply workflow](../../.github/workflows/settings-apply.yml) both pin `e283ab6a65fd8ca342da41d742f104b289519a58` (v0.46.0). The tracked declaration uses that package's Moderation namespace, Release immutability control and plural merge and CodeQL keys. [Operational fixtures](../../tests/github-actions/operational_test.go) read the tracked YAML directly. Check the pin and the actual declaration together when either changes.
 
+The two empty repository variable lists also use v0.46.0's `settings.actions.variables` and `settings.agents.variables` under `repository`. When a release supports `settings.secrets_and_variables`, update both workflow pins and move the two lists together in the same PR. Keep the credential Environment's internal variable values out of the tracked YAML.
+
 The declaration records supported, applicable settings acquired through the
 published CLI's real read-only export and checked with a fresh local plan.
 It includes all observed Labels, the existing main Ruleset and credential

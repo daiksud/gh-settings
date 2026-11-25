@@ -171,12 +171,15 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 			return settings.Declaration{}, fmt.Errorf("repository.settings.rulesets: %w", err)
 		}
 		result.Rulesets = rulesets
-		if repository.Settings.Agents != nil {
-			variables, err := VariablesDeclaration(repository.Settings.Agents.Variables)
+		if group := repository.Settings.SecretsAndVariables; group != nil {
+			result.Variables, err = repositoryVariablesDeclaration(group.Actions)
 			if err != nil {
-				return settings.Declaration{}, fmt.Errorf("repository.settings.agents.variables: %w", err)
+				return settings.Declaration{}, fmt.Errorf("%s: %w", settings.ActionsVariablesPath, err)
 			}
-			result.AgentsVariables = variables
+			result.AgentsVariables, err = repositoryVariablesDeclaration(group.Agents)
+			if err != nil {
+				return settings.Declaration{}, fmt.Errorf("%s: %w", settings.AgentsVariablesPath, err)
+			}
 		}
 		if repository.Settings.Actions != nil {
 			policies, err := ActionsPoliciesDeclaration(repository.Settings.Actions.Policies)
@@ -184,11 +187,6 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 				return settings.Declaration{}, fmt.Errorf("repository.settings.actions.policies: %w", err)
 			}
 			result.ActionsPolicies = policies
-			variables, err := VariablesDeclaration(repository.Settings.Actions.Variables)
-			if err != nil {
-				return settings.Declaration{}, fmt.Errorf("repository.settings.actions.variables: %w", err)
-			}
-			result.Variables = variables
 		}
 		if repository.Settings.Actions != nil && repository.Settings.Actions.General != nil {
 			actions, err := ActionsDeclaration(*repository.Settings.Actions.General)

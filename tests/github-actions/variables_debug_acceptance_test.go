@@ -25,8 +25,9 @@ func TestBuiltCompositeVariablesTransportPrivacy(t *testing.T) {
 	f.write(filepath.Join(f.caller, ".github/settings.yml"), `version: daiksud/gh-settings@v0
 repository:
   settings:
-    actions: {variables: [{name: KEEP, value: private-actions-new}, {name: CREATE, value: private-actions-create}]}
-    agents: {variables: [{name: KEEP, value: private-agents-new}, {name: CREATE, value: private-agents-create}]}
+    secrets_and_variables:
+      actions: {variables: [{name: KEEP, value: private-actions-new}, {name: CREATE, value: private-actions-create}]}
+      agents: {variables: [{name: KEEP, value: private-agents-new}, {name: CREATE, value: private-agents-create}]}
     environments:
       - name: production
         variables: [{name: KEEP, value: private-environment-new}, {name: CREATE, value: private-environment-create}]

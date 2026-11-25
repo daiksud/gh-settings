@@ -1,19 +1,59 @@
 package githubactions
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
+	"go.yaml.in/yaml/v4"
 )
 
-// Decode the actual declaration consumed by the pinned published package.
+// settings-pr validates the original file with the pinned release. Until both
+// consumers adopt secrets_and_variables, check their two v0.46.0 inventories
+// directly and use the current decoder for the rest of the operational policy.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var doc, extra yaml.Node
+	if err := decoder.Decode(&doc); err != nil || len(doc.Content) != 1 {
+		t.Fatal("expected the operational settings document", err)
+	}
+	if err := decoder.Decode(&extra); err != io.EOF {
+		t.Fatal("expected a single operational settings document", err)
+	}
+	member := func(parent *yaml.Node, key string) *yaml.Node {
+		t.Helper()
+		fields, err := settingsYAMLMap(parent)
+		if err != nil || parent.Tag != "!!map" || fields[key] == nil {
+			t.Fatalf("expected operational settings field %q: %v", key, err)
+		}
+		return fields[key]
+	}
+	repositorySettings := member(member(doc.Content[0], "repository"), "settings")
+	for _, scope := range []string{"actions", "agents"} {
+		page := member(repositorySettings, scope)
+		variables := member(page, "variables")
+		if variables.Kind != yaml.SequenceNode || variables.Tag != "!!seq" || len(variables.Content) != 0 {
+			t.Fatalf("expected an explicit empty v0.46.0 %s variable list", scope)
+		}
+		i := slices.Index(page.Content, variables)
+		page.Content = slices.Delete(page.Content, i-1, i+1)
+		if scope == "agents" && len(page.Content) == 0 {
+			i := slices.Index(repositorySettings.Content, page)
+			repositorySettings.Content = slices.Delete(repositorySettings.Content, i-1, i+1)
+		}
+	}
+	data, err = yaml.Marshal(&doc)
 	if err != nil {
 		t.Fatal(err)
 	}

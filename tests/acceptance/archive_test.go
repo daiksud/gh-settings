@@ -225,8 +225,9 @@ settings:
   rulesets: []
   branch_protection_rules: []
   environments: [{name: production, variables: []}]
-  actions: {variables: []}
-  agents: {variables: []}
+  secrets_and_variables:
+    actions: {variables: []}
+    agents: {variables: []}
 `)
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)

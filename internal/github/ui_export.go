@@ -59,6 +59,15 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.DeployKeys = &values
 	}
+	if source.Variables != nil || source.AgentsVariables != nil {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.SecretsAndVariables = &uimodel.SecretsAndVariables{
+			Actions: repositoryVariablesUI(source.Variables),
+			Agents:  repositoryVariablesUI(source.AgentsVariables),
+		}
+	}
 	if source.Collaborators != nil {
 		values := make([]uimodel.Collaborator, 0, source.Collaborators.Len())
 		for _, person := range source.Collaborators.Values() {
@@ -156,16 +165,6 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Actions.Policies = &values
 	}
-	if source.Variables != nil {
-		values := variableValuesUI(*source.Variables)
-		if result.Settings == nil {
-			result.Settings = &uimodel.RepositorySettings{}
-		}
-		if result.Settings.Actions == nil {
-			result.Settings.Actions = &uimodel.ActionsSettings{}
-		}
-		result.Settings.Actions.Variables = &values
-	}
 	if source.Runners != nil {
 		if err := settings.ValidateRunnerLabels(*source.Runners); err != nil {
 			return uimodel.Repository{}, err
@@ -191,13 +190,6 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		copy := settings.CloneOIDCSubject(*source.OIDCSubject)
 		result.Settings.Actions.OIDC = &uimodel.OIDCSettings{SubjectClaim: &copy}
-	}
-	if source.AgentsVariables != nil {
-		values := variableValuesUI(*source.AgentsVariables)
-		if result.Settings == nil {
-			result.Settings = &uimodel.RepositorySettings{}
-		}
-		result.Settings.Agents = &uimodel.AgentsSettings{Variables: &values}
 	}
 	if source.CopilotReviewEffort != nil {
 		if err := settings.ValidateCopilotReviewEffort(*source.CopilotReviewEffort); err != nil {

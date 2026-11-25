@@ -47,7 +47,7 @@ func TestAgentsVariablesReportAndPrivacy(t *testing.T) {
 			}
 			metadata := RunMetadata{Actor: "owner", TriggeringActor: "owner", Event: "push", RunID: "1", RunAttempt: "1", WorkflowRef: "owner/current/.github/workflows/settings.yml@refs/heads/main", WorkflowSHA: strings.Repeat("a", 40), ConfigSHA: strings.Repeat("b", 40), Target: "owner/current", CLIVersion: "dev", CLISHA256: strings.Repeat("c", 64)}
 			summary, err := RenderSummary(report, metadata)
-			if err != nil || !strings.Contains(summary, "repository.settings.agents.variables: update") || !strings.Contains(summary, "agent &lt;before&gt;") || strings.Contains(summary, "<before>") || strings.Contains(summary, "repository.settings.actions.variables") != mixed {
+			if err != nil || !strings.Contains(summary, "repository.settings.secrets_and_variables.agents.variables: update") || !strings.Contains(summary, "agent &lt;before&gt;") || strings.Contains(summary, "<before>") || strings.Contains(summary, "repository.settings.secrets_and_variables.actions.variables") != mixed {
 				t.Fatal(summary, err)
 			}
 			t.Setenv("SETTINGS_TARGET", "owner/current")
@@ -60,7 +60,7 @@ func TestAgentsVariablesReportAndPrivacy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, s := range []string{"SHARED", "agent-after", "agent <before>", "workflow", "repository.settings.agents.variables"} {
+			for _, s := range []string{"SHARED", "agent-after", "agent <before>", "workflow", "repository.settings.secrets_and_variables.agents.variables"} {
 				if strings.Contains(string(private)+output.String(), s) {
 					t.Fatalf("status-only leaked %s", s)
 				}
@@ -115,7 +115,7 @@ func TestAgentsVariablesReportValidation(t *testing.T) {
 func TestAgentsVariablesFailureResourcePrivacy(t *testing.T) {
 	for _, stage := range []string{"read-failure", "invalid-config"} {
 		t.Run(stage, func(t *testing.T) {
-			failure := &app.PlanError{Stage: stage, Path: "repository.settings.agents.variables", Target: repository.Repository{Owner: "owner", Name: "current"}, Err: errors.New("repository.settings.agents.variables: private-name private-value api-secret")}
+			failure := &app.PlanError{Stage: stage, Path: "repository.settings.secrets_and_variables.agents.variables", Target: repository.Repository{Owner: "owner", Name: "current"}, Err: errors.New("repository.settings.secrets_and_variables.agents.variables: private-name private-value api-secret")}
 			path := filepath.Join(t.TempDir(), "report.json")
 			if err := writePlanReport(path, func() (app.PlanResult, error) { return app.PlanResult{}, failure }); err == nil {
 				t.Fatal("failure lost")
@@ -128,7 +128,7 @@ func TestAgentsVariablesFailureResourcePrivacy(t *testing.T) {
 			if err := json.Unmarshal(data, &report); err != nil {
 				t.Fatal(err)
 			}
-			if report.Resource != "repository.settings.agents.variables" {
+			if report.Resource != "repository.settings.secrets_and_variables.agents.variables" {
 				t.Fatal(string(data))
 			}
 			valid, err := validatePlanReport(report, "owner/current")
@@ -136,7 +136,7 @@ func TestAgentsVariablesFailureResourcePrivacy(t *testing.T) {
 				t.Fatal(err)
 			}
 			summary := renderSummary(valid, RunMetadata{Target: "owner/current"}, []string{"owner", "current", ".github/workflows/settings.yml"})
-			if !strings.Contains(summary, "repository.settings.agents.variables") {
+			if !strings.Contains(summary, "repository.settings.secrets_and_variables.agents.variables") {
 				t.Fatal(summary)
 			}
 			for _, private := range []string{"private-name", "private-value", "api-secret"} {
@@ -153,12 +153,12 @@ func TestAgentsVariablesFailureResourcePrivacy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(string(private), "repository.settings.agents.variables") {
+			if strings.Contains(string(private), "repository.settings.secrets_and_variables.agents.variables") {
 				t.Fatal(string(private))
 			}
 		})
 	}
-	if validFailureResource("read-failure", "repository.settings.agents.variables private-name") || validFailureResource("changed", "repository.settings.agents.variables") {
+	if validFailureResource("read-failure", "repository.settings.secrets_and_variables.agents.variables private-name") || validFailureResource("changed", "repository.settings.secrets_and_variables.agents.variables") {
 		t.Fatal("accepted invalid resource context")
 	}
 }

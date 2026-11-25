@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+const (
+	ActionsVariablesPath = "repository.settings.secrets_and_variables.actions.variables"
+	AgentsVariablesPath  = "repository.settings.secrets_and_variables.agents.variables"
+)
+
 // RepositoryVariable is an explicitly selected plaintext, non-sensitive value.
 type RepositoryVariable struct {
 	Name  string

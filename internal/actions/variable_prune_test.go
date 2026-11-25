@@ -32,7 +32,7 @@ func TestVariablePruneReportsRenderAbsentAndPreservePrivacy(t *testing.T) {
 	}
 	metadata := RunMetadata{Actor: "owner", TriggeringActor: "owner", Event: "push", RunID: "1", RunAttempt: "1", WorkflowRef: "owner/current/.github/workflows/settings.yml@refs/heads/main", WorkflowSHA: strings.Repeat("a", 40), ConfigSHA: strings.Repeat("b", 40), Target: "owner/current", CLIVersion: "dev", CLISHA256: strings.Repeat("c", 64)}
 	rendered, err := RenderSummary(report, metadata)
-	if err != nil || strings.Count(rendered, "absent") != 3 || strings.Contains(rendered, "<before>") || !strings.Contains(rendered, "agents.variables: delete") {
+	if err != nil || strings.Count(rendered, "absent") != 3 || strings.Contains(rendered, "<before>") || !strings.Contains(rendered, "repository.settings.secrets_and_variables.agents.variables: delete") {
 		t.Fatal(rendered, err)
 	}
 	t.Setenv("SETTINGS_TARGET", "owner/current")

@@ -114,7 +114,7 @@ func testRepositoryVariablesProcess(t *testing.T, family string) {
 		t.Fatal(err)
 	}
 	declaration := func(value string) string {
-		return "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    " + family + ":\n      variables:\n        - name: display_name\n          value: " + value + "\n"
+		return "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    secrets_and_variables:\n      " + family + ":\n        variables:\n          - name: display_name\n            value: " + value + "\n"
 	}
 	input := declaration("日本語-v2")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
@@ -157,7 +157,7 @@ func testRepositoryVariablesProcess(t *testing.T, family string) {
 	if callsBeforePlan != 0 {
 		t.Fatal("local validation made API requests", callsBeforePlan)
 	}
-	run([]string{"plan"}, "repository.settings."+family+".variables: create \"DISPLAY_NAME\" value=\"日本語-v2\"\n", false)
+	run([]string{"plan"}, "repository.settings.secrets_and_variables."+family+".variables: create \"DISPLAY_NAME\" value=\"日本語-v2\"\n", false)
 	expect("GET " + path)
 	reportPath := filepath.Join(fixture.root, "variables-plan.json")
 	run([]string{"action", "plan", reportPath}, "", false)
@@ -214,4 +214,117 @@ func testRepositoryVariablesProcess(t *testing.T, family string) {
 	}
 	run([]string{"plan"}, "", true)
 	expect("GET " + path)
+}
+
+func TestSameNamedVariablesAcrossRepositoryAndEnvironmentScopes(t *testing.T) {
+	const production = "/environments/production/variables"
+	remote := map[string]string{
+		"/actions/variables":              "actions-old",
+		"/agents/variables":               "agents-old",
+		production:                        "production-old",
+		"/environments/staging/variables": "staging-old",
+	}
+	var mu sync.Mutex
+	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		path := strings.TrimPrefix(r.URL.Path, "/repos/owner/current")
+		if r.Method == http.MethodDelete && path == production+"/REGION" {
+			delete(remote, production)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
+			return
+		}
+		if isMergeMethodsFixtureRead(r) {
+			fmt.Fprint(w, mergeMethodsFixtureResponse)
+			return
+		}
+		if r.Method != http.MethodGet {
+			t.Errorf("unexpected write %s %s", r.Method, path)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		switch path {
+		case "":
+			fmt.Fprint(w, planResponse)
+		case "/environments":
+			fmt.Fprint(w, `{"total_count":2,"environments":[{"id":1,"name":"production"},{"id":2,"name":"staging"}]}`)
+		case "/environments/production":
+			fmt.Fprint(w, `{"id":1,"name":"production"}`)
+		case "/environments/staging":
+			fmt.Fprint(w, `{"id":2,"name":"staging"}`)
+		default:
+			base, named := strings.CutSuffix(path, "/REGION")
+			if value, ok := remote[base]; ok {
+				variable := map[string]string{"name": "REGION", "value": value}
+				if named {
+					json.NewEncoder(w).Encode(variable)
+				} else {
+					json.NewEncoder(w).Encode(map[string]any{"total_count": 1, "variables": []map[string]string{variable}})
+				}
+			} else if path == production {
+				fmt.Fprint(w, `{"total_count":0,"variables":[]}`)
+			} else {
+				w.WriteHeader(http.StatusForbidden)
+			}
+		}
+	}, false, "/actions/variables", "/agents/variables", "/environments", "/environments/*/variables")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fixture.close()
+	env := exportFixtureEnv(fixture.cfg)
+	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
+		t.Fatal(err)
+	}
+	binary := acceptanceBinary(t)
+	run := func(args ...string) string {
+		t.Helper()
+		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
+		if err != nil || result.runErr != nil {
+			t.Fatalf("%v: %v %v %s", args, err, result.runErr, result.stderr.String())
+		}
+		return result.stdout.String()
+	}
+
+	run("export")
+	config := repositoryInput(`settings:
+  environments:
+    - name: production
+      variables: [{name: REGION, value: production-old}]
+    - name: staging
+      variables: [{name: REGION, value: staging-old}]
+  secrets_and_variables:
+    actions: {variables: [{name: REGION, value: actions-old}]}
+    agents: {variables: [{name: REGION, value: agents-old}]}
+`)
+	assertExportRetains(t, fixture, config, "repository", "settings")
+	run("validate")
+	if err := writeSettingsFile(fixture.work, strings.ReplaceAll(config, "-old", "-new")); err != nil {
+		t.Fatal(err)
+	}
+	plan := run("plan")
+	for path, scope := range map[string]string{
+		"secrets_and_variables.actions.variables": "actions",
+		"secrets_and_variables.agents.variables":  "agents",
+		`environments["production"].variables`:    "production",
+		`environments["staging"].variables`:       "staging",
+	} {
+		want := fmt.Sprintf("repository.settings.%s: update \"REGION\" value: \"%s-old\" → \"%s-new\"\n", path, scope, scope)
+		if !strings.Contains(plan, want) {
+			t.Fatalf("missing scoped change %q in %s", want, plan)
+		}
+	}
+	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {environments: [{name: production, variables: []}]}\n")); err != nil {
+		t.Fatal(err)
+	}
+	run("apply", "--prune", "environment-variables")
+	mu.Lock()
+	defer mu.Unlock()
+	if _, ok := remote[production]; ok || len(remote) != 3 {
+		t.Fatalf("expected only production REGION to be removed: %v", remote)
+	}
 }

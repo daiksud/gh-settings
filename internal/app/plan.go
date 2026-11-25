@@ -134,7 +134,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 	if settings.CollectionSelected(desired.Variables, prune.Has("actions-variables")) {
 		changes, err := planRepositoryVariables(repo, *desired.Variables, prune.Has("actions-variables"), read.Variable, read.Variables)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.ActionsVariablesPath, Target: repo, Err: err}
 		}
 		comparison.Managed++
 		comparison.Variables = changes
@@ -142,7 +142,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 	if settings.CollectionSelected(desired.AgentsVariables, prune.Has("agents-variables")) {
 		changes, err := planRepositoryVariables(repo, *desired.AgentsVariables, prune.Has("agents-variables"), read.AgentVariable, read.AgentVariables)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.agents.variables", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.AgentsVariablesPath, Target: repo, Err: err}
 		}
 		comparison.Managed++
 		comparison.AgentsVariables = changes

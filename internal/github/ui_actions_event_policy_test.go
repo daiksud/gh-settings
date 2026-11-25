@@ -105,7 +105,7 @@ func TestActionsPoliciesExportRetainsOtherActionsSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ui.Settings.Actions.General == nil || ui.Settings.Actions.Variables == nil || ui.Settings.Actions.Policies == nil {
+	if ui.Settings.Actions.General == nil || ui.Settings.SecretsAndVariables.Actions.Variables == nil || ui.Settings.Actions.Policies == nil {
 		t.Fatal("policies replaced other Actions settings")
 	}
 	again, err := DeclarationFromUI(ui)

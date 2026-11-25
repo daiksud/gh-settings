@@ -28,11 +28,11 @@ func TestBuiltCompositeArchivedRunners(t *testing.T) {
 			if scenario == "empty" {
 				desired = `[]`
 			}
-			selected := "runners: [{id: 23, custom_labels: " + desired + "}]"
+			selected := "actions: {runners: [{id: 23, custom_labels: " + desired + "}]}"
 			if scenario == "mixed" {
-				selected += ", variables: [{name: FLAG, value: FIXTURE_VALUE}]"
+				selected += ", secrets_and_variables: {actions: {variables: [{name: FLAG, value: FIXTURE_VALUE}]}}"
 			}
-			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, actions: {" + selected + "}}}\n"
+			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, " + selected + "}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
 			head, index := f.git("rev-parse", "HEAD"), f.git("write-tree")

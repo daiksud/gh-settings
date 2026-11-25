@@ -92,7 +92,7 @@ func TestArchivedVariablesReadOnlyApply(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := repositoryInput("settings:\n  general: {danger_zone: {archive_this_repository: true}}\n  actions: {variables: [{name: BUILD_CHANNEL, value: " + desired + "}]}\n  agents: {variables: [{name: MODEL_FLAG, value: " + desired + "}]}\n")
+			input := repositoryInput("settings:\n  general: {danger_zone: {archive_this_repository: true}}\n  secrets_and_variables:\n    actions: {variables: [{name: BUILD_CHANNEL, value: " + desired + "}]}\n    agents: {variables: [{name: MODEL_FLAG, value: " + desired + "}]}\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}

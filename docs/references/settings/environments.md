@@ -114,7 +114,7 @@ ordinary App support does not expand parent-deletion ownership.
 
 ## Environment variables
 
-`repository.settings.environments[].variables` selects explicit non-sensitive values in **Settings → Environments → the selected Environment → Environment variables**:
+`repository.settings.environments[].variables` selects explicit non-sensitive values in **Settings → Environments → the selected Environment → Environment variables**. GitHub also lists these values under **Secrets and variables → Actions → Variables → Environment variables**. Both views correspond to this one declaration per Environment.
 
 ```yaml
 version: daiksud/gh-settings@v0

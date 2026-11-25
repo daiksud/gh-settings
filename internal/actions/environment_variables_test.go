@@ -48,7 +48,7 @@ func TestEnvironmentVariablesReportAndPrivacy(t *testing.T) {
 			}
 			metadata := RunMetadata{Actor: "owner", TriggeringActor: "owner", Event: "push", RunID: "1", RunAttempt: "1", WorkflowRef: "owner/current/.github/workflows/settings.yml@refs/heads/main", WorkflowSHA: strings.Repeat("a", 40), ConfigSHA: strings.Repeat("b", 40), Target: "owner/current", CLIVersion: "dev", CLISHA256: strings.Repeat("c", 64)}
 			summary, err := RenderSummary(report, metadata)
-			if err != nil || !strings.Contains(summary, "repository.settings.environments[&#34;prod/&lt;blue&gt;&#34;].variables: update") || !strings.Contains(summary, "environment &lt;before&gt;") || strings.Contains(summary, "<before>") || strings.Contains(summary, "repository.settings.actions.variables") != mixed {
+			if err != nil || !strings.Contains(summary, "repository.settings.environments[&#34;prod/&lt;blue&gt;&#34;].variables: update") || !strings.Contains(summary, "environment &lt;before&gt;") || strings.Contains(summary, "<before>") || strings.Contains(summary, "repository.settings.secrets_and_variables.actions.variables") != mixed {
 				t.Fatal(summary, err)
 			}
 			t.Setenv("SETTINGS_TARGET", "owner/current")

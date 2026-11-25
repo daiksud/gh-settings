@@ -30,7 +30,7 @@ func TestBuiltCompositeArchivedAutolinks(t *testing.T) {
 			}
 			selected := "autolinks: [{" + id + "reference_prefix: TICKET-, target_url: '" + target + "', reference_format: numeric}]"
 			if scenario == "mixed" {
-				selected += ", actions: {variables: [{name: FLAG, value: FIXTURE_VALUE}]}"
+				selected += ", secrets_and_variables: {actions: {variables: [{name: FLAG, value: FIXTURE_VALUE}]}}"
 			}
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, " + selected + "}}\n"
 			path := filepath.Join(f.caller, ".github/settings.yml")

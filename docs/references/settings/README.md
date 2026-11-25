@@ -41,7 +41,7 @@ Find the field that corresponds to the control you want to manage. Start with th
 | [Pages](pages.md) | Publishing source, custom domain, HTTPS and site lifecycle. |
 | [Advanced Security](security.md) | Private vulnerability reporting, Dependabot, CodeQL, AI Scan and Secret Protection. |
 | [Deploy keys](deploy-keys.md) | Public keys, write access and removal. |
-| Secrets and variables | [Actions variables](actions/variables.md) and [Agents variables](agents.md). Values are plaintext. |
+| Secrets and variables | [Actions repository variables](actions/variables.md) and [Agents repository variables](agents.md) under `secrets_and_variables`. The Actions tab also links to [Environment variables](environments.md#environment-variables). Variable values are plaintext. |
 
 ## Existing v0 contracts outside v1
 

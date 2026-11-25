@@ -2,7 +2,7 @@
 
 ## Rule: Select named non-sensitive values
 
-- `repository.settings.actions.variables` and `repository.settings.agents.variables` independently select optional arrays of required `name` and nonempty string `value` pairs. The same canonical name can have a different value in each family.
+- `repository.settings.secrets_and_variables.actions.variables` and `repository.settings.secrets_and_variables.agents.variables` independently select optional arrays of required `name` and nonempty string `value` pairs. The same canonical name can have a different value in each family.
 - Without prune, omission and [] select nothing and unlisted variables remain unchanged. Explicit variable prune owns retention for present lists; omission always stays unmanaged.
 - Names contain ASCII letters, digits and underscores, start with a letter or underscore, and cannot start with `GITHUB_` (case insensitive). Identity is case insensitive; canonical names are uppercase.
 - Missing/null/empty values fail locally. The Actions live probe rejected an empty value with HTTP 422; no whitespace-trimming restriction is inferred. Values are plaintext and must contain only non-sensitive information. No secret detection or masking is promised.
@@ -25,12 +25,14 @@
 - Configuration, export and plan reports can contain the plaintext values; never use these interfaces for credentials or other secrets. Actions, Agents and Environment variable API requests suppress inherited `GH_DEBUG` transport logging.
 - Individual variable reads reject duplicate JSON members, case aliases of `name` or `value`, invalid UTF-8, oversized bodies and malformed or trailing data. An observed empty value remains distinct from an unavailable read. These checks do not establish the completeness of a separate inventory or Environment identity read.
 
-### Scenario: Keep the same name independent across families
+### Scenario: Keep the same name independent across repository and Environment variables
 
-- Given Actions variable `DISPLAY_NAME` is `workflow` and Agents variable `DISPLAY_NAME` is `agent`
-- When only the Agents value is declared as `assistant`
-- Then the plan identifies an Agents value change
-- And apply changes only the Agents value and preserves the Actions value
+- Given Actions, Agents, and the `staging` and `production` Environments each have a different value for `DISPLAY_NAME`
+- When the maintainer runs `gh settings export`
+- Then each repository value appears once under its matching `secrets_and_variables` path and each Environment value appears once in its named Environment
+- When the maintainer changes only the Agents value in the declaration
+- Then plan reports the change at `repository.settings.secrets_and_variables.agents.variables`
+- And apply changes the Agents value and preserves the Actions and Environment values
 
 ## API and permissions
 
@@ -80,3 +82,10 @@ isolation, preflight, identity/value races, partial failure, restart and reports
 - When apply selects `--prune actions-variables` and confirms the Actions inventory
 - Then it deletes the Actions variable and verifies its absence
 - And the Agents variable retains its value
+
+### Scenario: Prune one Environment while preserving same-name variables elsewhere
+
+- Given Actions, Agents, staging and production each have a variable named `REGION`
+- And only production declares `variables: []`
+- When the maintainer applies with `--prune environment-variables`
+- Then production's variables are removed and the Actions, Agents and staging values are preserved
