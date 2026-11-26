@@ -45,7 +45,8 @@ func DecodeConfig(data []byte) (uimodel.Repository, error) {
 			}
 			for name, value := range fields {
 				if name == "labels" {
-					if err := decodeUIControl(&value, reflect.ValueOf(&repository.Labels).Elem(), "repository.labels"); err != nil {
+					var decoder uiControlDecoder
+					if err := decoder.decodeUIControl(&value, reflect.ValueOf(&repository.Labels).Elem(), "repository.labels"); err != nil {
 						return uimodel.Repository{}, err
 					}
 					continue

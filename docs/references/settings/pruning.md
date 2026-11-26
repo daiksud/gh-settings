@@ -34,7 +34,7 @@ Use one comma-separated list of scopes, or `all` alone. Empty elements, unknown 
 | [`webhooks`](webhooks.md#explicit-webhook-pruning) | Removes unlisted whole hooks, including their opaque secrets. |
 | [`runners`](actions/runners.md#runner-registration-pruning) | Deregisters unlisted runners and can affect jobs. |
 
-Some fields already own complete sets in ordinary apply, such as topics, a declared pull request exemption list, or an Environment's explicit deployment patterns. See the [configuration semantics](configuration.md#configuration-semantics) and the field's own rules before using an empty list.
+Some fields already own complete sets in ordinary apply, such as topics, a [managed pull request exemption list](moderation.md#pull-request-limit-exemption-list), or an Environment's explicit deployment patterns. See the [configuration semantics](configuration.md#configuration-semantics) and the field's own rules before using an empty list.
 
 ## Preflight and partial failures
 

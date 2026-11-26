@@ -9,13 +9,13 @@ UI paths, values, scope, permissions, export and confirmation semantics.
 
 - The canonical YAML and reported control paths are under
   `repository.settings.moderation.interaction_limits.pull_request_limits`.
-  Export places Moderation after Collaborators and preserves independent cap/list
-  ownership. The obsolete direct path and declarations containing both paths
-  fail before API requests or rewriting a configuration. Empty Moderation groups
+  Export places Moderation after Collaborators. The obsolete direct path and
+  declarations containing both paths fail before API requests or rewriting a
+  configuration. Empty Moderation groups
   manage nothing (`internal/workspace/ui_moderation_test.go`,
   `tests/acceptance/pull_request_limits_test.go`).
-- Omitted groups manage nothing; explicit false and integer boundaries survive
-  strict YAML round trips. Null, wrong types, API aliases and invalid ranges
+- Omitted groups manage nothing. Explicit false and valid integer boundaries survive
+  strict YAML round trips. Unknown keys and invalid values for managed controls
   fail before remote work (`internal/workspace/ui_pull_request_limits_test.go`).
 - Only selected controls count toward managed state and produce typed changes;
   an unacquired observation never supplies defaults
@@ -33,9 +33,11 @@ UI paths, values, scope, permissions, export and confirmation semantics.
 - Plan selects one family read. Apply distinguishes no-op, confirmed write,
   pre-write read failure and uncertain write effects
   (`internal/app/pull_request_limits_test.go`).
-- Ordinary export attempts the cap independently, and reports validate
-  each fixed typed field and the closed managed-count bound
-  (`internal/cli/export_test.go`,
+- Export of an observed disabled cap writes only the false checkbox and skips
+  the exemption inventory. An enabled cap includes the maximum, draft-counting
+  choice and readable exemption list. Reports validate each fixed typed field
+  and the closed managed-count bound
+  (`internal/app/pull_request_limits_test.go`, `internal/cli/export_test.go`,
   `internal/actions/pull_request_limits_test.go`).
 
 - Built-executable export, validate, plan, apply, private reports and Summary
@@ -50,6 +52,17 @@ UI paths, values, scope, permissions, export and confirmation semantics.
 - Then the PATCH sends the observed enabled state and the new maximum
 - And confirmation requires the maximum to be two and the omitted controls to retain their observed values
 
+### Scenario: Disable the cap with other controls present
+
+- Given the cap is enabled and its exemption list contains a user
+- And the declaration sets `limit_open_pull_requests_from_users_without_write_access` to `false`, changes the maximum and draft-counting option, and sets `exemption_list` to `[]`
+- When the user runs `validate`, `plan`, `apply` or re-exports that file
+- Then one info message identifies the three ignored keys and explains that the cap is set to `false`, without displaying their values
+- And a detailed Action plan includes the message in its log while a status-only plan suppresses it
+- And plan counts only the checkbox and shows only its change
+- And apply disables the cap, preserves the stored maximum and draft-counting choice, and makes no exemption list request
+- And a declaration containing only the false checkbox produces no ignored-key message
+
 ## Evidence limits
 
 Local fixtures use dummy credentials and establish client behavior, not effective
@@ -59,7 +72,7 @@ cause and maximum propagation delay remain unknown. No external-actor enforcemen
 or automatic exemption preservation was established. No temporary restriction or automatic exemption-rule management is implemented.
 Selected list membership has the separate contract below.
 
-## Rule: Replace exemption list membership independently of the cap
+## Rule: Replace exemption list membership when the cap is true or omitted in YAML
 
 - A separate `exemption_list` is authoritative membership, including explicit
   empty removal. Omission makes no list request and does not change cap ownership
@@ -71,7 +84,7 @@ Selected list membership has the separate contract below.
   verifies retained membership/IDs, adds next and verifies exact
   final state. A full 100-user replacement never exceeds the limit; later failure
   retains confirmed removals (`internal/github/pull_request_exemptions_test.go`).
-- Independent plan, automatic export and direct apply distinguish no-op, pre-write
+- List-only plan, export of a visible list and direct apply distinguish no-op, pre-write
   failure, uncertain effects and confirmed partial replacement. An archived
   target retains the existing guard (`internal/app/pull_request_exemptions_test.go`).
 - CLI presentation, whole-list reports, strict report reconstruction,

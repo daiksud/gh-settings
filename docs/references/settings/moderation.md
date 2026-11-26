@@ -19,11 +19,23 @@ repository:
           count_draft_pull_requests_toward_the_limit: true
 ```
 
-The enable and draft controls are optional booleans. The maximum is an optional
-integer from 1 through 1000. Omission leaves that control unmanaged, including
-latent maximum/draft values while disabled. Empty groups manage nothing. Null,
-quoted booleans/integers, fractions and API-shaped aliases are rejected.
-The Moderation namespace requires a compatible CLI or Action release, such as v0.45.0. Check the [example workflow pin](../../guides/github-actions.md#published-package-and-consumer-pins) before adopting this declaration.
+When `limit_open_pull_requests_from_users_without_write_access` is explicitly
+`false`, only the checkbox is managed. The maximum, draft-counting option and
+`exemption_list` are ignored even when present. For example,
+`exemption_list: []` alongside `false` leaves the existing exemptions intact.
+If any of these keys are present, `validate`, `plan`, `apply` and a re-export
+of the existing file print one `info:` message on stderr. It names the ignored
+keys and explains that the checkbox is `false`, without displaying their
+values. The detailed Action plan shows this message in the job log.
+A status-only plan suppresses it.
+
+When the checkbox is `true` or omitted, each declared control is managed
+independently. The enable and draft controls take booleans. The maximum takes
+an integer from 1 through 1000. Validation rejects nulls, quoted booleans or
+integers, and fractions for managed controls. Unknown keys and API-shaped
+aliases are rejected even when the checkbox is `false`. Empty groups manage
+nothing. Check the [CLI or Action version used by your workflow](../../guides/github-actions.md#published-package-and-consumer-pins)
+for support for these semantics.
 
 ## Updating and verifying a cap
 
@@ -39,11 +51,14 @@ Denied, malformed or other mismatching readback fails immediately. Failure after
 PATCH reports uncertain effects; earlier successful operations remain applied.
 Apply is not atomic and does not roll back.
 
-Ordinary `export` independently includes all three stored values,
-including disabled/false and latent values. Missing `include_drafts` is an acquisition error, even though
-it is optional in the published response schema; it never means false. Failed
-acquisition emits info and retains prior cap intent. CLI and detailed Action reports
-use these UI paths and native booleans/integers; status-only output hides values.
+When GitHub reports the cap disabled, `export` writes only the checkbox as
+`false` and skips the exemption list request. When GitHub reports it enabled,
+`export` writes all three cap values and reads the exemption list. A missing
+`include_drafts` makes the cap observation incomplete. If the cap cannot be
+read, export emits an info message and retains the prior cap declaration. It
+can still read the exemption list unless the retained checkbox is `false`.
+CLI and detailed Action reports use the UI paths and native booleans/integers.
+Status-only output hides values.
 
 The [official creation-cap API](https://docs.github.com/rest/interactions/repos#update-pull-request-creation-cap-for-a-repository)
 requires administrator access. Credentials must already authorize the endpoint;
@@ -60,8 +75,8 @@ readback does not establish enforcement against external actors. See the
 ## Pull request limit Exemption list
 
 `repository.settings.moderation.interaction_limits.pull_request_limits.exemption_list`
-manages the complete selected list of trusted User logins, independently of the
-three cap controls:
+manages the complete selected list of trusted User logins when the checkbox is
+`true` or omitted. To manage just the list, omit the cap controls.
 
 ```yaml
 repository:
@@ -94,8 +109,8 @@ concurrency protection is promised. This selected-list operation runs before
 separately declared cap controls; it never changes the cap, automatic exemption
 rules, temporary restrictions, collaborator grants or repository permissions.
 
-Ordinary `export` independently includes the complete list, including `[]`.
-A failed, incomplete, ambiguous or unsupported inventory emits info and retains
+When the cap is enabled, `export` includes the complete list, including `[]`.
+A failed, incomplete, ambiguous or unsupported list read emits info and retains
 prior membership without stopping independent reads. CLI
 and detailed Action reports/Summary expose the selected membership; status-only
 output omits it. The collection counts as one managed value.

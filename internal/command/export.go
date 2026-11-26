@@ -21,7 +21,7 @@ func exportCheckout(checkout workspace.Checkout, reader app.Reader, output io.Wr
 	if err != nil {
 		return err
 	}
-	existing, save, err := prepareCheckoutSave(checkout)
+	existing, save, err := prepareCheckoutSave(checkout, output)
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ repository:
     moderation:
       interaction_limits:
         pull_request_limits:
-          limit_open_pull_requests_from_users_without_write_access: false
+          limit_open_pull_requests_from_users_without_write_access: true
           maximum_open_pull_requests_per_user: 1
           count_draft_pull_requests_toward_the_limit: false
           exemption_list: []
@@ -33,7 +33,7 @@ repository:
 	if err != nil {
 		t.Fatal(err)
 	}
-	o, _ := settings.NewPullRequestLimitsObservation(settings.PullRequestLimitsValues{Enabled: false, Maximum: 1, IncludeDrafts: false})
+	o, _ := settings.NewPullRequestLimitsObservation(settings.PullRequestLimitsValues{Enabled: true, Maximum: 1, IncludeDrafts: false})
 	managed, changes, err := settings.ComparePullRequestLimits(o, d.PullRequestLimits)
 	if err != nil || managed != 3 || len(changes) != 0 || d.PullRequestExemptions == nil || len(d.PullRequestExemptions.Logins()) != 0 {
 		t.Fatalf("changed ownership: %#v %d %v %v", d, managed, changes, err)
@@ -61,6 +61,7 @@ repository:
 
 func TestModerationRejectsObsoleteConflictingAndUnsupportedShapes(t *testing.T) {
 	for _, test := range []struct{ body, diagnostic string }{
+		{"ignored_pull_request_limit_keys: []", "unknown repository.settings key"},
 		{"interaction_limits: {}", "is no longer supported"},
 		{"interaction_limits: {}, moderation: {interaction_limits: {}}", "cannot both be declared"},
 		{"moderation: {interaction_limits: {}}, interaction_limits: {}", "cannot both be declared"},

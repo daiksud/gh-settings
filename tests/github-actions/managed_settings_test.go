@@ -61,6 +61,10 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The operational v0.46.0 pin still applies these keys when the cap is disabled.
+	if ui.Settings != nil && len(ui.Settings.IgnoredPullRequestLimitKeys) > 0 {
+		t.Fatalf("omit inactive pull request limit keys from the operational declaration: %v", ui.Settings.IgnoredPullRequestLimitKeys)
+	}
 	declaration, err := github.DeclarationFromUI(ui)
 	if err != nil {
 		t.Fatal(err)

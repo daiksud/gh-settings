@@ -339,28 +339,35 @@ func Export(checkout ExportCheckout, read Reader) error {
 		enabled, err := observed.Value()
 		return func(d *settings.Declaration) { d.CopilotMCP = &enabled }, err
 	})
-	observe(settings.PullRequestExemptionsPath, read.PullRequestExemptions != nil, func() (exportAssignment, error) {
-		observed, err := read.PullRequestExemptions(repo)
-		if err != nil {
-			return nil, err
-		}
-		logins, err := observed.Logins()
-		if err != nil {
-			return nil, err
-		}
-		desired, err := settings.NewPullRequestExemptionsDeclaration(logins)
-		return func(d *settings.Declaration) { d.PullRequestExemptions = &desired }, err
-	})
 	observe(settings.PullRequestLimitsPath, read.PullRequestLimits != nil, func() (exportAssignment, error) {
 		observed, err := read.PullRequestLimits(repo)
 		if err != nil {
 			return nil, err
 		}
 		values, err := observed.Values()
-		return func(d *settings.Declaration) {
-			d.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: &values.Enabled, Maximum: &values.Maximum, IncludeDrafts: &values.IncludeDrafts}
-		}, err
+		limits := settings.PullRequestLimitsDeclaration{Enabled: &values.Enabled}
+		if values.Enabled {
+			limits.Maximum = &values.Maximum
+			limits.IncludeDrafts = &values.IncludeDrafts
+		}
+		return func(d *settings.Declaration) { d.PullRequestLimits = limits }, err
 	})
+	if enabled := declaration.PullRequestLimits.Enabled; enabled != nil && !*enabled {
+		declaration.PullRequestExemptions = nil
+	} else {
+		observe(settings.PullRequestExemptionsPath, read.PullRequestExemptions != nil, func() (exportAssignment, error) {
+			observed, err := read.PullRequestExemptions(repo)
+			if err != nil {
+				return nil, err
+			}
+			logins, err := observed.Logins()
+			if err != nil {
+				return nil, err
+			}
+			desired, err := settings.NewPullRequestExemptionsDeclaration(logins)
+			return func(d *settings.Declaration) { d.PullRequestExemptions = &desired }, err
+		})
+	}
 	observe("repository.settings.copilot.code_review.review_effort_level", read.CopilotReviewEffort != nil, func() (exportAssignment, error) {
 		observed, err := read.CopilotReviewEffort(repo)
 		if err != nil {

@@ -92,9 +92,6 @@ repository:
       interaction_limits:
         pull_request_limits:
           limit_open_pull_requests_from_users_without_write_access: false
-          exemption_list: []
-          maximum_open_pull_requests_per_user: 1
-          count_draft_pull_requests_toward_the_limit: false
     rulesets:
       - id: 24911852
         ruleset_name: default

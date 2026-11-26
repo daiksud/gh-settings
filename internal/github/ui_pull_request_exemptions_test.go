@@ -9,7 +9,7 @@ func TestPullRequestExemptionsExportMergesIndependentCapControls(t *testing.T) {
 	for _, withCap := range []bool{false, true} {
 		empty := ""
 		topics := []string{}
-		enabled := false
+		enabled := true
 		maximum := 10
 		drafts := true
 		exemptions, _ := settings.NewPullRequestExemptionsDeclaration([]string{})

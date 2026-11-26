@@ -2,6 +2,7 @@
 package command
 
 import (
+	"io"
 	"os"
 
 	"github.com/daiksud/gh-settings/internal/actions"
@@ -15,9 +16,13 @@ import (
 // Run dispatches the command-line arguments and returns the process exit code.
 func Run(args []string, version string) int {
 	checkout := workspace.NewCheckout(".")
-	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
+	var diagnostics io.Writer = os.Stderr
+	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout, diagnostics) }
 	reader := bindings.Reader()
 	if len(args) > 0 && args[0] == "action" {
+		if actions.PrivateInvocation(args[1:]) {
+			diagnostics = io.Discard
+		}
 		return actions.Run(args[1:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			var prune settings.PruneScopes
 			if raw := os.Getenv("SETTINGS_PRUNE"); raw != "" {
@@ -37,7 +42,7 @@ func Run(args []string, version string) int {
 			return app.Plan(loadDeclaration, checkout.Repository, reader, options.Prune)
 		},
 		Apply: func(options cli.ApplyOptions) (app.ApplyResult, error) {
-			desired, record, err := prepareCheckoutApply(checkout)
+			desired, record, err := prepareCheckoutApply(checkout, diagnostics)
 			if err != nil {
 				return app.ApplyResult{Outcome: app.ApplyFailed}, err
 			}
