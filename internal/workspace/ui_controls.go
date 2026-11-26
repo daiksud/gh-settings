@@ -29,10 +29,13 @@ func decodeUISettings(node *yaml.Node) (uimodel.RepositorySettings, error) {
 		return uimodel.RepositorySettings{}, fmt.Errorf("repository.settings.interaction_limits is no longer supported; use repository.settings.moderation.interaction_limits")
 	}
 	var document uiSettingsDocument
-	if err := decodeUIFields(fields, reflect.ValueOf(&document).Elem(), "repository.settings"); err != nil {
+	var decoder uiControlDecoder
+	if err := decoder.decodeUIFields(fields, reflect.ValueOf(&document).Elem(), "repository.settings"); err != nil {
 		return uimodel.RepositorySettings{}, err
 	}
-	return document.model(), nil
+	model := document.model()
+	model.IgnoredPullRequestLimitKeys = decoder.ignoredPullRequestLimitKeys
+	return model, nil
 }
 
 func encodeUISettings(settings uimodel.RepositorySettings) (*yaml.Node, error) {
@@ -51,7 +54,12 @@ func uiControlName(name string) string {
 	return strings.ToLower(uiWordBoundary.ReplaceAllString(name, "${1}_${2}"))
 }
 
-func decodeUIFields(fields map[string]yaml.Node, target reflect.Value, path string) error {
+// Keep information about inactive input keys outside the public document model.
+type uiControlDecoder struct {
+	ignoredPullRequestLimitKeys []string
+}
+
+func (decoder *uiControlDecoder) decodeUIFields(fields map[string]yaml.Node, target reflect.Value, path string) error {
 	controls := make(map[string]reflect.Value, target.NumField())
 	for i := 0; i < target.NumField(); i++ {
 		controls[uiControlName(target.Type().Field(i).Name)] = target.Field(i)
@@ -61,14 +69,14 @@ func decodeUIFields(fields map[string]yaml.Node, target reflect.Value, path stri
 		if !ok {
 			return fmt.Errorf("unknown %s key %q", path, key)
 		}
-		if err := decodeUIControl(&value, control, path+"."+key); err != nil {
+		if err := decoder.decodeUIControl(&value, control, path+"."+key); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
+func (decoder *uiControlDecoder) decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 	node, err := resolveAlias(node)
 	if err != nil {
 		return err
@@ -90,7 +98,7 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 	}
 	if target.Kind() == reflect.Pointer {
 		value := reflect.New(target.Type().Elem())
-		if err := decodeUIControl(node, value.Elem(), path); err != nil {
+		if err := decoder.decodeUIControl(node, value.Elem(), path); err != nil {
 			return err
 		}
 		target.Set(value)
@@ -103,7 +111,7 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 		}
 		values := reflect.MakeSlice(target.Type(), len(node.Content), len(node.Content))
 		for i, item := range node.Content {
-			if err := decodeUIControl(item, values.Index(i), fmt.Sprintf("%s[%d]", path, i)); err != nil {
+			if err := decoder.decodeUIControl(item, values.Index(i), fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
 		}
@@ -131,7 +139,12 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 		if err != nil {
 			return err
 		}
-		return decodeUIFields(fields, target, path)
+		if limits, ok := target.Addr().Interface().(*uimodel.PullRequestLimits); ok {
+			if err := decoder.skipInactivePullRequestLimitFields(fields, limits, path); err != nil {
+				return err
+			}
+		}
+		return decoder.decodeUIFields(fields, target, path)
 	case reflect.String:
 		if node.Kind != yaml.ScalarNode || node.Tag != "!!str" {
 			return fmt.Errorf("%s must be a string", path)
@@ -144,6 +157,28 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 		target.SetBool(strings.EqualFold(node.Value, "true"))
 	default:
 		return fmt.Errorf("unsupported UI control type at %s", path)
+	}
+	return nil
+}
+
+func (decoder *uiControlDecoder) skipInactivePullRequestLimitFields(fields map[string]yaml.Node, limits *uimodel.PullRequestLimits, path string) error {
+	const enabledKey = "limit_open_pull_requests_from_users_without_write_access"
+	node, ok := fields[enabledKey]
+	if !ok {
+		return nil
+	}
+	if err := decoder.decodeUIControl(&node, reflect.ValueOf(&limits.LimitOpenPullRequestsFromUsersWithoutWriteAccess).Elem(), path+"."+enabledKey); err != nil {
+		return err
+	}
+	delete(fields, enabledKey)
+	if *limits.LimitOpenPullRequestsFromUsersWithoutWriteAccess {
+		return nil
+	}
+	for _, key := range []string{"maximum_open_pull_requests_per_user", "count_draft_pull_requests_toward_the_limit", "exemption_list"} {
+		if _, present := fields[key]; present {
+			decoder.ignoredPullRequestLimitKeys = append(decoder.ignoredPullRequestLimitKeys, key)
+			delete(fields, key)
+		}
 	}
 	return nil
 }

@@ -18,10 +18,12 @@ import (
 func TestPullRequestLimitsProcess(t *testing.T) {
 	binary := acceptanceBinary(t)
 	const endpoint = "/repos/owner/current/interaction-limits/pulls/creation-cap"
+	const exemptionEndpoint = "/repos/owner/current/interaction-limits/pulls/bypass-list"
 	const prefix = "repository.settings.moderation.interaction_limits.pull_request_limits."
 	const enabledField = "limit_open_pull_requests_from_users_without_write_access"
 	const maximumField = "maximum_open_pull_requests_per_user"
 	const draftsField = "count_draft_pull_requests_toward_the_limit"
+	const exemptionsField = "exemption_list"
 	var mu sync.Mutex
 	state := map[string]any{"enabled": true, "max_open_pull_requests": float64(10), "include_drafts": true}
 	var requests, all []string
@@ -43,6 +45,11 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 		defer mu.Unlock()
 		all = append(all, r.Method+" "+r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == exemptionEndpoint {
+			requests = append(requests, r.Method+" "+r.URL.Path)
+			fmt.Fprint(w, `[{"login":"existing-user","id":1,"type":"User"}]`)
+			return
+		}
 		if r.URL.Path == endpoint {
 			requests = append(requests, r.Method+" "+r.URL.Path)
 			if r.Header.Get("X-GitHub-Api-Version") != "2026-03-10" {
@@ -111,7 +118,7 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 			t.Errorf("unexpected API %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false, "/interaction-limits/pulls/creation-cap", "/labels", "/topics")
+	}, false, "/interaction-limits/pulls/creation-cap", "/interaction-limits/pulls/bypass-list", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,10 +136,11 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	wantInfo := ""
 	run := func(args []string, want string, fail bool) string {
 		t.Helper()
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) || fail && result.stdout.Len() != 0 {
+		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || withoutExportInfo(result.stderr.String()) != wantInfo) || fail && result.stdout.Len() != 0 {
 			t.Fatalf("args=%v exit=%v stdout=%q stderr=%q err=%v", args, result.runErr, result.stdout.String(), result.stderr.String(), err)
 		}
 		return withoutExportInfo(result.stderr.String())
@@ -196,11 +204,13 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 		mu.Unlock()
 		expect()
 	}
-	input := declaration(enabledField + ": false, " + maximumField + ": 25, " + draftsField + ": false")
+	input := declaration(exemptionsField + ": [private-user], " + maximumField + ": 25, " + enabledField + ": false, " + draftsField + ": false")
 	write(input)
+	const ignoredInfo = "info: ignored " + maximumField + ", " + draftsField + ", " + exemptionsField + " because " + prefix + enabledField + " is false\n"
+	wantInfo = ignoredInfo
 	run([]string{"validate"}, "", false)
 	expect()
-	wantPlan := prefix + enabledField + ": true → false\n" + prefix + maximumField + ": 10 → 25\n" + prefix + draftsField + ": true → false\n"
+	wantPlan := prefix + enabledField + ": true → false\n"
 	run([]string{"plan"}, wantPlan, false)
 	expect("GET " + endpoint)
 	report := filepath.Join(fixture.root, "pull-request-limits-plan.json")
@@ -208,19 +218,18 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	expect("GET " + endpoint)
 	raw, err := os.ReadFile(report)
 	var wire map[string]any
-	if err != nil || json.Unmarshal(raw, &wire) != nil || wire["managed"] != float64(3) || wire["outcome"] != "changed" {
+	if err != nil || json.Unmarshal(raw, &wire) != nil || wire["managed"] != float64(1) || wire["outcome"] != "changed" || strings.Contains(string(raw), "private-user") {
 		t.Fatal(string(raw), err)
 	}
 	changes, ok := wire["pull_request_limits"].([]any)
 	wantChanges := []any{
 		map[string]any{"field": prefix + enabledField, "before": true, "after": false},
-		map[string]any{"field": prefix + maximumField, "before": float64(10), "after": float64(25)},
-		map[string]any{"field": prefix + draftsField, "before": true, "after": false},
 	}
 	if !ok || !reflect.DeepEqual(changes, wantChanges) {
 		t.Fatal(string(raw))
 	}
 	summary := filepath.Join(fixture.root, "pull-request-limits-summary.md")
+	wantInfo = ""
 	run([]string{"action", "summary", report, summary}, "", false)
 	mu.Lock()
 	if len(all) != 0 {
@@ -237,9 +246,12 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 			t.Fatal("missing Summary change", line, string(content))
 		}
 	}
+	run([]string{"action", "plan", report + ".private", "status-only"}, "", false)
+	expect("GET " + endpoint)
 	mu.Lock()
-	expectedPatch = map[string]any{"enabled": false, "max_open_pull_requests": float64(25), "include_drafts": false}
+	expectedPatch = map[string]any{"enabled": false}
 	mu.Unlock()
+	wantInfo = ignoredInfo
 	run([]string{"apply"}, "Applied repository settings.\n", false)
 	expect("GET "+endpoint, "PATCH "+endpoint, "GET "+endpoint)
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
@@ -249,9 +261,15 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	expect("GET " + endpoint)
 	run([]string{"plan"}, "No differences for managed repository settings.\n", false)
 	expect("GET " + endpoint)
+	// An empty list beside the disabled checkbox leaves existing exemptions intact.
+	write(declaration(enabledField + ": false, " + exemptionsField + ": []"))
+	wantInfo = "info: ignored " + exemptionsField + " because " + prefix + enabledField + " is false\n"
+	run([]string{"apply"}, "Applied repository settings.\n", false)
+	expect("GET " + endpoint)
 	// A maximum-only declaration preserves enabled and drafts. Exact baseline
 	// readbacks may be stale, but the write itself must never be retried.
 	write(declaration(maximumField + ": 30"))
+	wantInfo = ""
 	mu.Lock()
 	expectedPatch = map[string]any{"enabled": false, "max_open_pull_requests": float64(30)}
 	staleRemaining = 2
@@ -283,9 +301,12 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	mu.Lock()
 	readbackMode = "complete"
 	mu.Unlock()
-	// Explicit opt-in exports a complete disabled triple, including native false.
+	// Export reads the existing declaration, then projects the disabled checkbox.
+	write(input)
+	wantInfo = ignoredInfo
 	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
+	wantInfo = ""
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -293,10 +314,8 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	if !strings.Contains(string(exported), "        moderation:\n            interaction_limits:\n") {
 		t.Fatal("noncanonical export", string(exported))
 	}
-	for _, item := range []string{enabledField + ": false", maximumField + ": 40", draftsField + ": false"} {
-		if !strings.Contains(string(exported), item) {
-			t.Fatal(item, string(exported))
-		}
+	if !strings.Contains(string(exported), enabledField+": false") || strings.Contains(string(exported), maximumField) || strings.Contains(string(exported), draftsField) || strings.Contains(string(exported), exemptionsField) {
+		t.Fatal("export did not contain only the disabled cap switch", string(exported))
 	}
 	run([]string{"validate"}, "", false)
 	expect()

@@ -17,7 +17,7 @@ import (
 // Run writes nonsecret machine output and maps failures to diagnostics and status.
 func Run(args []string, stdout, stderr io.Writer, version string, plan func() (app.PlanResult, error)) int {
 	if err := execute(args, stdout, version, plan); err != nil {
-		if privateInvocation(args) {
+		if PrivateInvocation(args) {
 			fmt.Fprintln(stderr, "gh settings action: private plan reporting failed")
 		} else {
 			fmt.Fprintf(stderr, "gh settings action: %v\n", err)
@@ -82,8 +82,8 @@ func execute(args []string, stdout io.Writer, version string, plan func() (app.P
 	return nil
 }
 
-// A path named status-only does not select private reporting.
-func privateInvocation(args []string) bool {
+// PrivateInvocation identifies commands whose logs must omit settings details.
+func PrivateInvocation(args []string) bool {
 	return (len(args) == 3 && args[0] == "plan" && args[2] == "status-only") ||
 		(len(args) == 4 && args[0] == "summary" && args[3] == "status-only")
 }

@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,11 +58,11 @@ func TestCheckoutUICompositionAndSnapshotWriteback(t *testing.T) {
 	}
 	topics := []string{}
 	want := settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &empty, Homepage: &website, HasIssues: &no}, Topics: settings.TopicsDeclaration{Names: &topics}, Labels: &labels, Actions: settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &permission, CanApprovePullRequestReviews: &no}}
-	got, err := loadCheckoutDeclaration(checkout)
+	got, err := loadCheckoutDeclaration(checkout, io.Discard)
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("checkout declaration %#v; want %#v; error=%v", got, want, err)
 	}
-	got, record, err := prepareCheckoutApply(checkout)
+	got, record, err := prepareCheckoutApply(checkout, io.Discard)
 	if err != nil || record == nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("snapshot declaration %#v, recorder=%t, error=%v", got, record != nil, err)
 	}
@@ -87,7 +88,7 @@ func TestCheckoutPublicCodecRejectsObsoleteEnvelope(t *testing.T) {
 func TestCheckoutUICompositionNoOpDocuments(t *testing.T) {
 	for _, input := range []string{"version: daiksud/gh-settings@v0\n", "version: daiksud/gh-settings@v0\nrepository: {}\n", "version: daiksud/gh-settings@v0\nrepository: {settings: {}}\n"} {
 		checkout, _ := checkoutConfigFixture(t, input)
-		got, err := loadCheckoutDeclaration(checkout)
+		got, err := loadCheckoutDeclaration(checkout, io.Discard)
 		if err != nil || !got.Empty() {
 			t.Fatalf("no-op document became intent: %#v, %v", got, err)
 		}
@@ -96,7 +97,7 @@ func TestCheckoutUICompositionNoOpDocuments(t *testing.T) {
 
 func TestCheckoutUIExportSaveDefersAndRejectsInvalidOutput(t *testing.T) {
 	checkout, path := checkoutConfigFixture(t, "# original configuration\nversion: daiksud/gh-settings@v0\nrepository: {}\n")
-	_, save, err := prepareCheckoutSave(checkout)
+	_, save, err := prepareCheckoutSave(checkout, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +138,7 @@ func TestCheckoutUIExportWithEveryObservationUnavailableCreatesValidEmptyFile(t 
 			return nil
 		},
 		PrepareSave: func() (func(settings.Declaration) error, error) {
-			_, save, err := prepareCheckoutSave(checkout)
+			_, save, err := prepareCheckoutSave(checkout, io.Discard)
 			return save, err
 		},
 	}, app.Reader{})
@@ -151,7 +152,7 @@ func TestCheckoutUIExportWithEveryObservationUnavailableCreatesValidEmptyFile(t 
 	if !strings.Contains(string(data), "version: daiksud/gh-settings@v0") || strings.Contains(string(data), "about:") || strings.Contains(string(data), "false") {
 		t.Fatalf("empty export fabricated intent: %s", data)
 	}
-	got, err := loadCheckoutDeclaration(checkout)
+	got, err := loadCheckoutDeclaration(checkout, io.Discard)
 	if err != nil || !got.Empty() {
 		t.Fatalf("empty first export is not a valid no-op declaration: %+v, %v", got, err)
 	}
@@ -163,11 +164,11 @@ func TestCheckoutUIInvalidDomainReturnsNoPartialIntent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := loadCheckoutDeclaration(checkout)
+	got, err := loadCheckoutDeclaration(checkout, io.Discard)
 	if err == nil || !got.Empty() {
 		t.Fatalf("invalid UI choice returned partial intent: %#v, %v", got, err)
 	}
-	got, record, err := prepareCheckoutApply(checkout)
+	got, record, err := prepareCheckoutApply(checkout, io.Discard)
 	if err == nil || !got.Empty() || record != nil {
 		t.Fatalf("invalid snapshot returned intent/recorder: %#v, %t, %v", got, record != nil, err)
 	}
@@ -179,7 +180,7 @@ func TestCheckoutUIInvalidDomainReturnsNoPartialIntent(t *testing.T) {
 func TestExportPreparationRejectsInconsistentExistingSecurity(t *testing.T) {
 	input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    advanced_security:\n      code_security:\n        codeql_analysis: {default_setup: false, languages: [go]}\n"
 	checkout, path := checkoutConfigFixture(t, input)
-	_, save, err := prepareCheckoutSave(checkout)
+	_, save, err := prepareCheckoutSave(checkout, io.Discard)
 	if err == nil || save != nil {
 		t.Fatal("inconsistent prior intent accepted", err)
 	}

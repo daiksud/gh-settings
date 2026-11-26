@@ -27,6 +27,9 @@ type RepositorySettings struct {
 	SecurityAndQuality    *SecurityAndQuality
 	Pages                 *Pages
 	Environments          *[]Environment
+
+	// IgnoredPullRequestLimitKeys records inactive input key names for diagnostics.
+	IgnoredPullRequestLimitKeys []string
 }
 
 type RepositoryVariable struct {
