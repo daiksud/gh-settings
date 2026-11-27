@@ -19,7 +19,7 @@ func TestUIEnvironmentExactPUTPreservesOmittedBuiltins(t *testing.T) {
 		partial bool
 	}{
 		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false)}}, `{"can_admins_bypass":false,"wait_timer":30,"prevent_self_review":true,"reviewers":[{"type":"User","id":9}],"deployment_branch_policy":{"protected_branches":true,"custom_branch_policies":false}}`, true},
-		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: environmentUIPtr(0), PreventSelfReview: environmentUIPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false), RequiredReviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{})}, DeploymentBranchesAndTags: environmentUIPtr(uimodel.NoRestriction)}, `{"wait_timer":0,"prevent_self_review":false,"can_admins_bypass":false,"reviewers":[],"deployment_branch_policy":null}`, false},
+		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{}), PreventSelfReview: environmentUIPtr(false)}, WaitTimer: environmentUIPtr(0), AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false)}, DeploymentBranchesAndTags: environmentUIPtr(uimodel.NoRestriction)}, `{"wait_timer":0,"prevent_self_review":false,"can_admins_bypass":false,"reviewers":[],"deployment_branch_policy":null}`, false},
 	} {
 		expectedAfter := after
 		if test.partial {

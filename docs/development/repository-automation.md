@@ -172,6 +172,8 @@ The [PR validator](../../.github/workflows/settings-pr.yml) and [main apply work
 
 The two empty repository variable lists also use v0.46.0's `settings.actions.variables` and `settings.agents.variables` under `repository`. When a release supports `settings.secrets_and_variables`, update both workflow pins and move the two lists together in the same PR. Keep the credential Environment's internal variable values out of the tracked YAML.
 
+The credential Environment also uses the v0.46.0 flat reviewer list, self-review flag and `custom_rules` list. Move them to [the current Environment structure](../references/settings/environments.md#deployment-protection-rules) when both consumers upgrade. Preserve the selected reviewer and explicit empty App set.
+
 The declaration records supported, applicable settings acquired through the
 published CLI's real read-only export and checked with a fresh local plan.
 It includes all observed Labels, the existing main Ruleset and credential

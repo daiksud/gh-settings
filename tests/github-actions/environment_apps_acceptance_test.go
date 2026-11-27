@@ -21,7 +21,7 @@ func TestBuiltCompositeEnvironmentApps(t *testing.T) {
 			f := product.newFixture(t)
 
 			const name = "ENVIRONMENT_NAME_CANARY"
-			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{name: " + name + ", deployment_protection_rules: {custom_rules: [2]}}]}}\n"
+			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{name: " + name + ", deployment_protection_rules: {enable_custom_rules_with_github_apps: [2]}}]}}\n"
 			f.write(filepath.Join(f.caller, ".github/settings.yml"), input)
 			state, err := os.MkdirTemp("/tmp", "ghs-apps-")
 			if err != nil {
@@ -112,10 +112,10 @@ func TestBuiltCompositeEnvironmentApps(t *testing.T) {
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
-				if mode == "detailed" && !strings.Contains(result.summary, "custom_rules") {
+				if mode == "detailed" && !strings.Contains(result.summary, "enable_custom_rules_with_github_apps") {
 					t.Fatal(result.summary)
 				}
-				if mode == "status-only" && (strings.Contains(result.summary+result.log, name) || strings.Contains(result.summary, "custom_rules")) {
+				if mode == "status-only" && (strings.Contains(result.summary+result.log, name) || strings.Contains(result.summary, "enable_custom_rules_with_github_apps")) {
 					t.Fatal("private selection leaked", result)
 				}
 				if strings.Contains(result.summary+result.log, "PRIVATE_APP_NODE_") || strings.Contains(result.summary+result.log, "PRIVATE_RULE_NODE_") {

@@ -14,7 +14,7 @@ type EnvironmentCustomRule struct {
 
 func normalizeEnvironmentCustomRules(ids []int64) ([]int64, error) {
 	if len(ids) > 6 {
-		return nil, fmt.Errorf("environment custom_rules supports at most six App IDs")
+		return nil, fmt.Errorf("environment enable_custom_rules_with_github_apps supports at most six App IDs")
 	}
 	values := slices.Clone(ids)
 	if values == nil {
@@ -23,7 +23,7 @@ func normalizeEnvironmentCustomRules(ids []int64) ([]int64, error) {
 	slices.Sort(values)
 	for i, id := range values {
 		if id <= 0 || (i > 0 && values[i-1] == id) {
-			return nil, fmt.Errorf("environment custom_rules requires unique positive App IDs")
+			return nil, fmt.Errorf("environment enable_custom_rules_with_github_apps requires unique positive App IDs")
 		}
 	}
 	return values, nil
@@ -66,7 +66,7 @@ func EnvironmentCustomRuleChanges(current []EnvironmentCustomRule, desired *[]in
 		}
 	}
 	if len(ids)+len(add) > 6 {
-		return nil, nil, fmt.Errorf("environment custom_rules replacement exceeds six temporary App bindings; first apply an explicit reduced custom_rules set, then add the replacements (protection changes between applies)")
+		return nil, nil, fmt.Errorf("environment enable_custom_rules_with_github_apps replacement exceeds six temporary App bindings; first apply an explicit reduced App set, then add the replacements (protection changes between applies)")
 	}
 	for _, rule := range current {
 		if !slices.Contains(want, rule.AppID) {

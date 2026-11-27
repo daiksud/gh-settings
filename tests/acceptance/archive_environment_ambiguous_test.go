@@ -84,7 +84,7 @@ repository:
     general: {danger_zone: {archive_this_repository: true}}
     environments:
       - name: production
-        deployment_protection_rules: {wait_timer: 5, custom_rules: []}
+        deployment_protection_rules: {wait_timer: 5, enable_custom_rules_with_github_apps: []}
         deployment_branches_and_tags: selected_branches_and_tags
         deployment_branch_or_tag_rules: [{ref_type: branch, name_pattern: main}]
 `

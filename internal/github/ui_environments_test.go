@@ -32,15 +32,19 @@ func TestUIEnvironmentBuiltInSingletons(t *testing.T) {
 	}{
 		{uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: environmentUIPtr(0)}, settings.EnvironmentDeclaration{Name: "Production", WaitTimer: environmentUIPtr(0)}},
 		{uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: environmentUIPtr(43200)}, settings.EnvironmentDeclaration{Name: "Production", WaitTimer: environmentUIPtr(43200)}},
-		{uimodel.EnvironmentDeploymentProtectionRules{PreventSelfReview: environmentUIPtr(false)}, settings.EnvironmentDeclaration{Name: "Production", PreventSelfReview: environmentUIPtr(false)}},
-		{uimodel.EnvironmentDeploymentProtectionRules{PreventSelfReview: environmentUIPtr(true)}, settings.EnvironmentDeclaration{Name: "Production", PreventSelfReview: environmentUIPtr(true)}},
+		{uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{PreventSelfReview: environmentUIPtr(false)}}, settings.EnvironmentDeclaration{Name: "Production", PreventSelfReview: environmentUIPtr(false)}},
+		{uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{PreventSelfReview: environmentUIPtr(true)}}, settings.EnvironmentDeclaration{Name: "Production", PreventSelfReview: environmentUIPtr(true)}},
 		{uimodel.EnvironmentDeploymentProtectionRules{AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false)}, settings.EnvironmentDeclaration{Name: "Production", CanAdminsBypass: environmentUIPtr(false)}},
 		{uimodel.EnvironmentDeploymentProtectionRules{AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(true)}, settings.EnvironmentDeclaration{Name: "Production", CanAdminsBypass: environmentUIPtr(true)}},
-		{uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{})}, settings.EnvironmentDeclaration{Name: "Production", Reviewers: environmentUIPtr([]settings.EnvironmentReviewer{})}},
+		{uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{})}}, settings.EnvironmentDeclaration{Name: "Production", Reviewers: environmentUIPtr([]settings.EnvironmentReviewer{})}},
 	} {
 		got, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &test.ui})
 		if err != nil || !reflect.DeepEqual(got, test.want) {
 			t.Fatal(got, test.want, err)
+		}
+		projected, err := EnvironmentReportUI(got)
+		if err != nil || !reflect.DeepEqual(projected.DeploymentProtectionRules, &test.ui) {
+			t.Fatalf("report changed the requested protection fields: got %#v, want %#v, error %v", projected.DeploymentProtectionRules, test.ui, err)
 		}
 	}
 	got, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production"})
@@ -61,7 +65,7 @@ func TestUIEnvironmentBuiltInSingletons(t *testing.T) {
 func TestUIEnvironmentTypedReviewersAndOwnership(t *testing.T) {
 	reviewers := []uimodel.EnvironmentReviewer{{Person: environmentUIPtr(int64(7))}, {Team: environmentUIPtr(int64(8))}}
 	timer := 15
-	got, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &reviewers, WaitTimer: &timer}})
+	got, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: &reviewers}, WaitTimer: &timer}})
 	if err != nil || !reflect.DeepEqual(*got.Reviewers, []settings.EnvironmentReviewer{{Type: "Team", ID: 8}, {Type: "User", ID: 7}}) {
 		t.Fatal(got, err)
 	}
@@ -71,11 +75,11 @@ func TestUIEnvironmentTypedReviewersAndOwnership(t *testing.T) {
 		t.Fatal("declaration aliases caller")
 	}
 	for _, entry := range []uimodel.EnvironmentReviewer{{}, {Person: environmentUIPtr(int64(0))}, {Team: environmentUIPtr(int64(-1))}, {Person: environmentUIPtr(int64(7)), Team: environmentUIPtr(int64(8))}} {
-		if _, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{entry})}}); err == nil {
+		if _, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{entry})}}}); err == nil {
 			t.Fatal("invalid principal accepted")
 		}
 	}
-	if _, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{}), PreventSelfReview: environmentUIPtr(true)}}); err == nil {
+	if _, err := EnvironmentDeclaration(uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{}), PreventSelfReview: environmentUIPtr(true)}}}); err == nil {
 		t.Fatal("empty reviewer dependency accepted")
 	}
 }

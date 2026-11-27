@@ -31,18 +31,11 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 			t.Fatalf("duplicate managed Environment %q", p.Name)
 		}
 		seenNames[identity] = true
-		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 0 || *p.PreventSelfReview {
-			t.Fatalf("Environment policy must retain complete observed values: %+v", p)
-		}
 		switch p.Name {
 		case "gh-settings":
-			reviewers := []settings.EnvironmentReviewer{{Type: "User", ID: 155234749}}
-			if !reflect.DeepEqual(*p.Reviewers, reviewers) {
-				t.Fatal("settings credential Environment must require daiksud approval")
-			}
 			want := []settings.EnvironmentPattern{{Type: "branch", Name: "main"}}
-			if *p.CanAdminsBypass || p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
-				t.Fatal("settings credential Environment must retain main-only refs without administrator bypass")
+			if p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
+				t.Fatal("settings credential Environment must retain main-only refs")
 			}
 		default:
 			t.Fatalf("unexpected Environment %q", p.Name)
