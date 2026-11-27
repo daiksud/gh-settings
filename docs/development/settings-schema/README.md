@@ -81,8 +81,10 @@ false, and keep an omitted setting omitted. The Wiki edit restriction and the
 private reporting detail controls have independent ownership.
 
 Keep the root marker `version: daiksud/gh-settings@v0` throughout v0.x.
-Switch it to `daiksud/gh-settings@v1` at CLI v1 publication. Users who have
-adopted the final v0 layout should change only the marker at that transition.
+Switch it to `daiksud/gh-settings@v1` at CLI v1 publication. A declaration
+using only v1-eligible settings in the final v0 layout should need only the
+marker change. Declarations using classic branch protection or Autolinks follow
+their separate v0 contracts and need a separate v1 transition decision.
 
 Review each pending reshape and blocking evidence item before declaring the
 design frozen. For each implementation, update the ledger, public examples,
