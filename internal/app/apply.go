@@ -452,7 +452,14 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		hasWrites = hasWrites || wrote
 	}
 	if desired.CopilotMCP != nil {
-		wrote, err := applyCopilotMCP(&result, repo, *desired.CopilotMCP, write)
+		wrote, err := applyCopilotToggle(&result, repo, *desired.CopilotMCP, CopilotMCPUpdate, settings.CopilotMCPPath, write.CopilotMCP)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.CopilotPublicSearch != nil {
+		wrote, err := applyCopilotToggle(&result, repo, *desired.CopilotPublicSearch, CopilotPublicSearchUpdate, settings.CopilotPublicSearchPath, write.CopilotPublicSearch)
 		if err != nil {
 			return result, err
 		}

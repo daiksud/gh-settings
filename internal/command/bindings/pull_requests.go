@@ -15,10 +15,10 @@ func updatePullRequestExemptions(repo repository.Repository, desired settings.Pu
 }
 
 // readArchivedCopilot supplies strict selected-toggle evidence for archived apply.
-func readArchivedCopilot(repo repository.Repository, instructions, mcp bool) (settings.ArchivedCopilotToggles, error) {
+func readArchivedCopilot(repo repository.Repository, selected settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error) {
 	client, err := github.NewArchivedCopilotClient(repo.Host)
 	if err != nil {
 		return settings.ArchivedCopilotToggles{}, err
 	}
-	return client.Read(repo, instructions, mcp)
+	return client.Read(repo, selected)
 }

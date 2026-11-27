@@ -313,7 +313,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		return func(d *settings.Declaration) { d.Actions.ForkApprovalPolicy = &v }, nil
 	})
 
-	observe("repository.settings.copilot.code_review.use_custom_instructions", read.CopilotInstructions != nil, func() (exportAssignment, error) {
+	observe("repository.settings.copilot.code_review.general.use_custom_instructions", read.CopilotInstructions != nil, func() (exportAssignment, error) {
 		observed, err := read.CopilotInstructions(repo)
 		if err != nil {
 			return nil, err
@@ -331,14 +331,26 @@ func Export(checkout ExportCheckout, read Reader) error {
 	})
 	declaration.OIDCSubject, err = exportOIDCSubject(checkout, read, repo, declaration.OIDCSubject)
 	diagnosticError = errors.Join(diagnosticError, err)
-	observe("repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests", read.CopilotMCP != nil, func() (exportAssignment, error) {
-		observed, err := read.CopilotMCP(repo)
-		if err != nil {
-			return nil, err
-		}
-		enabled, err := observed.Value()
-		return func(d *settings.Declaration) { d.CopilotMCP = &enabled }, err
-	})
+	var context settings.CopilotContextObservation
+	var contextErr error
+	if read.CopilotContext != nil {
+		context, contextErr = read.CopilotContext(repo)
+	}
+	for _, field := range []struct {
+		path   string
+		assign func(*settings.Declaration, *bool)
+	}{
+		{settings.CopilotMCPPath, func(d *settings.Declaration, b *bool) { d.CopilotMCP = b }},
+		{settings.CopilotPublicSearchPath, func(d *settings.Declaration, b *bool) { d.CopilotPublicSearch = b }},
+	} {
+		observe(field.path, read.CopilotContext != nil, func() (exportAssignment, error) {
+			if contextErr != nil {
+				return nil, contextErr
+			}
+			value, err := context.Value(field.path)
+			return func(d *settings.Declaration) { field.assign(d, &value) }, err
+		})
+	}
 	observe(settings.PullRequestLimitsPath, read.PullRequestLimits != nil, func() (exportAssignment, error) {
 		observed, err := read.PullRequestLimits(repo)
 		if err != nil {
@@ -368,7 +380,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return func(d *settings.Declaration) { d.PullRequestExemptions = &desired }, err
 		})
 	}
-	observe("repository.settings.copilot.code_review.review_effort_level", read.CopilotReviewEffort != nil, func() (exportAssignment, error) {
+	observe("repository.settings.copilot.code_review.general.review_effort_level", read.CopilotReviewEffort != nil, func() (exportAssignment, error) {
 		observed, err := read.CopilotReviewEffort(repo)
 		if err != nil {
 			return nil, err

@@ -7,22 +7,23 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// Both selected controls must match on each independent read. The lifecycle
+// All selected controls must match on each independent read. The lifecycle
 // checks surrounding these reads are not an atomic repository snapshot.
-func verifyArchivedCopilot(repo repository.Repository, instructions, mcp *bool, read func(repository.Repository, bool, bool) (settings.ArchivedCopilotToggles, error)) error {
-	if instructions == nil && mcp == nil {
+func verifyArchivedCopilot(repo repository.Repository, selected settings.ArchivedCopilotToggles, read func(repository.Repository, settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error)) error {
+	if selected == (settings.ArchivedCopilotToggles{}) {
 		return nil
 	}
 	if read == nil {
 		return fmt.Errorf("verify archived Copilot toggles: reader unavailable")
 	}
 	for range 2 {
-		observed, err := read(repo, instructions != nil, mcp != nil)
+		observed, err := read(repo, selected)
 		if err != nil {
 			return fmt.Errorf("verify archived Copilot toggles: observation unavailable")
 		}
-		if instructions != nil && (observed.Instructions == nil || *observed.Instructions != *instructions) ||
-			mcp != nil && (observed.MCP == nil || *observed.MCP != *mcp) {
+		if selected.Instructions != nil && (observed.Instructions == nil || *observed.Instructions != *selected.Instructions) ||
+			selected.MCP != nil && (observed.MCP == nil || *observed.MCP != *selected.MCP) ||
+			selected.PublicSearch != nil && (observed.PublicSearch == nil || *observed.PublicSearch != *selected.PublicSearch) {
 			return fmt.Errorf("archived Copilot toggles differ or lack selected evidence")
 		}
 	}

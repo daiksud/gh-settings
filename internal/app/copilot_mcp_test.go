@@ -22,18 +22,18 @@ func TestCopilotMCPPlan(t *testing.T) {
 				return settings.Declaration{CopilotMCP: &tc.desired}, nil
 			}, func() (repository.Repository, error) {
 				return repository.Repository{Owner: "owner", Name: "current"}, nil
-			}, Reader{CopilotMCP: func(repo repository.Repository) (settings.CopilotMCPObservation, error) {
+			}, Reader{CopilotContext: func(repo repository.Repository) (settings.CopilotContextObservation, error) {
 				reads++
 				if repo.Owner != "owner" || repo.Name != "current" {
 					t.Fatal("wrong target")
 				}
 				if tc.mode == "denied" {
-					return settings.CopilotMCPObservation{}, errors.New("denied")
+					return settings.CopilotContextObservation{}, errors.New("denied")
 				}
 				if tc.mode == "unread" {
-					return settings.CopilotMCPObservation{}, nil
+					return settings.CopilotContextObservation{}, nil
 				}
-				return settings.NewCopilotMCPObservation(tc.before), nil
+				return settings.CopilotContextObservation{MCP: &tc.before}, nil
 			}})
 			if (err != nil) != (tc.mode != "") || reads != 1 || len(result.Comparison.CopilotMCP) != tc.changes {
 				t.Fatal(result, err, reads)
@@ -150,18 +150,18 @@ func TestCopilotMCPExport(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
 			reads, saves := 0, 0
-			reader.CopilotMCP = func(repo repository.Repository) (settings.CopilotMCPObservation, error) {
+			reader.CopilotContext = func(repo repository.Repository) (settings.CopilotContextObservation, error) {
 				reads++
 				if repo.Name != "current" {
 					t.Fatal("wrong target")
 				}
 				if tc.mode == "denied" {
-					return settings.CopilotMCPObservation{}, errors.New("denied")
+					return settings.CopilotContextObservation{}, errors.New("denied")
 				}
 				if tc.mode == "unread" {
-					return settings.CopilotMCPObservation{}, nil
+					return settings.CopilotContextObservation{}, nil
 				}
-				return settings.NewCopilotMCPObservation(tc.enabled), nil
+				return settings.CopilotContextObservation{MCP: &tc.enabled}, nil
 			}
 			err := Export(ExportCheckout{Repository: func() (repository.Repository, error) {
 				return repository.Repository{Owner: "owner", Name: "current"}, nil

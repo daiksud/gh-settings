@@ -88,7 +88,8 @@ func TestArchivedCombinedFamiliesRequireCompleteMatchingEvidence(t *testing.T) {
 					}
 					return settings.NewCacheStorageObservation(value)
 				},
-				ReadArchivedCopilot: func(_ repository.Repository, instructions, mcp bool) (settings.ArchivedCopilotToggles, error) {
+				ReadArchivedCopilot: func(_ repository.Repository, selected settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error) {
+					instructions, mcp := selected.Instructions != nil, selected.MCP != nil
 					copilotReads++
 					if !instructions || !mcp {
 						t.Fatal("selected Copilot controls not requested")

@@ -5,18 +5,18 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func validateCopilotMCPReport(raw []PlanChange) ([]settings.CopilotMCPChange, error) {
+func validateCopilotToggleReport(raw []PlanChange, field string) ([]settings.CopilotToggleChange, error) {
 	if len(raw) > 1 {
-		return nil, fmt.Errorf("duplicate Copilot MCP tools report control")
+		return nil, fmt.Errorf("duplicate %s report control", field)
 	}
-	var changes []settings.CopilotMCPChange
+	var changes []settings.CopilotToggleChange
 	for _, entry := range raw {
 		before, beforeOK := entry.Before.(bool)
 		after, afterOK := entry.After.(bool)
-		if entry.Field != settings.CopilotMCPPath || !beforeOK || !afterOK || entry.Normalization != nil || entry.SecurityStatusNormalization != nil {
-			return nil, fmt.Errorf("invalid Copilot MCP tools report")
+		if entry.Field != field || !beforeOK || !afterOK || entry.Normalization != nil || entry.SecurityStatusNormalization != nil {
+			return nil, fmt.Errorf("invalid %s report", field)
 		}
-		change, err := settings.NewCopilotMCPChange(before, after)
+		change, err := settings.NewCopilotToggleChange(field, before, after)
 		if err != nil {
 			return nil, err
 		}

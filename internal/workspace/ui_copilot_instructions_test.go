@@ -9,7 +9,7 @@ import (
 func TestCopilotInstructionsYAMLRoundTrip(t *testing.T) {
 	for _, value := range []string{"true", "false"} {
 		t.Run(value, func(t *testing.T) {
-			data := []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {use_custom_instructions: " + value + "}}}}\n")
+			data := []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {general: {use_custom_instructions: " + value + "}}}}}\n")
 			ui, err := DecodeConfig(data)
 			if err != nil {
 				t.Fatal(err)
@@ -30,7 +30,7 @@ func TestCopilotInstructionsYAMLRoundTrip(t *testing.T) {
 	}
 }
 func TestCopilotInstructionsYAMLBoundary(t *testing.T) {
-	for _, settings := range []string{"{}", "{copilot: {}}", "{copilot: {code_review: {}}}"} {
+	for _, settings := range []string{"{}", "{copilot: {}}", "{copilot: {code_review: {general: {}}}}"} {
 		ui, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + settings + "}\n"))
 		if err != nil {
 			t.Fatal(err)
@@ -40,7 +40,7 @@ func TestCopilotInstructionsYAMLBoundary(t *testing.T) {
 			t.Fatal(d, err)
 		}
 	}
-	for _, body := range []string{"null", "false", "{code_review: null}", "{code_review: {use_custom_instructions: null}}", "{code_review: {use_custom_instructions: 'false'}}", "{code_review: {use_custom_instructions: 0}}", "{code_review: {review_effort: balanced}}", "{code_review: {mcp_enabled: false}}"} {
+	for _, body := range []string{"null", "false", "{code_review: null}", "{code_review: {general: {use_custom_instructions: null}}}", "{code_review: {general: {use_custom_instructions: 'false'}}}", "{code_review: {general: {use_custom_instructions: 0}}}", "{code_review: {general: {review_effort: balanced}}}", "{code_review: {general: {mcp_enabled: false}}}"} {
 		if _, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: " + body + "}}\n")); err == nil {
 			t.Fatal("accepted invalid/unadopted setting", body)
 		}

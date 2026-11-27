@@ -264,17 +264,29 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.OIDCSubject = changes
 	}
-	if desired.CopilotMCP != nil {
-		observed, err := read.CopilotMCP(repo)
-		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotMCPPath, Target: repo, Err: err}
+	if desired.CopilotMCP != nil || desired.CopilotPublicSearch != nil {
+		observed, readErr := read.CopilotContext(repo)
+		for _, field := range []struct {
+			path    string
+			desired *bool
+			changes *[]settings.CopilotToggleChange
+		}{
+			{settings.CopilotMCPPath, desired.CopilotMCP, &comparison.CopilotMCP},
+			{settings.CopilotPublicSearchPath, desired.CopilotPublicSearch, &comparison.CopilotPublicSearch},
+		} {
+			if field.desired == nil {
+				continue
+			}
+			if readErr != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: field.path, Target: repo, Err: readErr}
+			}
+			managed, changes, err := settings.CompareCopilotToggle(observed, field.path, field.desired)
+			if err != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: field.path, Target: repo, Err: err}
+			}
+			comparison.Managed += managed
+			*field.changes = changes
 		}
-		managed, changes, err := settings.CompareCopilotMCP(observed, desired.CopilotMCP)
-		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotMCPPath, Target: repo, Err: err}
-		}
-		comparison.Managed += managed
-		comparison.CopilotMCP = changes
 	}
 	if desired.PullRequestExemptions != nil {
 		observed, err := read.PullRequestExemptions(repo)

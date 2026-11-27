@@ -19,6 +19,7 @@ var failureResources = []string{
 	settings.RunnersPath,
 	settings.OIDCSubjectPath,
 	settings.CopilotMCPPath,
+	settings.CopilotPublicSearchPath,
 	settings.ActionsVariablesPath,
 	settings.AgentsVariablesPath,
 	"repository.settings.environments.variables",

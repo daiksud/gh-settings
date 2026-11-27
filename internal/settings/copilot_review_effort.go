@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const CopilotReviewEffortPath = "repository.settings.copilot.code_review.review_effort_level"
+const CopilotReviewEffortPath = "repository.settings.copilot.code_review.general.review_effort_level"
 
 func ValidateCopilotReviewEffort(value string) error {
 	switch value {

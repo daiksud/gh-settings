@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -29,6 +29,7 @@ type copilotReviewEffortState struct {
 	effort            settings.CopilotReviewEffortObservation
 	severity          string
 	instructions, mcp bool
+	publicSearch      optionalSearchSetting
 }
 
 func (c *CopilotReviewEffortClient) read(repo repository.Repository) (copilotReviewEffortState, error) {
@@ -49,18 +50,14 @@ func (c *CopilotReviewEffortClient) read(repo repository.Repository) (copilotRev
 			Configured json.RawMessage `json:"configured"`
 			Effective  *string         `json:"effective"`
 		} `json:"review_effort"`
-		Available    *[]json.RawMessage `json:"available_review_efforts"`
-		Severity     *string            `json:"severity_filter"`
-		Instructions *bool              `json:"custom_instructions_enabled"`
-		MCP          *bool              `json:"mcp_enabled"`
+		Available    *[]json.RawMessage    `json:"available_review_efforts"`
+		Severity     *string               `json:"severity_filter"`
+		Instructions *bool                 `json:"custom_instructions_enabled"`
+		PublicSearch optionalSearchSetting `json:"cross_repo_context_enabled"`
+		MCP          *bool                 `json:"mcp_enabled"`
 	}
-	decoder := json.NewDecoder(response.Body)
-	if decoder.Decode(&raw) != nil || raw.Effort == nil || len(raw.Effort.Configured) == 0 || raw.Effort.Effective == nil || raw.Available == nil || raw.Severity == nil || raw.Instructions == nil || raw.MCP == nil {
+	if decodeCopilotSettings(response.Body, &raw) != nil || raw.Effort == nil || len(raw.Effort.Configured) == 0 || raw.Effort.Effective == nil || raw.Available == nil || raw.Severity == nil || raw.Instructions == nil || raw.MCP == nil {
 		return copilotReviewEffortState{}, fmt.Errorf("incomplete or invalid Copilot review effort settings")
-	}
-	var extra any
-	if decoder.Decode(&extra) != io.EOF {
-		return copilotReviewEffortState{}, fmt.Errorf("invalid trailing Copilot review effort response")
 	}
 	var configured *string
 	if string(raw.Effort.Configured) != "null" {
@@ -87,7 +84,7 @@ func (c *CopilotReviewEffortClient) read(repo repository.Repository) (copilotRev
 	if err != nil {
 		return copilotReviewEffortState{}, err
 	}
-	return copilotReviewEffortState{effort: effort, severity: *raw.Severity, instructions: *raw.Instructions, mcp: *raw.MCP}, nil
+	return copilotReviewEffortState{effort: effort, severity: *raw.Severity, instructions: *raw.Instructions, mcp: *raw.MCP, publicSearch: raw.PublicSearch}, nil
 }
 
 func (c *CopilotReviewEffortClient) Read(repo repository.Repository) (settings.CopilotReviewEffortObservation, error) {
@@ -140,7 +137,7 @@ func (c *CopilotReviewEffortClient) Update(repo repository.Repository, desired s
 	if err != nil || actual != desired {
 		return false, fmt.Errorf("Copilot review effort was not retained (write effects may already have applied)")
 	}
-	if before.severity != after.severity || before.instructions != after.instructions || before.mcp != after.mcp {
+	if before.severity != after.severity || before.instructions != after.instructions || before.mcp != after.mcp || !reflect.DeepEqual(before.publicSearch, after.publicSearch) {
 		return false, fmt.Errorf("unmanaged Copilot settings changed during review effort update (write effects may already have applied)")
 	}
 	return true, nil

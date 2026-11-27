@@ -20,7 +20,7 @@ func TestCopilotReviewEffortPlanReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	comparison := settings.Comparison{Managed: 1, CopilotReviewEffort: []settings.CopilotReviewEffortChange{change}}
-	line := "repository.settings.copilot.code_review.review_effort_level: default → max"
+	line := "repository.settings.copilot.code_review.general.review_effort_level: default → max"
 	if output := string(cli.RenderComparison(comparison)); output != line+"\n" {
 		t.Fatal(output)
 	}

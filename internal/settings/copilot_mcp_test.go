@@ -18,17 +18,17 @@ func TestCopilotMCPComparison(t *testing.T) {
 		{"enable", true, false, mcpBool(true), 1, 1, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var observed CopilotMCPObservation
+			var observed CopilotContextObservation
 			if tc.acquired {
-				observed = NewCopilotMCPObservation(tc.before)
+				observed = CopilotContextObservation{MCP: &tc.before}
 			}
-			managed, changes, err := CompareCopilotMCP(observed, tc.desired)
+			managed, changes, err := CompareCopilotToggle(observed, CopilotMCPPath, tc.desired)
 			if (err != nil) != tc.fail || managed != tc.managed || len(changes) != tc.changes {
 				t.Fatalf("managed=%d changes=%v err=%v", managed, changes, err)
 			}
 			if len(changes) > 0 {
 				before, after := changes[0].Values()
-				if before != tc.before || after != *tc.desired || changes[0].Field() != "repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests" {
+				if before != tc.before || after != *tc.desired || changes[0].Field() != "repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests" {
 					t.Fatal(changes[0])
 				}
 			}

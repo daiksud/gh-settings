@@ -63,7 +63,7 @@ allows it under its required-permissions precondition. Missing data is not false
 | YAML paths | Export / plan acquisition | Apply / explicit prune | Conditions and official contract |
 | --- | --- | --- | --- |
 | `repository.settings.webhooks` | Webhooks read plus complete target identity. | Webhooks write for supported creation/configuration updates and explicit whole-webhook prune. | Existing Active/events updates remain outside v1; creation and the supported config PATCH are separate contracts. Secrets are opaque and unmanaged. [API](https://docs.github.com/en/rest/repos/webhooks). |
-| `repository.settings.copilot.code_review` | Administration read; the repository GET officially accepts installation tokens. | Administration write, plus fresh selected-setting observation. | Covers custom instructions, review MCP tools and configured review effort only. The production answer26 installation has not been independently tested here; see evidence limits below. [API](https://docs.github.com/en/rest/copilot/copilot-code-review#get-copilot-code-review-settings-for-a-repository). |
+| `repository.settings.copilot.code_review.general` | Administration read; the repository GET officially accepts installation tokens. | Administration write, plus fresh selected-setting observation. | Covers configured review effort, MCP tools, public repository search when available, and custom instructions. The production answer26 installation has not been independently tested here; see evidence limits below. [API](https://docs.github.com/en/rest/copilot/copilot-code-review#get-copilot-code-review-settings-for-a-repository). |
 | `repository.settings.pages` | Pages read. | Pages write PLUS Administration write, and Pages read for acquisition; applicable actor authorization is also required. | Create, update and explicit branch:none deletion have the same compound grant boundary. A public GET is not proof of write access or site readiness. [API](https://docs.github.com/en/rest/pages/pages). |
 | `repository.settings.deploy_keys` | Administration read and complete public-key inventory/target identity. | Administration write for creation and explicit deploy-key prune. | Public keys only; no private-key or credential provisioning. Immutable replacements remain separate operations. [API](https://docs.github.com/en/rest/deploy-keys/deploy-keys). |
 
@@ -198,7 +198,7 @@ keys, tokens, private variable values or sensitive endpoints.
 <!-- permission-path v1: repository.settings.actions.policies -->
 <!-- permission-path v1: repository.settings.actions.oidc -->
 <!-- permission-path v1: repository.settings.webhooks -->
-<!-- permission-path v1: repository.settings.copilot.code_review -->
+<!-- permission-path v1: repository.settings.copilot.code_review.general -->
 <!-- permission-path v1: repository.settings.pages -->
 <!-- permission-path v1: repository.settings.deploy_keys -->
 <!-- permission-path v1: repository.settings.advanced_security.dependabot -->

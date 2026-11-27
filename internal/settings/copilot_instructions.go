@@ -2,7 +2,7 @@ package settings
 
 import "fmt"
 
-const CopilotInstructionsPath = "repository.settings.copilot.code_review.use_custom_instructions"
+const CopilotInstructionsPath = "repository.settings.copilot.code_review.general.use_custom_instructions"
 
 // CopilotInstructionsObservation retains acquisition independently of false.
 // It describes stored configuration, never Copilot access or review execution.

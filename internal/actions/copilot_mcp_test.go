@@ -14,12 +14,12 @@ import (
 )
 
 func TestCopilotMCPPlanReport(t *testing.T) {
-	change, err := settings.NewCopilotMCPChange(true, false)
+	change, err := settings.NewCopilotToggleChange(settings.CopilotMCPPath, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	comparison := settings.Comparison{Managed: 1, CopilotMCP: []settings.CopilotMCPChange{change}}
-	line := "repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: true → false"
+	comparison := settings.Comparison{Managed: 1, CopilotMCP: []settings.CopilotToggleChange{change}}
+	line := "repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: true → false"
 	if output := string(cli.RenderComparison(comparison)); output != line+"\n" {
 		t.Fatal(output)
 	}
@@ -70,7 +70,7 @@ func TestCopilotMCPPlanReport(t *testing.T) {
 }
 
 func TestCopilotMCPManagedBound(t *testing.T) {
-	maxManaged := settings.PullRequestLimitsFieldCount + 4 + settings.RepositoryFieldCount() + 15 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount
+	maxManaged := settings.PullRequestLimitsFieldCount + 4 + settings.RepositoryFieldCount() + 16 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount
 	report := PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: maxManaged, Changes: []PlanChange{}}
 	if _, err := validatePlanReport(report, "owner/current"); err != nil {
 		t.Fatal("maximum declared scalar count rejected", err)

@@ -86,7 +86,7 @@ func Reader() app.Reader {
 		PullRequestExemptions: bindRead(github.NewPullRequestLimitsClient, (*github.PullRequestLimitsClient).ReadExemptions),
 		CopilotReviewEffort:   bindRead(github.NewCopilotReviewEffortClient, (*github.CopilotReviewEffortClient).Read),
 		CopilotInstructions:   bindRead(github.NewCopilotInstructionsClient, (*github.CopilotInstructionsClient).Read),
-		CopilotMCP:            bindRead(github.NewCopilotMCPClient, (*github.CopilotMCPClient).Read),
+		CopilotContext:        bindRead(github.NewCopilotContextClient, (*github.CopilotContextClient).Read),
 
 		CodeQLDefaultSetup:  bindRead(github.NewCodeQLDefaultSetupClient, (*github.CodeQLDefaultSetupClient).Read),
 		CodeQLConfiguration: bindRead(github.NewCodeQLDefaultSetupClient, (*github.CodeQLDefaultSetupClient).ReadConfiguration),
@@ -195,7 +195,8 @@ func Writer(read app.Reader, desired settings.Declaration, record func(string, s
 		ReadPullRequestExemptions: read.PullRequestExemptions,
 		PullRequestExemptions:     updatePullRequestExemptions,
 		CopilotInstructions:       bindInput(github.NewCopilotInstructionsClient, (*github.CopilotInstructionsClient).Update),
-		CopilotMCP:                bindInput(github.NewCopilotMCPClient, (*github.CopilotMCPClient).Update),
+		CopilotMCP:                bindInput(github.NewCopilotContextClient, (*github.CopilotContextClient).UpdateMCP),
+		CopilotPublicSearch:       bindInput(github.NewCopilotContextClient, (*github.CopilotContextClient).UpdatePublicSearch),
 		ReadCopilotReviewEffort:   read.CopilotReviewEffort,
 		CopilotReviewEffort:       bindInput(github.NewCopilotReviewEffortClient, (*github.CopilotReviewEffortClient).Update),
 		ReadArchivedCopilot:       readArchivedCopilot,

@@ -16,6 +16,7 @@ type Declaration struct {
 	Collaborators         *CollaboratorDeclarations
 	CopilotInstructions   *bool
 	CopilotMCP            *bool
+	CopilotPublicSearch   *bool
 	PullRequestLimits     PullRequestLimitsDeclaration
 	PullRequestExemptions *PullRequestExemptionsDeclaration
 	CopilotReviewEffort   *string
@@ -54,7 +55,7 @@ func (d Declaration) Empty() bool {
 		d.Topics.Names == nil && d.PullRequestExemptions == nil &&
 		d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty() &&
 		d.OIDCSubject == nil && d.PullRequestLimits.Empty() &&
-		d.CopilotReviewEffort == nil && d.CopilotMCP == nil && d.CopilotInstructions == nil &&
+		d.CopilotReviewEffort == nil && d.CopilotMCP == nil && d.CopilotPublicSearch == nil && d.CopilotInstructions == nil &&
 		!CollectionSelected(d.Collaborators, false) &&
 		!CollectionSelected(d.DeployKeys, false) &&
 		!CollectionSelected(d.Labels, false) &&

@@ -99,11 +99,12 @@ func TestArchivedCopilotExportPlanApplyEvidence(t *testing.T) {
 				CopilotInstructions: func(repository.Repository) (settings.CopilotInstructionsObservation, error) {
 					return settings.NewCopilotInstructionsObservation(true), nil
 				},
-				CopilotMCP: func(repository.Repository) (settings.CopilotMCPObservation, error) {
+				CopilotContext: func(repository.Repository) (settings.CopilotContextObservation, error) {
 					if unavailable {
-						return settings.CopilotMCPObservation{}, fmt.Errorf("unavailable")
+						return settings.CopilotContextObservation{}, fmt.Errorf("unavailable")
 					}
-					return settings.NewCopilotMCPObservation(false), nil
+					disabled := false
+					return settings.CopilotContextObservation{MCP: &disabled}, nil
 				},
 			}
 			var exported settings.Declaration
@@ -144,7 +145,8 @@ func TestArchivedCopilotExportPlanApplyEvidence(t *testing.T) {
 				t.Fatalf("plan=%+v err=%v", plan, planErr)
 			}
 			writes, reads := 0, 0
-			writer := Writer{ReadArchive: archive, ReadArchivedCopilot: func(_ repository.Repository, instructions, mcp bool) (settings.ArchivedCopilotToggles, error) {
+			writer := Writer{ReadArchive: archive, ReadArchivedCopilot: func(_ repository.Repository, selected settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error) {
+				instructions, mcp := selected.Instructions != nil, selected.MCP != nil
 				reads++
 				if !instructions || !mcp {
 					t.Fatal("missing selected toggle read")

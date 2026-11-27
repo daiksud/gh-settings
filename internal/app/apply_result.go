@@ -76,6 +76,7 @@ const (
 	RunnerDelete
 	OIDCSubjectUpdate
 	CopilotMCPUpdate
+	CopilotPublicSearchUpdate
 	PullRequestLimitsUpdate
 	AgentVariableUpsert
 	ActionsPoliciesRead

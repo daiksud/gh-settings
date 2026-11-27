@@ -221,11 +221,17 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		result.Settings.InteractionLimits.PullRequestLimits.ExemptionList = &logins
 	}
 
-	if source.CopilotMCP != nil || source.CopilotInstructions != nil || source.CopilotReviewEffort != nil {
+	if source.CopilotPublicSearch != nil || source.CopilotMCP != nil || source.CopilotInstructions != nil || source.CopilotReviewEffort != nil {
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}
 		}
-		result.Settings.Copilot = &uimodel.CopilotSettings{CodeReview: &uimodel.CopilotCodeReview{AllowCopilotToUseMCPToolsWhenReviewingPullRequests: copyUIValue(source.CopilotMCP), UseCustomInstructions: copyUIValue(source.CopilotInstructions), ReviewEffortLevel: copyUIValue(source.CopilotReviewEffort)}}
+		general := &uimodel.CopilotCodeReviewGeneral{
+			ReviewEffortLevel: copyUIValue(source.CopilotReviewEffort),
+			AllowCopilotToUseMCPToolsWhenReviewingPullRequests: copyUIValue(source.CopilotMCP),
+			SearchPublicRepositories:                           copyUIValue(source.CopilotPublicSearch),
+			UseCustomInstructions:                              copyUIValue(source.CopilotInstructions),
+		}
+		result.Settings.Copilot = &uimodel.CopilotSettings{CodeReview: &uimodel.CopilotCodeReview{General: general}}
 	}
 	if err := source.Security.Validate(); err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Security: %w", err)

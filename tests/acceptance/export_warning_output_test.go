@@ -124,7 +124,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 		"/actions/cache/retention-limit":                    `{"max_cache_retention_days":7}`,
 		"/actions/cache/storage-limit":                      `{"max_cache_size_gb":10}`,
 		"/actions/permissions/fork-pr-contributor-approval": `{"approval_policy":"first_time_contributors"}`,
-		"/copilot/code-review/settings":                     `{"custom_instructions_enabled":false,"mcp_enabled":false,"severity_filter":"no_filter","review_effort":{"configured":null,"effective":"balanced"},"available_review_efforts":["lite","balanced","max"]}`,
+		"/copilot/code-review/settings":                     `{"custom_instructions_enabled":false,"mcp_enabled":false,"cross_repo_context_enabled":false,"severity_filter":"no_filter","review_effort":{"configured":null,"effective":"balanced"},"available_review_efforts":["lite","balanced","max"]}`,
 		"/interaction-limits/pulls/bypass-list":             `[]`,
 		"/interaction-limits/pulls/creation-cap":            `{"enabled":false,"max_open_pull_requests":10,"include_drafts":false}`,
 		"/automated-security-fixes":                         `{"enabled":false,"paused":false}`,

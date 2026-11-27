@@ -92,7 +92,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	declaration := func(value string) string {
-		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {use_custom_instructions: " + value + "}}}}\n"
+		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {general: {use_custom_instructions: " + value + "}}}}}\n"
 	}
 	lastExport := false
 	run := func(args []string, want string, fail bool) (string, string) {
@@ -132,7 +132,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
-	run([]string{"plan"}, "repository.settings.copilot.code_review.use_custom_instructions: true → false\n", false)
+	run([]string{"plan"}, "repository.settings.copilot.code_review.general.use_custom_instructions: true → false\n", false)
 	expect("GET " + endpoint)
 	run([]string{"apply"}, "Applied repository settings.\n", false)
 	expect("GET "+endpoint, "PATCH "+endpoint, "GET "+endpoint)
@@ -158,7 +158,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 	}
 	_, diagnostic := run([]string{"apply"}, "", true)
 	expect("GET "+endpoint, "PATCH "+endpoint, "GET "+endpoint)
-	if !strings.Contains(diagnostic, "repository.settings.copilot.code_review.use_custom_instructions") || !strings.Contains(diagnostic, "may already have applied") {
+	if !strings.Contains(diagnostic, "repository.settings.copilot.code_review.general.use_custom_instructions") || !strings.Contains(diagnostic, "may already have applied") {
 		t.Fatal(diagnostic)
 	}
 	mu.Lock()
@@ -195,7 +195,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	var wire map[string]any
-	if json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.use_custom_instructions" || wire["outcome"] != "read-failure" {
+	if json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.general.use_custom_instructions" || wire["outcome"] != "read-failure" {
 		t.Fatal(string(raw))
 	}
 	summary := filepath.Join(fixture.root, "private-summary.md")
