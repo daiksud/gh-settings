@@ -58,33 +58,28 @@ Changing this setting can start CodeQL validation/analysis and consume Actions r
 
 ## CodeQL default configuration
 
-The optional controls below belong under `repository.settings.advanced_security.code_security.codeql_analysis`, alongside the independent `default_setup` boolean:
+Under `repository.settings.advanced_security.code_security.codeql_analysis`, `languages` lists the languages to scan. The `scan_settings` mapping follows the controls in GitHub's [default configuration editor](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#customizing-your-existing-configuration-of-default-setup).
 
 ```yaml
 languages: [github_actions, go, python]
-query_suites: extended
-threat_model: remote_sources
-runner:
-  type: labeled_runner
-  label: codeql-pool
+scan_settings:
+  runner_type: labeled_runner
+  runner_label: codeql-pool
+  query_suite: extended
+  threat_model: remote_sources
 ```
 
 | Control | Accepted values and ownership |
 | --- | --- |
-| `languages` | A nonempty unique set: `github_actions`, `c_cpp`, `csharp`, `go`, `java_kotlin`, `javascript_typescript`, `python`, `ruby`, `swift`. Order is immaterial; export/report order is canonical. Unsupported or undetected selections may be refused by GitHub. |
-| `query_suites` | One scalar: `default` or `extended`; never a list. Maps to REST `query_suite`. |
-| `threat_model` | `remote_sources` or `remote_and_local_sources`; maps exactly to API `remote` or `remote_and_local`. Raw API spellings are not YAML choices. |
-| `runner` | Owns the type/label pair. `type: standard_github_runner` forbids `label` and explicitly clears an old label through API null. `type: labeled_runner` requires a nonblank `label`; it can select an existing labeled GitHub or self-hosted runner. No runner/label/capacity is created. |
-
-The [initial setup guide](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/configure-code-scanning/configure-code-scanning) uses “Query suites”, while the
-[existing-configuration editing guide](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#customizing-your-existing-configuration-of-default-setup) uses “Query suite”.
-The YAML key is `query_suites` and the REST field is `query_suite`. The
-v0.46.0 CLI supports the plural YAML key. Use a compatible CLI or Action pin
-when declaring it.
+| `languages` | A nonempty unique set of `github_actions`, `c_cpp`, `csharp`, `go`, `java_kotlin`, `javascript_typescript`, `python`, `ruby` or `swift`. Export sorts the set. GitHub validates language availability. |
+| `scan_settings.runner_type` | `standard_github_runner` or `labeled_runner`. Selecting a standard runner clears any previous label. |
+| `scan_settings.runner_label` | A nonblank label of an existing runner, required only with `runner_type: labeled_runner`. The CLI validates and manages the type and label as a pair. |
+| `scan_settings.query_suite` | One scalar, `default` or `extended`. |
+| `scan_settings.threat_model` | `remote_sources` or `remote_and_local_sources`, corresponding to REST `remote` and `remote_and_local`. |
 
 GitHub documents local sources as [public preview](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#including-local-sources-of-tainted-data-in-default-setup), currently supported for Java/Kotlin and C#. A repository's supported choices and source languages remain GitHub-controlled; gh-settings does not enable languages or infer UI availability from the selected analysis-language list. A complete read requires exactly the API `remote` or `remote_and_local` value. Missing, null, mistyped or unknown values fail acquisition without a fallback to remote-only scanning.
 
-Omission leaves each control unmanaged. Null, invalid choices, duplicate/empty language lists and incomplete runner pairs fail before remote work. Declare a runner object to change the pair; omitting it preserves both members. This configuration requires an **already configured** default setup in a personally owned public repository. It never enables CodeQL or its prerequisites. If currently disabled, enable default setup in a separate operation and confirm it before configuring these controls. Configuration plus explicit `default_setup: false` is invalid; declaring true does not waive the already-configured requirement.
+Omission leaves each control unmanaged. Null, invalid choices, duplicate/empty language lists and incomplete runner pairs fail before remote work. Omit both runner fields to preserve the current runner. An empty `scan_settings` mapping selects no scan controls. This configuration requires an **already configured** default setup in a personally owned public repository. It never enables CodeQL or its prerequisites. If currently disabled, enable default setup in a separate operation and confirm it before configuring these controls. Configuration plus explicit `default_setup: false` is invalid; declaring true does not waive the already-configured requirement.
 
 Ordinary `export` attempts all four controls as a complete configuration family. State and details share one response. Confirmed `not-configured` exports `default_setup: false` and removes existing languages/query suite/runner/threat model from the output with info. Unknown state (including denied, failed or malformed reads) emits info and omits the family on first export or retains its existing declaration. Configured state exports true; complete details replace prior values, while unavailable details emit info and retain existing details only. Reads require Administration read and complete exact state/languages/query suite/runner type and nullable label, plus the exact threat model. Unknown, missing, mistyped, denied or inaccessible observations are errors, not inferred defaults. Standard-runner null/empty labels represent the inactive label; a nonempty label with standard runner is rejected.
 

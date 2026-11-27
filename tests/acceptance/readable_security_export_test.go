@@ -124,8 +124,9 @@ repository:
         codeql_analysis:
           default_setup: true
           languages: [go]
-          query_suites: default
-          runner: {type: standard_github_runner}
+          scan_settings:
+            runner_type: standard_github_runner
+            query_suite: default
 `
 	if err := writeSettingsFile(fixture.work, prior); err != nil {
 		t.Fatal(err)
@@ -134,7 +135,7 @@ repository:
 	mode = "existing"
 	mu.Unlock()
 	second := run()
-	for _, want := range []string{"enabled: false", "push_protection: false", "alerts: true", "security_updates: false", "ai_scan_for_pull_requests: true", "default_setup: true", "query_suites: default", "private_vulnerability_reporting: false", "enable_release_immutability: true"} {
+	for _, want := range []string{"enabled: false", "push_protection: false", "alerts: true", "security_updates: false", "ai_scan_for_pull_requests: true", "default_setup: true", "query_suite: default", "private_vulnerability_reporting: false", "enable_release_immutability: true"} {
 		if !strings.Contains(second, want) {
 			t.Fatal(want, second)
 		}
@@ -163,15 +164,15 @@ repository:
 			output := run()
 			switch scenario {
 			case "disabled":
-				if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "languages:") || strings.Contains(output, "query_suites:") || strings.Contains(output, "runner:") {
+				if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "languages:") || strings.Contains(output, "scan_settings:") {
 					t.Fatal(output)
 				}
 			case "configured":
-				if !strings.Contains(output, "default_setup: true") || !strings.Contains(output, "query_suites: extended") || !strings.Contains(output, "python") {
+				if !strings.Contains(output, "default_setup: true") || !strings.Contains(output, "query_suite: extended") || !strings.Contains(output, "python") {
 					t.Fatal(output)
 				}
 			case "malformed":
-				if existing && (!strings.Contains(output, "default_setup: true") || !strings.Contains(output, "query_suites: default")) {
+				if existing && (!strings.Contains(output, "default_setup: true") || !strings.Contains(output, "query_suite: default")) {
 					t.Fatal(output)
 				}
 				if !existing && strings.Contains(output, "codeql_analysis:") {

@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-func TestCodeQLQuerySuitesSummaryKeepsNativeReportField(t *testing.T) {
+func TestCodeQLQuerySuiteSummaryUsesScanSettingsPath(t *testing.T) {
 	report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, CodeQLConfiguration: []actions.PlanChange{{Field: "query_suite", Before: "default", After: "extended"}}}
 	text, err := actions.RenderSummary(report, summaryMetadata())
-	if err != nil || !strings.Contains(text, "codeql_analysis.query_suites:") || strings.Contains(text, "codeql_analysis.query_suite:") {
+	if err != nil || !strings.Contains(text, "codeql_analysis.scan_settings.query_suite:") {
 		t.Fatal(text, err)
 	}
 	data, err := json.Marshal(report)

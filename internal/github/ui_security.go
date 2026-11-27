@@ -14,20 +14,23 @@ func SecurityDeclaration(ui uimodel.SecuritySettings) (settings.SecurityDeclarat
 			result.AIScanRepositories = copyUIValue(cs.AIScan.AIScanForRepositories)
 		}
 		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.CodeQLAnalysis != nil {
-			result.CodeQLDefaultSetup = copyUIValue(cs.CodeQLAnalysis.DefaultSetup)
 			q := cs.CodeQLAnalysis
-			result.CodeQLConfiguration = settings.CodeQLConfigurationDeclaration{Languages: q.Languages, QuerySuite: q.QuerySuites, ThreatModel: q.ThreatModel}
-			if q.Runner != nil {
-				v := settings.CodeQLRunner{Type: q.Runner.Type}
-				if q.Runner.Label != nil {
-					v.Label = *q.Runner.Label
+			result.CodeQLDefaultSetup = copyUIValue(q.DefaultSetup)
+			result.CodeQLConfiguration.Languages = q.Languages
+			if scan := q.ScanSettings; scan != nil {
+				result.CodeQLConfiguration.QuerySuite = scan.QuerySuite
+				result.CodeQLConfiguration.ThreatModel = scan.ThreatModel
+				if scan.RunnerLabel != nil && (scan.RunnerType == nil || *scan.RunnerType != "labeled_runner") {
+					return settings.SecurityDeclaration{}, fmt.Errorf("%s.scan_settings.runner_label requires runner_type labeled_runner", settings.CodeQLConfigurationPath)
 				}
-				if q.Runner.Type == "standard_github_runner" && q.Runner.Label != nil {
-					return settings.SecurityDeclaration{}, fmt.Errorf("standard CodeQL runner forbids a label")
+				if scan.RunnerType != nil {
+					runner := &settings.CodeQLRunner{Type: *scan.RunnerType}
+					if scan.RunnerLabel != nil {
+						runner.Label = *scan.RunnerLabel
+					}
+					result.CodeQLConfiguration.Runner = runner
 				}
-				result.CodeQLConfiguration.Runner = &v
 			}
-
 		}
 		result.DependabotAlerts = copyUIValue(ui.AdvancedSecurity.DependabotAlerts)
 		result.DependabotSecurityUpdates = copyUIValue(ui.AdvancedSecurity.DependabotSecurityUpdates)

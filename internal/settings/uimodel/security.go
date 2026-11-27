@@ -22,16 +22,16 @@ type CodeSecurity struct {
 	AIScan         *AIScan
 	CodeQLAnalysis *CodeQLAnalysis
 }
-type CodeQLRunner struct {
-	Type  string
-	Label *string
-}
 type CodeQLAnalysis struct {
 	DefaultSetup *bool
 	Languages    *[]string
-	QuerySuites  *string
-	Runner       *CodeQLRunner
-	ThreatModel  *string
+	ScanSettings *CodeQLScanSettings
+}
+type CodeQLScanSettings struct {
+	RunnerType  *string
+	RunnerLabel *string
+	QuerySuite  *string
+	ThreatModel *string
 }
 
 type AdvancedSecurity struct {

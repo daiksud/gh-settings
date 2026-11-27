@@ -101,7 +101,7 @@ Normalized merge/squash observations use a separate `commit_messages` array with
 Exact merge and squash choices retain their original native `changes` entries and add `commit_message_contexts` with complete observed and desired title/message pairs. Summary checks that each context maps to a supported changed UI choice and matches every changed native component, including an unchanged companion where necessary. Exact Actions execution changes similarly carry an `actions_execution_context` with UI radio choices; validation binds it to the native changes and its retained native companion without disclosing a disabled policy's latent value in output. Normalized decisions continue to use their separate provenance records. A failure may carry only a closed `resource` path, never raw error text; status-only omits it. These fields are same-version presentation evidence, not public API or apply input.
 
 The native CodeQL report field `query_suite` renders at the public YAML path
-`codeql_analysis.query_suites`; its value remains one scalar. Native merge/squash
+`codeql_analysis.scan_settings.query_suite`. The native runner pair counts as one managed control; detailed output shows changed `scan_settings.runner_type` and `scan_settings.runner_label` separately. Native merge/squash
 menu identifiers and title/message fields are unchanged; their UI paths use
 `merge_commits.default_commit_message` and `squash_merging.default_commit_message`.
 

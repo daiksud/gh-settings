@@ -243,15 +243,19 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		if !source.Security.DependabotEmpty() || !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil || source.Security.CodeQLDefaultSetup != nil || (source.Security.AIScanPullRequests != nil || source.Security.AIScanRepositories != nil) || !source.Security.CodeQLConfiguration.Empty() {
 			result.Settings.SecurityAndQuality = &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{DependabotAlerts: copyUIValue(source.Security.DependabotAlerts), DependabotSecurityUpdates: copyUIValue(source.Security.DependabotSecurityUpdates), SecretProtection: copyUIValue(source.Security.SecretScanning), PushProtection: copyUIValue(source.Security.PushProtection), PrivateVulnerabilityReporting: copyUIValue(source.Security.PrivateVulnerabilityReporting)}}
 		}
-		if source.Security.CodeQLDefaultSetup != nil || !source.Security.CodeQLConfiguration.Empty() {
-			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: &uimodel.CodeQLAnalysis{DefaultSetup: copyUIValue(source.Security.CodeQLDefaultSetup), Languages: source.Security.CodeQLConfiguration.Languages, QuerySuites: source.Security.CodeQLConfiguration.QuerySuite, ThreatModel: source.Security.CodeQLConfiguration.ThreatModel}}
-			if runner := source.Security.CodeQLConfiguration.Runner; runner != nil {
-				ui := &uimodel.CodeQLRunner{Type: runner.Type}
-				if runner.Type == "labeled_runner" {
-					ui.Label = copyUIValue(&runner.Label)
+		if config := source.Security.CodeQLConfiguration; source.Security.CodeQLDefaultSetup != nil || !config.Empty() {
+			q := &uimodel.CodeQLAnalysis{DefaultSetup: copyUIValue(source.Security.CodeQLDefaultSetup), Languages: config.Languages}
+			if config.Runner != nil || config.QuerySuite != nil || config.ThreatModel != nil {
+				scan := &uimodel.CodeQLScanSettings{QuerySuite: config.QuerySuite, ThreatModel: config.ThreatModel}
+				if runner := config.Runner; runner != nil {
+					scan.RunnerType = copyUIValue(&runner.Type)
+					if runner.Type == "labeled_runner" {
+						scan.RunnerLabel = copyUIValue(&runner.Label)
+					}
 				}
-				result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity.CodeQLAnalysis.Runner = ui
+				q.ScanSettings = scan
 			}
+			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: q}
 		}
 		if source.Security.AIScanPullRequests != nil || source.Security.AIScanRepositories != nil {
 			advanced := result.Settings.SecurityAndQuality.AdvancedSecurity

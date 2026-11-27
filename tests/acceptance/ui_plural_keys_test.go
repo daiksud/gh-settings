@@ -26,7 +26,7 @@ func TestUIPluralOldKeysFailBeforeRemoteWork(t *testing.T) {
 		"general: {pull_requests: {squash_merge: {}}}",
 		"general: {pull_requests: {squash_merge: {}, squash_merging: {}}}",
 		"advanced_security: {code_security: {codeql_analysis: {query_suite: extended}}}",
-		"advanced_security: {code_security: {codeql_analysis: {query_suite: extended, query_suites: extended}}}",
+		"advanced_security: {code_security: {codeql_analysis: {query_suites: extended}}}",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {" + body + "}}\n"
 		if err := writeSettingsFile(fixture.work, input); err != nil {
