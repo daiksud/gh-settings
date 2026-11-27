@@ -56,7 +56,8 @@ repository:
             template_repository: false
             default_branch: main
             features:
-                wikis: true
+                wikis:
+                    enabled: true
                 issues: true
                 issue_permissions:
                     creation_allowed_by: all_users

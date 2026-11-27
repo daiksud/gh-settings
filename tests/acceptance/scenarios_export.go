@@ -8,7 +8,7 @@ func exportScenarios() []scenario {
 			"labels": []any{},
 			"settings": map[string]any{"general": map[string]any{
 				"default_branch": "main", "template_repository": false,
-				"features":      map[string]any{"issues": true, "projects": false, "wikis": true, "discussions": false, "sponsorships": false, "pull_requests": false, "issue_permissions": map[string]any{"creation_allowed_by": "all_users"}},
+				"features":      map[string]any{"issues": true, "projects": false, "wikis": map[string]any{"enabled": true}, "discussions": false, "sponsorships": false, "pull_requests": false, "issue_permissions": map[string]any{"creation_allowed_by": "all_users"}},
 				"pull_requests": map[string]any{"allow_merge_commits": false, "allow_squash_merging": false, "allow_rebase_merging": false, "automatically_delete_head_branches": false, "allow_auto_merge": false, "always_suggest_updating_pull_request_branches": false},
 				"commits":       map[string]any{"require_contributors_to_sign_off_on_web_based_commits": false},
 			}},
@@ -21,7 +21,7 @@ func exportScenarios() []scenario {
 			"labels": []any{},
 			"settings": map[string]any{"general": map[string]any{
 				"default_branch": "main", "template_repository": false,
-				"features":      map[string]any{"issues": false, "projects": false, "wikis": false, "discussions": false, "sponsorships": false, "pull_requests": false},
+				"features":      map[string]any{"issues": false, "projects": false, "wikis": map[string]any{"enabled": false}, "discussions": false, "sponsorships": false, "pull_requests": false},
 				"pull_requests": map[string]any{"allow_merge_commits": false, "allow_squash_merging": false, "allow_rebase_merging": false, "automatically_delete_head_branches": false, "allow_auto_merge": false, "always_suggest_updating_pull_request_branches": false},
 				"commits":       map[string]any{"require_contributors_to_sign_off_on_web_based_commits": false},
 			}},

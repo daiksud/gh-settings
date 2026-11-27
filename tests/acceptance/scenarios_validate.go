@@ -8,7 +8,7 @@ type validateCase struct {
 
 func validateScenarios() []validateCase {
 	return []validateCase{
-		{name: "validate-all-fields", input: repositoryInput("about: {description: Example, website: https://example.com}\nsettings: {general: {features: {issues: true, projects: false, wikis: true}}}\n")},
+		{name: "validate-all-fields", input: repositoryInput("about: {description: Example, website: https://example.com}\nsettings: {general: {features: {issues: true, projects: false, wikis: {enabled: true}}}}\n")},
 		{name: "validate-partial-zero-values", input: repositoryInput("about: {description: ''}\nsettings: {general: {features: {issues: false}}}\n")},
 		{name: "validate-unknown-key", input: generalInput("visibility: private\n"), wantError: "unknown repository.settings.general key"},
 		{name: "reserved-home-page-control", input: aboutInput("include_in_the_home_page: {releases: false}\n"), wantError: "include_in_the_home_page"},

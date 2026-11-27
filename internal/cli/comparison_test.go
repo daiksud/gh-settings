@@ -22,7 +22,7 @@ func TestRenderComparison(t *testing.T) {
 				comparisonChange(t, "repository.has_projects", true, false),
 				comparisonChange(t, "repository.has_wiki", true, false),
 			}},
-			want: "repository.about.description: \"old\" → \"\"\nrepository.about.website: \"old-url\" → \"\"\nrepository.settings.general.features.issues: true → false\nrepository.settings.general.features.projects: true → false\nrepository.settings.general.features.wikis: true → false\n",
+			want: "repository.about.description: \"old\" → \"\"\nrepository.about.website: \"old-url\" → \"\"\nrepository.settings.general.features.issues: true → false\nrepository.settings.general.features.projects: true → false\nrepository.settings.general.features.wikis.enabled: true → false\n",
 		},
 		{
 			name: "escaped strings",

@@ -1,4 +1,4 @@
-# Ordered additions to the v0.47.0 contract. The English desktop UI was inspected
+# Ordered additions to the current schema. The English desktop UI was inspected
 # on 2026-11-27. Values that happen to be selected in that repository are not defaults.
 - path: repository.about.include_in_the_home_page
   type: mapping
@@ -37,20 +37,6 @@
   before: features
   api: Partial. GraphQL exposes the current image URL and whether it is custom. A complete update contract is unconfirmed.
   meaning: Repository social media preview image. See the open asset representation decision.
-- path: repository.settings.general.features.wikis
-  type: mapping
-  status: reshape
-  ui: Features / Wikis
-  evidence: *general
-  from: boolean
-  migration: Move the existing boolean to wikis.enabled. The companion checkbox is inside the same Wikis panel.
-- path: repository.settings.general.features.wikis.enabled
-  type: boolean
-  status: reserved
-  ui: Wikis
-  evidence: *general
-  api: Read and update repository has_wiki.
-  meaning: Own only wiki availability. An empty Wikis mapping selects nothing.
 - path: repository.settings.general.features.wikis.restrict_editing_to_collaborators_only
   type: boolean
   status: reserved

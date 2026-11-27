@@ -12,7 +12,7 @@ The following paths are relative to `repository.settings.general`. Declaring a c
 | --- | --- |
 | `template_repository` | boolean |
 | `default_branch` | literal branch-name string |
-| `features.wikis`, `features.issues`, `features.sponsorships`, `features.discussions`, `features.projects`, `features.pull_requests` | boolean |
+| `features.wikis.enabled`, `features.issues`, `features.sponsorships`, `features.discussions`, `features.projects`, `features.pull_requests` | boolean |
 | `features.issue_permissions.creation_allowed_by`, `features.pull_request_permissions.creation_allowed_by` | `all_users` or `collaborators_only` |
 | `pull_requests.allow_merge_commits`, `pull_requests.allow_squash_merging`, `pull_requests.allow_rebase_merging` | boolean |
 | `pull_requests.always_suggest_updating_pull_request_branches`, `pull_requests.allow_auto_merge`, `pull_requests.automatically_delete_head_branches` | boolean |
@@ -20,6 +20,14 @@ The following paths are relative to `repository.settings.general`. Declaring a c
 | `commits.require_contributors_to_sign_off_on_web_based_commits` | boolean |
 | `danger_zone.archive_this_repository` | boolean |
 | `releases.enable_release_immutability` | boolean |
+
+For Wikis, use `features.wikis.enabled: true` or `false`. Omit the group,
+or leave it empty, to leave wiki enablement unmanaged. When updating a
+declaration from a release with a scalar `features.wikis`, move that boolean
+to `features.wikis.enabled`. The conditional **Restrict editing to collaborators
+only** setting has a reserved path, `features.wikis.restrict_editing_to_collaborators_only`.
+Validation rejects that key until a complete GitHub settings API is confirmed.
+See the [coverage ledger](../../development/settings-coverage.md#about-labels-and-general).
 
 ## Template repository
 

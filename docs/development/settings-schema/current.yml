@@ -21,7 +21,8 @@ shape:
         releases:
           enable_release_immutability: boolean
         features:
-          wikis: boolean
+          wikis:
+            enabled: boolean
           issues: boolean
           issue_permissions:
             creation_allowed_by: string

@@ -17,7 +17,7 @@ func SettingPath(path string) string {
 	case "repository.default_branch":
 		return "repository.settings.general.default_branch"
 	case "repository.has_wiki":
-		return "repository.settings.general.features.wikis"
+		return "repository.settings.general.features.wikis.enabled"
 	case "repository.has_issues":
 		return "repository.settings.general.features.issues"
 	case "repository.has_sponsorships":

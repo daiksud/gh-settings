@@ -21,7 +21,7 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 	}
 	result := settings.RepositoryDeclaration{
 		IsTemplate: copyUIValue(general.TemplateRepository), DefaultBranch: copyUIValue(general.DefaultBranch),
-		HasWiki: copyUIValue(general.Features.Wikis), HasIssues: copyUIValue(general.Features.Issues),
+		HasWiki: copyUIValue(general.Features.Wikis.Enabled), HasIssues: copyUIValue(general.Features.Issues),
 		HasProjects: copyUIValue(general.Features.Projects), HasDiscussions: copyUIValue(general.Features.Discussions),
 		HasSponsorships: copyUIValue(general.Features.Sponsorships), HasPullRequests: copyUIValue(general.Features.PullRequests),
 		AllowMergeCommit: copyUIValue(general.PullRequests.AllowMergeCommits), AllowSquashMerge: copyUIValue(general.PullRequests.AllowSquashMerging),
@@ -69,7 +69,7 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 	result := uimodel.General{
 		TemplateRepository: copyUIValue(state.IsTemplate), DefaultBranch: copyUIValue(state.DefaultBranch),
 		Features: uimodel.Features{
-			Wikis: copyUIValue(state.HasWiki), Issues: copyUIValue(state.HasIssues), Projects: copyUIValue(state.HasProjects),
+			Wikis: uimodel.WikiSettings{Enabled: copyUIValue(state.HasWiki)}, Issues: copyUIValue(state.HasIssues), Projects: copyUIValue(state.HasProjects),
 			Discussions: copyUIValue(state.HasDiscussions), Sponsorships: copyUIValue(state.HasSponsorships), PullRequests: copyUIValue(state.HasPullRequests),
 		},
 		PullRequests: uimodel.PullRequests{
