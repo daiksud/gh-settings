@@ -14,9 +14,9 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// settings-pr validates the original file with the pinned release. Until both
-// consumers adopt secrets_and_variables, check their two v0.46.0 inventories
-// directly and use the current decoder for the rest of the operational policy.
+// settings-pr validates the original file with the pinned release. Check the
+// operational policy at pin-specific paths before using the current decoder
+// for the shared settings.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
@@ -53,6 +53,14 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 			repositorySettings.Content = slices.Delete(repositorySettings.Content, i-1, i+1)
 		}
 	}
+	codeSecurity := member(member(repositorySettings, "advanced_security"), "code_security")
+	codeQL := member(codeSecurity, "codeql_analysis")
+	suite := member(codeQL, "query_suites")
+	if suite.Kind != yaml.ScalarNode || suite.Tag != "!!str" || suite.Value != "extended" {
+		t.Fatal("the pinned CLI must select the extended CodeQL query suite")
+	}
+	i := slices.Index(codeSecurity.Content, codeQL)
+	codeSecurity.Content = slices.Delete(codeSecurity.Content, i-1, i+1)
 	data, err = yaml.Marshal(&doc)
 	if err != nil {
 		t.Fatal(err)
@@ -121,8 +129,8 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
 	}
-	if desired.Security.ImmutableReleases == nil || !*desired.Security.ImmutableReleases || desired.Security.CodeQLConfiguration.QuerySuite == nil || *desired.Security.CodeQLConfiguration.QuerySuite != "extended" {
-		t.Fatal("retain the independently observed immutable-release and CodeQL suite policy")
+	if desired.Security.ImmutableReleases == nil || !*desired.Security.ImmutableReleases {
+		t.Fatal("retain the independently observed immutable-release policy")
 	}
 	if !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
 		t.Fatal("inactive or inapplicable Actions controls must remain unmanaged")
