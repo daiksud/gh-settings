@@ -13,8 +13,14 @@ type General struct {
 }
 
 type Features struct {
-	Wikis, Issues, Sponsorships, Discussions, Projects, PullRequests *bool
-	IssuePermissions, PullRequestPermissions                         CreationPermissions
+	Wikis                  *bool
+	Issues                 *bool
+	IssuePermissions       CreationPermissions
+	Sponsorships           *bool
+	Discussions            *bool
+	Projects               *bool
+	PullRequests           *bool
+	PullRequestPermissions CreationPermissions
 }
 
 type CreationAllowedBy string
@@ -29,10 +35,14 @@ const (
 type CreationPermissions struct{ CreationAllowedBy *CreationAllowedBy }
 
 type PullRequests struct {
-	AllowMergeCommits, AllowSquashMerging, AllowRebaseMerging *bool
-	AlwaysSuggestUpdatingPullRequestBranches                  *bool
-	AllowAutoMerge, AutomaticallyDeleteHeadBranches           *bool
-	MergeCommits, SquashMerging                               CommitMessage
+	AllowMergeCommits                        *bool
+	MergeCommits                             CommitMessage
+	AllowSquashMerging                       *bool
+	SquashMerging                            CommitMessage
+	AllowRebaseMerging                       *bool
+	AlwaysSuggestUpdatingPullRequestBranches *bool
+	AllowAutoMerge                           *bool
+	AutomaticallyDeleteHeadBranches          *bool
 }
 
 // CommitMessageChoice uses the displayed menu wording in snake_case.

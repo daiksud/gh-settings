@@ -5,6 +5,6 @@ type Webhook struct {
 	PayloadURL      *string
 	ContentType     *string
 	SSLVerification *bool
-	Active          *bool
 	Events          *[]string
+	Active          *bool
 }

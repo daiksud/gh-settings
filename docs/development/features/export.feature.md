@@ -100,6 +100,18 @@ and allow a silent canonical export with the same unwritable stderr.
 
 The [Actions export test](../../../internal/workspace/ui_actions_test.go) checks the Actions page order. The [repository variable round-trip test](../../../internal/workspace/ui_agents_variables_test.go) checks the placement of Secrets and variables and its two pages.
 
+### Scenario: Write supported controls in editor order
+
+- Given a declaration lists supported controls in a different order from the editor
+- When the CLI encodes the declaration for export
+- Then each group in the [editor order table](../settings-schema/export-order.yml) follows the recorded English UI order
+- And decoding the reordered file selects the same controls and values
+
+The [schema round-trip test](../../../internal/workspace/schema_ledger_test.go)
+checks the complete emitted document and reverses the input mapping keys.
+The [editor order test](../../../internal/workspace/schema_ui_order_test.go)
+compares the ordered fields with the observed forms.
+
 ### Scenario: Preserve false and empty string values
 
 - Given the repository's description and homepage are empty strings

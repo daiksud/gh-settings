@@ -1,49 +1,64 @@
-# Proposed export order for implemented fields whose order differs from the UI.
+# Editor order for supported fields whose canonical export was corrected.
 # Order is significant only for serialization. IDs precede the editable fields.
 # Evidence: authenticated English forms, 2026-11-27; archived UI mappings for
 # conditional Pages controls and persistent pull request limit fields.
 - path: repository.settings.general.features
+  implemented: true
   evidence: https://github.com/daiksud/test-gh-settings-public/settings
   fields: [wikis, issues, issue_permissions, sponsorships, discussions, projects, pull_requests, pull_request_permissions]
 - path: repository.settings.general.pull_requests
+  implemented: true
   evidence: https://github.com/daiksud/test-gh-settings-public/settings
   fields: [allow_merge_commits, merge_commits, allow_squash_merging, squash_merging, allow_rebase_merging, always_suggest_updating_pull_request_branches, allow_auto_merge, automatically_delete_head_branches]
 - path: repository.settings.moderation.interaction_limits.pull_request_limits
+  implemented: true
   evidence: docs/references/settings/moderation.md
   fields: [limit_open_pull_requests_from_users_without_write_access, maximum_open_pull_requests_per_user, count_draft_pull_requests_toward_the_limit, exemption_list]
 - path: repository.settings.rulesets[]
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/rules
   fields: [id, ruleset_name, enforcement_status, bypass_list, target_branches, target_tags, rules]
 - path: repository.settings.rulesets[].rules
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/rules
   fields: [restrict_creations, restrict_updates, restrict_deletions, require_linear_history, require_deployments_to_succeed, require_signed_commits, require_a_pull_request_before_merging, require_status_checks_to_pass, block_force_pushes, require_code_scanning_results, require_code_quality_results, restrict_code_coverage, automatically_request_copilot_code_review]
 - path: repository.settings.rulesets[].rules.require_a_pull_request_before_merging
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/rules
   fields: [required_approvals, dismiss_stale_pull_request_approvals_when_new_commits_are_pushed, require_review_from_code_owners, require_approval_of_the_most_recent_reviewable_push, require_conversation_resolution_before_merging, require_an_additional_approval_for_unattributed_copilot_pull_requests, allowed_merge_methods]
 - path: repository.settings.rulesets[].rules.require_status_checks_to_pass
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/rules
   fields: [require_branches_to_be_up_to_date_before_merging, do_not_require_status_checks_on_creation, required_status_checks]
 - path: repository.settings.actions.general
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/actions
   fields: [actions_permissions, check_workflow_run_status_artifact_and_log_retention, cache, approval_for_running_fork_pull_request_workflows_from_contributors, workflow_permissions]
 - path: repository.settings.actions.general.actions_permissions
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/actions
   fields: [policy, allow_actions_created_by_github, allow_actions_by_marketplace_verified_creators, allow_or_block_specified_actions_and_reusable_workflows, require_actions_to_be_pinned_to_a_full_length_commit_sha]
 - path: repository.settings.environments[]
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/environments
   fields: [name, deployment_protection_rules, deployment_branches_and_tags, deployment_branch_or_tag_rules, variables]
 - path: repository.settings.pages
+  implemented: true
   evidence: docs/development/ui-pages-mapping.md
   fields: [build_and_deployment, custom_domain, enforce_https]
 - path: repository.settings.advanced_security
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/security_analysis
   fields: [private_vulnerability_reporting, dependabot, code_security, secret_protection]
 - path: repository.settings.advanced_security.code_security
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/security_analysis
   fields: [codeql_analysis, ai_scan]
 - path: repository.settings.advanced_security.code_security.ai_scan
+  implemented: true
   evidence: https://github.com/daiksud/gh-settings/settings/security_analysis
   fields: [ai_scan_for_repositories, ai_scan_for_pull_requests]
 - path: repository.settings.webhooks[]
+  implemented: true
   evidence: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks#creating-a-repository-webhook
   fields: [id, payload_url, content_type, ssl_verification, events, active]

@@ -13,8 +13,8 @@ check target applicability and the dated UI and API evidence.
   describes the element. The field reference for each family gives conditional
   validation, empty values and object ownership. The legacy v0 entries retain
   their existing contracts under the [adoption policy](../../references/settings/scope.md).
-- [Editor order](export-order.yml) lists verified differences in the order of
-  existing fields. Each entry is marked implemented when the encoder matches.
+- [Editor order](export-order.yml) records the observed order of fields within
+  supported forms. Each entry is marked implemented when the encoder matches.
 - The [General and About](future/general.yml), [automation](future/automation.yml),
   [security](future/security.yml) and [integrations](future/integrations.yml)
   tables reserve additional UI controls and choices individually.

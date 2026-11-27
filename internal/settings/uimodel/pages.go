@@ -17,9 +17,9 @@ const (
 type PagesCustomDomain struct{ Value *string }
 
 type Pages struct {
+	BuildAndDeployment *PagesBuildAndDeployment
 	CustomDomain       *PagesCustomDomain
 	EnforceHTTPS       *bool
-	BuildAndDeployment *PagesBuildAndDeployment
 }
 type PagesBuildAndDeployment struct {
 	Source       *PagesSourceChoice

@@ -34,8 +34,8 @@ webhooks:
     payload_url: https://example.com/github
     content_type: application/json
     ssl_verification: true
-    active: true
     events: [pull_request, push]
+    active: true
   - id: 87654321
     content_type: application/x-www-form-urlencoded
 ```
@@ -79,8 +79,8 @@ webhooks:
   - payload_url: https://example.com/new-hook
     content_type: application/json
     ssl_verification: true
-    active: false
     events: []
+    active: false
 ```
 
 Creation sends `name: web`, the exact URL, native Content type, Active and events,
