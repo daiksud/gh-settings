@@ -6,10 +6,12 @@ The [Actions event policy reference](../../references/settings/actions/policies.
 
 - `repository.settings.actions.policies` is an optional list with optional
   positive integer `id`, required `policy_name`, required `enforcement_status`
-  (`disabled` or `active`), optional `restrict_events.allowed_events` (nonempty,
-  unique supported strings), optional `restrict_actors.allowed_actors` (unique
-  User or verified repository-role identities, including checked-empty), plus
-  optional `target_workflows` with both `include` and `exclude` string arrays.
+  (`disabled` or `active`), optional `target_workflows` with `include` and
+  `exclude` string arrays, and optional `workflow_execution_protections`.
+  Export orders targeting before protections. Inside protections, `restrict_actors`
+  with its `allowed_actors` list (unique User or verified role identities, including
+  checked-empty) precedes `restrict_events` with its `allowed_events` list
+  (nonempty, unique supported events).
 - Without prune, omission and `[]` manage nothing and make no policy requests.
   Removing an entry stops ownership. `--prune actions-policies` preserves omission,
   but `[]` selects all policies for deletion and a nonempty list retains declared

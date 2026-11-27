@@ -2,12 +2,16 @@ package uimodel
 
 // ActionsEventPolicy applies its restrictions to selected repository workflows.
 type ActionsEventPolicy struct {
-	ID                *int64
-	PolicyName        *string
-	EnforcementStatus *string
-	RestrictEvents    *ActionsRestrictEvents
-	RestrictActors    *ActionsRestrictActors
-	TargetWorkflows   *ActionsWorkflowTarget
+	ID                           *int64
+	PolicyName                   *string
+	EnforcementStatus            *string
+	TargetWorkflows              *ActionsWorkflowTarget
+	WorkflowExecutionProtections *WorkflowExecutionProtections
+}
+
+type WorkflowExecutionProtections struct {
+	RestrictActors *ActionsRestrictActors
+	RestrictEvents *ActionsRestrictEvents
 }
 
 type ActionsRestrictEvents struct {

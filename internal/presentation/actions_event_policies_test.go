@@ -15,7 +15,7 @@ func TestActionsActorPolicyLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	line := ActionsEventPolicyLine(change)
-	for _, want := range []string{`restrict_events.enabled=false`, `restrict_actors.allowed_actors=`, `{"user":71}`, `{"role":"write"}`, `{"role":"maintain"}`, `{"role":"repository_admin"}`} {
+	for _, want := range []string{`workflow_execution_protections.restrict_events.enabled=false`, `workflow_execution_protections.restrict_actors.allowed_actors=`, `{"user":71}`, `{"role":"write"}`, `{"role":"maintain"}`, `{"role":"repository_admin"}`} {
 		if !strings.Contains(line, want) {
 			t.Fatalf("missing %s in %s", want, line)
 		}
@@ -28,7 +28,7 @@ func TestActionsActorPolicyLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	line = ActionsEventPolicyLine(change)
-	if !strings.Contains(line, `restrict_actors.allowed_actors=[]`) || !strings.Contains(line, `restrict_events.allowed_events=["push"]`) {
+	if !strings.Contains(line, `workflow_execution_protections.restrict_actors.allowed_actors=[]`) || !strings.Contains(line, `workflow_execution_protections.restrict_events.allowed_events=["push"]`) {
 		t.Fatal(line)
 	}
 	policy.Actors = nil
@@ -36,7 +36,7 @@ func TestActionsActorPolicyLine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if line := ActionsEventPolicyLine(change); !strings.Contains(line, `restrict_actors.enabled=false`) {
+	if line := ActionsEventPolicyLine(change); !strings.Contains(line, `workflow_execution_protections.restrict_actors.enabled=false`) {
 		t.Fatal(line)
 	}
 }

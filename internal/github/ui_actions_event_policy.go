@@ -17,55 +17,16 @@ func ActionsPoliciesDeclaration(values *[]uimodel.ActionsEventPolicy) (*settings
 			return nil, fmt.Errorf("Actions policy %d requires policy_name and enforcement_status", i)
 		}
 		entries[i] = settings.ActionsEventPolicy{Name: *value.PolicyName, Enforcement: *value.EnforcementStatus}
-		if restriction := value.RestrictEvents; restriction != nil {
-			if restriction.Enabled != nil && !*restriction.Enabled {
-				if restriction.AllowedEvents != nil {
-					return nil, fmt.Errorf("restrict_events.enabled false forbids allowed_events")
-				}
-				entries[i].DisableEvents = true
-			} else {
-				if restriction.AllowedEvents == nil {
-					return nil, fmt.Errorf("restrict_events requires allowed_events")
-				}
-				entries[i].Events = append([]string{}, (*restriction.AllowedEvents)...)
-			}
-		}
-		if restriction := value.RestrictActors; restriction != nil {
-			if restriction.Enabled != nil && !*restriction.Enabled {
-				if restriction.AllowedActors != nil {
-					return nil, fmt.Errorf("restrict_actors.enabled false forbids allowed_actors")
-				}
-				entries[i].DisableActors = true
-			} else {
-				if restriction.AllowedActors == nil {
-					return nil, fmt.Errorf("restrict_actors requires allowed_actors")
-				}
-				actors := make([]settings.ActionsPolicyActor, len(*restriction.AllowedActors))
-				for j, actor := range *restriction.AllowedActors {
-					if (actor.User == nil) == (actor.Role == nil) {
-						return nil, fmt.Errorf("allowed_actors[%d] requires exactly one user or role", j)
-					}
-					if actor.User != nil {
-						if *actor.User <= 0 {
-							return nil, fmt.Errorf("allowed_actors[%d].user must be positive", j)
-						}
-						actors[j] = settings.ActionsPolicyActor{Type: "User", ID: *actor.User}
-					} else {
-						id, ok := actionsPolicyRoleIDs[*actor.Role]
-						if !ok {
-							return nil, fmt.Errorf("allowed_actors[%d] has unsupported role %q", j, *actor.Role)
-						}
-						actors[j] = settings.ActionsPolicyActor{Type: "RepositoryRole", ID: id}
-					}
-				}
-				entries[i].Actors = &actors
-			}
-		}
 		if value.TargetWorkflows != nil {
 			if value.TargetWorkflows.Include == nil || value.TargetWorkflows.Exclude == nil {
 				return nil, fmt.Errorf("target_workflows requires include and exclude arrays")
 			}
 			entries[i].TargetWorkflows = &settings.ActionsWorkflowTarget{Include: append([]string{}, (*value.TargetWorkflows.Include)...), Exclude: append([]string{}, (*value.TargetWorkflows.Exclude)...)}
+		}
+		if protections := value.WorkflowExecutionProtections; protections != nil {
+			if err := readWorkflowExecutionProtections(&entries[i], protections); err != nil {
+				return nil, fmt.Errorf("Actions policy %d workflow_execution_protections: %w", i, err)
+			}
 		}
 		if value.ID != nil {
 			if *value.ID <= 0 {
@@ -81,18 +42,68 @@ func ActionsPoliciesDeclaration(values *[]uimodel.ActionsEventPolicy) (*settings
 	return &result, nil
 }
 
+func readWorkflowExecutionProtections(policy *settings.ActionsEventPolicy, protections *uimodel.WorkflowExecutionProtections) error {
+	if restriction := protections.RestrictEvents; restriction != nil {
+		if restriction.Enabled != nil && !*restriction.Enabled {
+			if restriction.AllowedEvents != nil {
+				return fmt.Errorf("restrict_events.enabled false forbids allowed_events")
+			}
+			policy.DisableEvents = true
+		} else {
+			if restriction.AllowedEvents == nil {
+				return fmt.Errorf("restrict_events requires allowed_events")
+			}
+			policy.Events = append([]string{}, (*restriction.AllowedEvents)...)
+		}
+	}
+	if restriction := protections.RestrictActors; restriction != nil {
+		if restriction.Enabled != nil && !*restriction.Enabled {
+			if restriction.AllowedActors != nil {
+				return fmt.Errorf("restrict_actors.enabled false forbids allowed_actors")
+			}
+			policy.DisableActors = true
+		} else {
+			if restriction.AllowedActors == nil {
+				return fmt.Errorf("restrict_actors requires allowed_actors")
+			}
+			actors := make([]settings.ActionsPolicyActor, len(*restriction.AllowedActors))
+			for j, actor := range *restriction.AllowedActors {
+				if (actor.User == nil) == (actor.Role == nil) {
+					return fmt.Errorf("allowed_actors[%d] requires exactly one user or role", j)
+				}
+				if actor.User != nil {
+					if *actor.User <= 0 {
+						return fmt.Errorf("allowed_actors[%d].user must be positive", j)
+					}
+					actors[j] = settings.ActionsPolicyActor{Type: "User", ID: *actor.User}
+				} else {
+					id, ok := actionsPolicyRoleIDs[*actor.Role]
+					if !ok {
+						return fmt.Errorf("allowed_actors[%d] has unsupported role %q", j, *actor.Role)
+					}
+					actors[j] = settings.ActionsPolicyActor{Type: "RepositoryRole", ID: id}
+				}
+			}
+			policy.Actors = &actors
+		}
+	}
+	return nil
+}
+
 func ActionsEventPolicyUI(value settings.ActionsEventPolicy) (uimodel.ActionsEventPolicy, error) {
 	if err := settings.ValidateActionsEventPolicyState(value); err != nil {
 		return uimodel.ActionsEventPolicy{}, err
 	}
 	name, enforcement := value.Name, value.Enforcement
 	off := false
-	result := uimodel.ActionsEventPolicy{PolicyName: &name, EnforcementStatus: &enforcement,
+	protections := uimodel.WorkflowExecutionProtections{
+		RestrictActors: &uimodel.ActionsRestrictActors{Enabled: &off},
 		RestrictEvents: &uimodel.ActionsRestrictEvents{Enabled: &off},
-		RestrictActors: &uimodel.ActionsRestrictActors{Enabled: &off}}
+	}
+	result := uimodel.ActionsEventPolicy{PolicyName: &name, EnforcementStatus: &enforcement, WorkflowExecutionProtections: &protections}
 	if value.Events != nil {
 		events := append([]string{}, value.Events...)
-		result.RestrictEvents = &uimodel.ActionsRestrictEvents{AllowedEvents: &events}
+		protections.RestrictEvents = &uimodel.ActionsRestrictEvents{AllowedEvents: &events}
 	}
 	if value.Actors != nil {
 		actors := make([]uimodel.ActionsPolicyActor, len(*value.Actors))
@@ -116,7 +127,7 @@ func ActionsEventPolicyUI(value settings.ActionsEventPolicy) (uimodel.ActionsEve
 				return uimodel.ActionsEventPolicy{}, fmt.Errorf("unsupported Actions policy actor type %q", actor.Type)
 			}
 		}
-		result.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: &actors}
+		protections.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: &actors}
 	}
 	if value.TargetWorkflows != nil {
 		target := settings.CanonicalActionsWorkflowTarget(value.TargetWorkflows)
