@@ -29,6 +29,8 @@ var failureResources = []string{
 	settings.CodeQLConfigurationPath,
 	"repository.settings.advanced_security.code_security.codeql_analysis.default_setup",
 	"repository.settings.advanced_security.dependabot",
+	"repository.settings.general.features.wikis.enabled",
+	"repository.settings.general.features.wikis",
 	"repository.settings.general.danger_zone.archive_this_repository",
 	"repository.settings.general.releases.enable_release_immutability",
 	"repository.settings.advanced_security.private_vulnerability_reporting",

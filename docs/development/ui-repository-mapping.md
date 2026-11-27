@@ -34,7 +34,7 @@ UI paths use the exact UI wording converted to snake_case. In this table `A` mea
 | About / Topics | `A.topics` | Topics GET/PUT `names`; canonical sorted set |
 | General / Template repository | `G.template_repository` | REST `is_template` |
 | General / Default branch | `G.default_branch` | REST `default_branch`; retain existing branch validation/readback |
-| Features / Wikis | `G.features.wikis` | REST `has_wiki` |
+| Features / Wikis | `G.features.wikis.enabled` | REST `has_wiki` |
 | Features / Issues | `G.features.issues` | REST `has_issues` |
 | Features / Projects | `G.features.projects` | REST `has_projects` |
 | Features / Discussions | `G.features.discussions` | REST `has_discussions` |

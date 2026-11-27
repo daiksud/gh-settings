@@ -23,7 +23,7 @@ repository:
   settings:
     general:
       features:
-        wikis: false
+        wikis: {enabled: false}
         issue_permissions: {creation_allowed_by: collaborators_only}
       pull_requests: {allow_auto_merge: true}
 `
@@ -113,7 +113,7 @@ repository:
 				wantFeatures := map[string]any{}
 				if failure != "base" && failure != "all" {
 					wantAbout["description"], wantAbout["website"] = "old", "old-url"
-					wantFeatures = map[string]any{"wikis": true, "issues": failure != "disabled-issues", "projects": true, "discussions": false}
+					wantFeatures = map[string]any{"wikis": map[string]any{"enabled": true}, "issues": failure != "disabled-issues", "projects": true, "discussions": false}
 					if general["default_branch"] != "main" {
 						t.Fatal("readable base values lost", general)
 					}
@@ -123,7 +123,7 @@ repository:
 					}
 					if existing {
 						wantAbout["description"] = ""
-						wantFeatures["wikis"] = false
+						wantFeatures["wikis"] = map[string]any{"enabled": false}
 					}
 				}
 				if failure != "all" {

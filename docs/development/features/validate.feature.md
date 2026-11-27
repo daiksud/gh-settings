@@ -28,6 +28,17 @@ These scenarios map to `TestUIConfigAboutRoundTrip`, `TestUIConfigAboutOmission`
 - And omitted controls do not become desired defaults
 - And API-shaped keys, unknown controls, duplicate keys and incorrectly typed values are rejected
 
+### Scenario: Preserve Wikis enablement inside the group
+
+- Given a declaration sets `repository.settings.general.features.wikis.enabled`
+- When the maintainer exports and validates the setting
+- Then the Wikis group contains the observed boolean
+- And an empty or omitted group selects no wiki change
+- And a scalar Wikis group or the reserved `restrict_editing_to_collaborators_only` child fails locally
+
+Test mapping: the [CLI apply and export scenarios](../../../tests/acceptance/apply_test.go)
+and [public Action wiki scenario](../../../tests/github-actions/wikis_acceptance_test.go).
+
 ### Scenario: Reject transport choices and invalid dependent controls
 
 - Given a General commit-message menu contains the API token `PR_TITLE` instead of a supported UI choice

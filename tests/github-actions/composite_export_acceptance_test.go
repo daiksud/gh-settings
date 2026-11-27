@@ -174,18 +174,9 @@ func TestBuiltCompositeRejectsReservedHomePageControl(t *testing.T) {
 
 func startCompositeExportAPI(t *testing.T, f *compositeFixture, beforeRead func()) *atomic.Int64 {
 	t.Helper()
-	state, err := os.MkdirTemp("/tmp", "ghs-export-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(state) })
-	listener, err := net.Listen("unix", filepath.Join(state, "api.sock"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	var reads atomic.Int64
 	var once sync.Once
-	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	serveCompositeAPI(t, f, func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "api.github.com" || r.Header.Get("Authorization") != "token export-fixture-read" {
 			t.Error("export escaped its explicit target/token boundary")
 			w.WriteHeader(http.StatusBadRequest)
@@ -214,7 +205,22 @@ func startCompositeExportAPI(t *testing.T, f *compositeFixture, beforeRead func(
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Fprint(w, `{"message":"CANARY-local-export-value"}`)
 		}
-	})}
+	})
+	return &reads
+}
+
+func serveCompositeAPI(t *testing.T, f *compositeFixture, handler http.HandlerFunc) {
+	t.Helper()
+	state, err := os.MkdirTemp("/tmp", "ghs-composite-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(state) })
+	listener, err := net.Listen("unix", filepath.Join(state, "api.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &http.Server{Handler: handler}
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(func() { _ = server.Close() })
 	f.write(filepath.Join(state, "config.yml"), "http_unix_socket: "+filepath.Join(state, "api.sock")+"\n")
@@ -223,7 +229,6 @@ func startCompositeExportAPI(t *testing.T, f *compositeFixture, beforeRead func(
 		f.base[key] = "http://127.0.0.1:1"
 	}
 	f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
-	return &reads
 }
 
 // Execute the candidate's actual preparation/API/assertion scripts locally with

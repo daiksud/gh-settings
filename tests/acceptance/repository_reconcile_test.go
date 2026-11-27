@@ -204,7 +204,7 @@ repository:
       features:
         issues: false
         projects: true
-        wikis: false
+        wikis: {enabled: false}
         discussions: false
       pull_requests:
         allow_merge_commits: true

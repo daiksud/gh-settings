@@ -172,8 +172,11 @@ The [PR validator](../../.github/workflows/settings-pr.yml) and the
 [main apply workflow](../../.github/workflows/settings-apply.yml) pin the same
 published Action, `01cd465f5c4ff506b39de70261707d5c6fa22943` (v0.47.0).
 Review both pins and the tracked declaration together when adopting a new
-release. The [operational tests](../../tests/github-actions/operational_test.go)
-decode the tracked YAML directly.
+release. The tracked declaration uses the v0.47.0 scalar `features.wikis: false`.
+The [operational tests](../../tests/github-actions/managed_settings_test.go) verify its
+pinned value and translate that field in memory so current-source checks can read
+the rest of the declaration. When the callers adopt the new schema, replace the
+scalar with `features.wikis.enabled: false` and remove the test translation.
 
 Under `repository.settings`, the two empty repository variable lists belong to
 `secrets_and_variables.actions.variables` and `secrets_and_variables.agents.variables`.

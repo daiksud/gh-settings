@@ -23,7 +23,7 @@ func TestUIGeneralScalars(t *testing.T) {
 			{"omitted", uimodel.General{}, settings.RepositoryDeclaration{}},
 			{"template", uimodel.General{TemplateRepository: &value}, settings.RepositoryDeclaration{IsTemplate: &value}},
 			{"default branch", uimodel.General{DefaultBranch: pointer("trunk")}, settings.RepositoryDeclaration{DefaultBranch: pointer("trunk")}},
-			{"wikis", uimodel.General{Features: uimodel.Features{Wikis: &value}}, settings.RepositoryDeclaration{HasWiki: &value}},
+			{"wikis", uimodel.General{Features: uimodel.Features{Wikis: uimodel.WikiSettings{Enabled: &value}}}, settings.RepositoryDeclaration{HasWiki: &value}},
 			{"issues", uimodel.General{Features: uimodel.Features{Issues: &value}}, settings.RepositoryDeclaration{HasIssues: &value}},
 			{"projects", uimodel.General{Features: uimodel.Features{Projects: &value}}, settings.RepositoryDeclaration{HasProjects: &value}},
 			{"discussions", uimodel.General{Features: uimodel.Features{Discussions: &value}}, settings.RepositoryDeclaration{HasDiscussions: &value}},
@@ -74,7 +74,7 @@ func TestUIGeneralRESTPayload(t *testing.T) {
 	})
 	desired, err := GeneralDeclaration(uimodel.General{
 		TemplateRepository: pointer(true), DefaultBranch: pointer("trunk"),
-		Features:     uimodel.Features{Issues: pointer(false), Projects: pointer(true), Wikis: pointer(false), Discussions: pointer(true)},
+		Features:     uimodel.Features{Issues: pointer(false), Projects: pointer(true), Wikis: uimodel.WikiSettings{Enabled: pointer(false)}, Discussions: pointer(true)},
 		PullRequests: uimodel.PullRequests{AllowMergeCommits: pointer(false), AllowSquashMerging: pointer(true), AllowRebaseMerging: pointer(false), AlwaysSuggestUpdatingPullRequestBranches: pointer(true), AllowAutoMerge: pointer(false), AutomaticallyDeleteHeadBranches: pointer(true)},
 		Commits:      uimodel.Commits{RequireContributorsToSignOffOnWebBasedCommits: pointer(true)},
 	})

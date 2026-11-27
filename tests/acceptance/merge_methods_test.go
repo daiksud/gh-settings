@@ -235,7 +235,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 					"labels": []any{},
 					"settings": map[string]any{"general": map[string]any{
 						"template_repository": false, "default_branch": "main",
-						"features":      map[string]any{"wikis": true, "issues": true, "sponsorships": false, "discussions": false, "projects": true, "pull_requests": false, "issue_permissions": map[string]any{"creation_allowed_by": "all_users"}},
+						"features":      map[string]any{"wikis": map[string]any{"enabled": true}, "issues": true, "sponsorships": false, "discussions": false, "projects": true, "pull_requests": false, "issue_permissions": map[string]any{"creation_allowed_by": "all_users"}},
 						"pull_requests": map[string]any{"allow_merge_commits": true, "allow_squash_merging": false, "allow_rebase_merging": true, "automatically_delete_head_branches": true, "allow_auto_merge": false, "always_suggest_updating_pull_request_branches": false, "merge_commits": map[string]any{"default_commit_message": "default_message"}},
 						"commits":       map[string]any{"require_contributors_to_sign_off_on_web_based_commits": false},
 					}},
@@ -247,7 +247,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			input := repositoryInput(`about: {description: '', website: https://example.com/new}
 settings:
   general:
-    features: {discussions: true, wikis: false, projects: false, issues: false}
+    features: {discussions: true, wikis: {enabled: false}, projects: false, issues: false}
     pull_requests:
       merge_commits: {default_commit_message: pull_request_title}
       squash_merging: {default_commit_message: pull_request_title}
@@ -318,7 +318,7 @@ settings:
 				`repository.about.website: "old-url" → "https://example.com/new"`,
 				"repository.settings.general.features.issues: true → false",
 				"repository.settings.general.features.projects: true → false",
-				"repository.settings.general.features.wikis: true → false",
+				"repository.settings.general.features.wikis.enabled: true → false",
 				"repository.settings.general.features.discussions: false → true",
 				"repository.settings.general.pull_requests.allow_squash_merging: false → true",
 				"repository.settings.general.pull_requests.allow_rebase_merging: true → false",

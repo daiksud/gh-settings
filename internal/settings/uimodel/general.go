@@ -13,7 +13,7 @@ type General struct {
 }
 
 type Features struct {
-	Wikis                  *bool
+	Wikis                  WikiSettings
 	Issues                 *bool
 	IssuePermissions       CreationPermissions
 	Sponsorships           *bool
@@ -22,6 +22,8 @@ type Features struct {
 	PullRequests           *bool
 	PullRequestPermissions CreationPermissions
 }
+
+type WikiSettings struct{ Enabled *bool }
 
 type CreationAllowedBy string
 

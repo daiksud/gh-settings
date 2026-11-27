@@ -9,7 +9,7 @@ func TestUnambiguousAboutGeneralAndTopicsDisplayPathInventory(t *testing.T) {
 		{"topics.names", "repository.about.topics"},
 		{"repository.is_template", "repository.settings.general.template_repository"},
 		{"repository.default_branch", "repository.settings.general.default_branch"},
-		{"repository.has_wiki", "repository.settings.general.features.wikis"},
+		{"repository.has_wiki", "repository.settings.general.features.wikis.enabled"},
 		{"repository.has_issues", "repository.settings.general.features.issues"},
 		{"repository.has_sponsorships", "repository.settings.general.features.sponsorships"},
 		{"repository.has_discussions", "repository.settings.general.features.discussions"},

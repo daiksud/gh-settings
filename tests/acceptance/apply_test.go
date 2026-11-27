@@ -46,8 +46,8 @@ func TestApplyAcceptance(t *testing.T) {
 		{name: "discussions-forbidden", input: generalInput("features:\n  discussions: false\n"), payload: `{"has_discussions":false}`, status: 403, wantError: "403"},
 		{name: "discussions-invalid-before-origin", input: generalInput("features:\n  discussions: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must not be null"},
 		{name: "partial-false", input: generalInput("features:\n  issues: false\n"), payload: `{"has_issues":false}`, nested: true},
-		{name: "all-zero-values", input: repositoryInput("about:\n  description: ''\n  website: ''\nsettings:\n  general:\n    features:\n      issues: false\n      projects: false\n      wikis: false\n"), payload: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`},
-		{name: "true-and-escaped-string", input: repositoryInput("about:\n  description: \"quote\\\"\\n\\\\\"\nsettings:\n  general:\n    features:\n      wikis: true\n"), payload: `{"description":"quote\"\n\\","has_wiki":true}`},
+		{name: "all-zero-values", input: repositoryInput("about:\n  description: ''\n  website: ''\nsettings:\n  general:\n    features:\n      issues: false\n      projects: false\n      wikis: {enabled: false}\n"), payload: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`},
+		{name: "true-and-escaped-string", input: repositoryInput("about:\n  description: \"quote\\\"\\n\\\\\"\nsettings:\n  general:\n    features:\n      wikis: {enabled: true}\n"), payload: `{"description":"quote\"\n\\","has_wiki":true}`},
 		{name: "rewritten-origin", input: generalInput("features:\n  projects: true\n"), payload: `{"has_projects":true}`, gitSetup: setupRewrittenOrigin},
 		{name: "aliased-origin", input: aboutInput("website: ''\n"), noAPI: true, wantError: "origin", gitSetup: setupAliasedOrigin},
 		{name: "worktree-origin", input: aboutInput("description: new\n"), payload: `{"description":"new"}`, gitSetup: setupWorktreeOrigin},
@@ -62,23 +62,26 @@ func TestApplyAcceptance(t *testing.T) {
 		{name: "malformed-before-api", input: generalInput("features:\n  issues: [\n"), wantError: "decode YAML", noAPI: true},
 		{name: "invalid-before-origin-auth", input: generalInput("features:\n  issues: 'false'\n"), wantError: "must be a boolean", noAPI: true, noOrigin: true, noAuth: true},
 		{name: "unknown-key", input: generalInput("private: true\n"), wantError: "unknown repository.settings.general key", noAPI: true},
-		{name: "duplicate-key", input: generalInput("features:\n  wikis: true\n  wikis: false\n"), wantError: "duplicate key", noAPI: true},
+		{name: "empty-wikis", input: generalInput("features: {wikis: {}}\n"), noAPI: true, noOrigin: true, noAuth: true},
+		{name: "scalar-wikis", input: generalInput("features: {wikis: true}\n"), wantError: "repository.settings.general.features.wikis must be a mapping", noAPI: true},
+		{name: "reserved-wiki-editing", input: generalInput("features: {wikis: {enabled: true, restrict_editing_to_collaborators_only: true}}\n"), wantError: "unknown repository.settings.general.features.wikis key", noAPI: true},
+		{name: "duplicate-key", input: generalInput("features:\n  wikis: {enabled: true}\n  wikis: {enabled: false}\n"), wantError: "duplicate key", noAPI: true},
 		{name: "explicit-null", input: aboutInput("description: null\n"), wantError: "must be a string", noAPI: true},
 		{name: "missing-version", input: "repository: {}\n", wantError: "missing version", noAPI: true},
 		{name: "unsupported-version", input: "version: daiksud/gh-settings@v1\n", wantError: "version must be the string", noAPI: true},
 		{name: "multiple-documents", input: "version: daiksud/gh-settings@v0\n---\nversion: daiksud/gh-settings@v0\n", wantError: "one YAML document", noAPI: true},
 		{name: "missing-file", wantError: "read .github/settings.yml", noAPI: true},
-		{name: "missing-origin", input: generalInput("features:\n  wikis: false\n"), wantError: "a GitHub origin remote is required", noAPI: true, noOrigin: true},
-		{name: "authentication", input: generalInput("features:\n  wikis: false\n"), wantError: "configure GitHub API client", noAPI: true, noAuth: true},
-		{name: "unauthorized", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 401, wantError: "401"},
-		{name: "forbidden", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 403, wantError: "403"},
-		{name: "server-validation", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 422, wantError: "422"},
-		{name: "redirect-301", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 301, wantError: "301"},
-		{name: "redirect-302", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 302, wantError: "302"},
-		{name: "redirect-303", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 303, wantError: "303"},
-		{name: "redirect-307", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 307, wantError: "307"},
-		{name: "redirect-308", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 308, wantError: "308"},
-		{name: "output-after-patch", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, outputFailure: true, wantError: "write output:"},
+		{name: "missing-origin", input: generalInput("features:\n  wikis: {enabled: false}\n"), wantError: "a GitHub origin remote is required", noAPI: true, noOrigin: true},
+		{name: "authentication", input: generalInput("features:\n  wikis: {enabled: false}\n"), wantError: "configure GitHub API client", noAPI: true, noAuth: true},
+		{name: "unauthorized", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 401, wantError: "401"},
+		{name: "forbidden", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 403, wantError: "403"},
+		{name: "server-validation", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 422, wantError: "422"},
+		{name: "redirect-301", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 301, wantError: "301"},
+		{name: "redirect-302", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 302, wantError: "302"},
+		{name: "redirect-303", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 303, wantError: "303"},
+		{name: "redirect-307", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 307, wantError: "307"},
+		{name: "redirect-308", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, status: 308, wantError: "308"},
+		{name: "output-after-patch", input: generalInput("features:\n  wikis: {enabled: false}\n"), payload: `{"has_wiki":false}`, outputFailure: true, wantError: "write output:"},
 		{name: "no-op-output-failure", input: "version: daiksud/gh-settings@v0\n", noAPI: true, noAuth: true, noOrigin: true, outputFailure: true, wantError: "write output:"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -253,7 +256,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 				t.Error(err)
 			}
-			if !reflect.DeepEqual(payload, map[string]any{"has_issues": false}) {
+			if !reflect.DeepEqual(payload, map[string]any{"has_wiki": false}) {
 				t.Errorf("payload=%v", payload)
 			}
 			for key, value := range payload {
@@ -280,11 +283,15 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		t.Fatalf("export=%v result=%+v", err, exported)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
-	if err != nil || !strings.Contains(string(data), "version: daiksud/gh-settings@v0") || !strings.Contains(string(data), "features:") || !strings.Contains(string(data), "issues: true") || strings.Contains(string(data), "has_issues") {
+	if err != nil || !strings.Contains(string(data), "version: daiksud/gh-settings@v0") || !strings.Contains(string(data), "features:") || !strings.Contains(string(data), "wikis:\n                    enabled: true") || strings.Contains(string(data), "restrict_editing_to_collaborators_only") || strings.Contains(string(data), "has_issues") {
 		t.Fatalf("exported file=%q error=%v", data, err)
 	}
-	// Edit to own only issues; omit the exported string/project/wiki fields.
-	input := generalInput("features: {issues: false}\n")
+	validated, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"validate"}, false)
+	if err != nil || validated.runErr != nil || hasNonInfoDiagnostic(validated.stderr.String()) {
+		t.Fatalf("validate exported settings: %v, %+v", err, validated)
+	}
+	// Own both controls. A concurrent change to Issues will leave only Wikis to patch.
+	input := generalInput("features: {wikis: {enabled: false}, issues: false}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +302,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		}
 		want := ""
 		if command == "plan" {
-			want = "repository.settings.general.features.issues: true → false\n"
+			want = "repository.settings.general.features.issues: true → false\nrepository.settings.general.features.wikis.enabled: true → false\n"
 		}
 		if result.stdout.String() != want {
 			t.Fatalf("%s output=%q", command, result.stdout.String())
@@ -303,15 +310,19 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	remote["description"] = "external change"
-	remote["has_issues"] = false // Fresh apply observes this match and skips PATCH.
+	remote["has_issues"] = false // Fresh apply observes this match and omits has_issues from the PATCH.
 	mu.Unlock()
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("apply=%v result=%+v", err, result)
 	}
+	again, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
+	if err != nil || again.runErr != nil || again.stdout.String() != "Applied repository settings.\n" || hasNonInfoDiagnostic(again.stderr.String()) {
+		t.Fatalf("repeat apply: %v, %+v", err, again)
+	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "PATCH", "GET", "GET"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

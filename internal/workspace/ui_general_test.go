@@ -12,7 +12,8 @@ repository:
             template_repository: false
             default_branch: main
             features:
-                wikis: false
+                wikis:
+                    enabled: false
                 issues: true
                 issue_permissions:
                     creation_allowed_by: collaborators_only
@@ -48,7 +49,7 @@ func TestUIConfigGeneralRoundTrip(t *testing.T) {
 		t.Fatal("General settings were omitted")
 	}
 	g := got.Settings.General
-	if g.TemplateRepository == nil || *g.TemplateRepository || g.Features.Wikis == nil || *g.Features.Wikis || g.PullRequests.AllowAutoMerge == nil || *g.PullRequests.AllowAutoMerge || g.PullRequests.MergeCommits.DefaultCommitMessage == nil || *g.PullRequests.MergeCommits.DefaultCommitMessage != "pull_request_title_and_description" {
+	if g.TemplateRepository == nil || *g.TemplateRepository || g.Features.Wikis.Enabled == nil || *g.Features.Wikis.Enabled || g.PullRequests.AllowAutoMerge == nil || *g.PullRequests.AllowAutoMerge || g.PullRequests.MergeCommits.DefaultCommitMessage == nil || *g.PullRequests.MergeCommits.DefaultCommitMessage != "pull_request_title_and_description" {
 		t.Fatalf("lost nested General intent: %#v", g)
 	}
 	encoded, err := EncodeConfig(got)
@@ -64,7 +65,7 @@ func TestUIConfigGeneralOmission(t *testing.T) {
 		t.Fatalf("missing General: %#v, %v", got, err)
 	}
 	g := got.Settings.General
-	if g.Features.Issues == nil || *g.Features.Issues || g.DefaultBranch != nil || g.Features.PullRequests != nil || g.Features.IssuePermissions.CreationAllowedBy != nil {
+	if g.Features.Issues == nil || *g.Features.Issues || g.DefaultBranch != nil || g.Features.PullRequests != nil || g.Features.Wikis.Enabled != nil || g.Features.IssuePermissions.CreationAllowedBy != nil {
 		t.Fatalf("omitted fields supplied intent: %#v", g)
 	}
 }
@@ -73,6 +74,8 @@ func TestUIConfigGeneralRejectsUnknownAndWrongTypes(t *testing.T) {
 	for _, fields := range []string{
 		"allow_merge_commit: true", "future: true", "features: {has_issues: false}",
 		"features: {issues: 'false'}", "features: {issues: yes}",
+		"features: {wikis: false}", "features: {wikis: {enabled: null}}", "features: {wikis: {enabled: 'true'}}",
+		"features: {wikis: {restrict_editing_to_collaborators_only: true}}",
 		"features: {issues: null}", "features: null", "default_branch: 3",
 		"pull_requests: {merge_commits: {default_commit_message: false}}",
 		"pull_requests: {allow_auto_merge: [false]}",
