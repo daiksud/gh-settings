@@ -61,7 +61,7 @@ repository:
         check_workflow_run_status_artifact_and_log_retention: 30
         approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors
     pages: {build_and_deployment: {source: deploy_from_a_branch, branch: none}}
-    advanced_security: {private_vulnerability_reporting: false}
+    advanced_security: {private_vulnerability_reporting: {enabled: false}}
 `
 			}
 			if strings.HasPrefix(scenario, "mixed empty ") {

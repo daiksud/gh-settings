@@ -58,11 +58,13 @@ type uiDependabotDocument struct {
 }
 
 type uiAdvancedSecurityDocument struct {
-	PrivateVulnerabilityReporting *bool
+	PrivateVulnerabilityReporting *uiPrivateVulnerabilityReportingDocument
 	Dependabot                    *uiDependabotDocument
 	CodeSecurity                  *uimodel.CodeSecurity
 	SecretProtection              *uiSecretProtectionDocument
 }
+
+type uiPrivateVulnerabilityReportingDocument struct{ Enabled *bool }
 
 type uiSecretProtectionDocument struct {
 	Enabled        *bool
@@ -94,7 +96,10 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 		}
 	}
 	if security := document.AdvancedSecurity; security != nil {
-		advanced := &uimodel.AdvancedSecurity{CodeSecurity: security.CodeSecurity, PrivateVulnerabilityReporting: security.PrivateVulnerabilityReporting}
+		advanced := &uimodel.AdvancedSecurity{CodeSecurity: security.CodeSecurity}
+		if reporting := security.PrivateVulnerabilityReporting; reporting != nil {
+			advanced.PrivateVulnerabilityReporting = reporting.Enabled
+		}
 		if security.Dependabot != nil {
 			advanced.DependabotAlerts = security.Dependabot.Alerts
 			advanced.DependabotSecurityUpdates = security.Dependabot.SecurityUpdates
@@ -154,7 +159,10 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 	}
 	if model.SecurityAndQuality != nil && model.SecurityAndQuality.AdvancedSecurity != nil {
 		security := model.SecurityAndQuality.AdvancedSecurity
-		result.AdvancedSecurity = &uiAdvancedSecurityDocument{CodeSecurity: security.CodeSecurity, PrivateVulnerabilityReporting: security.PrivateVulnerabilityReporting}
+		result.AdvancedSecurity = &uiAdvancedSecurityDocument{CodeSecurity: security.CodeSecurity}
+		if security.PrivateVulnerabilityReporting != nil {
+			result.AdvancedSecurity.PrivateVulnerabilityReporting = &uiPrivateVulnerabilityReportingDocument{Enabled: security.PrivateVulnerabilityReporting}
+		}
 		if security.DependabotAlerts != nil || security.DependabotSecurityUpdates != nil {
 			result.AdvancedSecurity.Dependabot = &uiDependabotDocument{Alerts: security.DependabotAlerts, SecurityUpdates: security.DependabotSecurityUpdates}
 		}

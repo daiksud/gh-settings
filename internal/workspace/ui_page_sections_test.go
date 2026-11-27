@@ -27,7 +27,8 @@ repository:
           default_permissions: read_repository_contents_and_packages_permissions
           allow_github_actions_to_create_and_approve_pull_requests: false
     advanced_security:
-      private_vulnerability_reporting: false
+      private_vulnerability_reporting:
+        enabled: false
       secret_protection:
         enabled: false
         push_protection: false

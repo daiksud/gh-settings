@@ -17,7 +17,7 @@ import (
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	// The hosted workflows validate the original document with v0.47.0.
-	// Check its pinned scalar before decoding the remaining policy with current source.
+	// Check the pinned scalars before decoding the remaining policy with current source.
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +31,7 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 		t.Fatal("expected only one settings document", err)
 	}
 	wrapPinnedToggle(t, doc.Content[0], false, "repository", "settings", "general", "features", "wikis")
+	wrapPinnedToggle(t, doc.Content[0], true, "repository", "settings", "advanced_security", "private_vulnerability_reporting")
 	data, err = yaml.Marshal(&doc)
 	if err != nil {
 		t.Fatal(err)

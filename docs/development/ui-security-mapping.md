@@ -25,7 +25,7 @@ English UI headings and labels were inspected read-only on 2026-10-28. The inspe
 | --- | --- | --- |
 | Security and quality / Advanced Security / Secret Protection | `repository.settings.advanced_security.secret_protection.enabled` | Repository GET `security_and_analysis.secret_scanning.status`; narrow PATCH same member, `enabled` / `disabled` |
 | Security and quality / Advanced Security / Push protection | `repository.settings.advanced_security.secret_protection.push_protection` | Repository GET `security_and_analysis.secret_scanning_push_protection.status`; narrow PATCH same member |
-| Security and quality / Advanced Security / Private vulnerability reporting | `repository.settings.advanced_security.private_vulnerability_reporting` | Public applicability GET, then endpoint boolean `enabled`; bodyless PUT / DELETE |
+| Security and quality / Advanced Security / Private vulnerability reporting | `repository.settings.advanced_security.private_vulnerability_reporting.enabled` | Public applicability GET, then endpoint boolean `enabled`; bodyless PUT / DELETE |
 | General / Releases / Enable release immutability | `repository.settings.general.releases.enable_release_immutability` | Immutable-releases endpoint `enabled`; bodyless PUT / DELETE |
 
 The internal `SecuritySettings.GeneralReleases` member remains a family adapter container, not a literal public path. Current composition places its control in General / Releases beside the other General fields. Security owns this control's API conversion; it does not move the control into an invented Security page.

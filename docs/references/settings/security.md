@@ -22,7 +22,7 @@ Several settings have prerequisites or can trigger analysis and consume resource
 
 ## Private vulnerability reporting
 
-Use boolean `repository.settings.advanced_security.private_vulnerability_reporting`. Omission is unmanaged; false explicitly disables. It is independent from Secret protection.
+Set `repository.settings.advanced_security.private_vulnerability_reporting.enabled` to `true` to accept private reports or `false` to disable them. Omitting the group or declaring `private_vulnerability_reporting: {}` leaves enablement unmanaged. Replace the former scalar, for example `private_vulnerability_reporting: true`, with `private_vulnerability_reporting: {enabled: true}`. Submission requirements and trusted reporters have no supported YAML keys.
 
 This control applies to public repositories. Fresh visibility and complete status are required; private/internal applicability failures, malformed data, permission errors and redirects do not become disabled state. Apply reads fresh prerequisites, skips matching state, performs the narrow enable/disable operation and verifies readback. Earlier writes remain on later failure. See [private reporting](../../development/features/security.feature.md).
 

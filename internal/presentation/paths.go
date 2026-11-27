@@ -63,7 +63,7 @@ func SettingPath(path string) string {
 	case "security.ai_scan_pull_requests":
 		return "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests"
 	case "security.private_vulnerability_reporting":
-		return "repository.settings.advanced_security.private_vulnerability_reporting"
+		return settings.PrivateReportingEnabledPath
 	case "security.immutable_releases":
 		return "repository.settings.general.releases.enable_release_immutability"
 	case "pages.build_type":

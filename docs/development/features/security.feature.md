@@ -13,7 +13,7 @@ Current source uses the exact marker `version: daiksud/gh-settings@v0`. Optional
 | `dependabot.alerts`, `dependabot.security_updates` | #344 | Coupled optional booleans with required-permissions 404 reading and enabled-intent verification |
 | `secret_protection.enabled` | #345 | Repository Secret Protection feature, not partner notifications |
 | `secret_protection.push_protection` | #345 | Repository push protection, not user-level protection |
-| `private_vulnerability_reporting` | #347 | Public repositories only |
+| `private_vulnerability_reporting.enabled` | #347 | Public repositories only |
 
 Release immutability belongs separately at `repository.settings.general.releases.enable_release_immutability`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
 
@@ -171,7 +171,7 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../../references/settings/security.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` with automatic export. Product-wide Code Security and Advanced Security enablement remains excluded.
+The [public configuration contract](../../references/settings/security.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting.enabled` with automatic export. Product-wide Code Security and Advanced Security enablement remains excluded.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../../internal/settings/private_reporting_test.go).
 - Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [Security UI codec](../../../internal/workspace/ui_security_test.go).
@@ -180,6 +180,7 @@ The [public configuration contract](../../references/settings/security.md#privat
 - Independent reads, matching apply, confirmed progress and pre-/post-write failure: [TestPrivateReportingIndependentPlanAndMatchingApply](../../../internal/app/private_reporting_test.go) and [TestPrivateReportingFailureRetainsOnlyConfirmedWrites](../../../internal/app/private_reporting_test.go).
 - Automatic Security family acquisition and native report validation: [Readable Security settings](readable-security-export.feature.md) and [TestPrivateReportingNativeSummaryAndIndependentSecurityFields](../../../internal/actions/private_reporting_test.go).
 - Built-CLI export→zero-plan→edit→apply, native credential-free Summary, false/idempotence, nonpublic applicability, file preservation, GET/PUT/DELETE redirects and partial writes after Secret scanning: [TestPrivateReportingExportPlanApplyAndSummary](../../../tests/acceptance/private_reporting_test.go).
+- Public Action validation, automatic export, detailed plan, apply and repeat with the nested enablement field: [TestBuiltCompositePrivateReporting](../../../tests/github-actions/private_reporting_acceptance_test.go).
 
 Fixtures use dummy credentials and local modeled responses. A read-only GET on this public repository returned enabled=true; no live PUT/DELETE, report/advisory/notification operation, permission expansion, upper-policy change or release was performed. These checks do not establish live update compatibility or other credential grants.
 

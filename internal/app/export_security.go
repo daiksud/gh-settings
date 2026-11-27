@@ -135,7 +135,7 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 
 		return nil
 	})
-	observe("repository.settings.advanced_security.private_vulnerability_reporting", func(candidate *settings.SecurityDeclaration) error {
+	observe(settings.PrivateReportingEnabledPath, func(candidate *settings.SecurityDeclaration) error {
 		if read.PrivateReporting == nil {
 			return fmt.Errorf("reader unavailable")
 		}

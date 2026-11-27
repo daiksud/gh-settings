@@ -607,11 +607,11 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 	if desired.Security.PrivateVulnerabilityReporting != nil {
 		observed, err := read.PrivateReporting(repo)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.private_vulnerability_reporting", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PrivateReportingEnabledPath, Target: repo, Err: err}
 		}
 		managed, changes, err := settings.ComparePrivateReporting(observed, desired.Security)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.private_vulnerability_reporting", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PrivateReportingEnabledPath, Target: repo, Err: err}
 		}
 		comparison.Managed += managed
 		comparison.Security = append(comparison.Security, changes...)

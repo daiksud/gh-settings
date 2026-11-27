@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -48,7 +49,7 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(calls, []string{"secret", "dependabot", "codeql", "ai", "private", "immutable"}) || len(infos) != 3 {
+			if !reflect.DeepEqual(calls, []string{"secret", "dependabot", "codeql", "ai", "private", "immutable"}) || len(infos) != 3 || !slices.Contains(infos, "repository.settings.advanced_security.private_vulnerability_reporting.enabled") {
 				t.Fatal(calls, infos)
 			}
 			if existing {

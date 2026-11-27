@@ -68,7 +68,7 @@ func TestSecurityStatusObservationRejectsForgedProvenance(t *testing.T) {
 		{false, false, []SecurityStatusNormalization{{Path: valid.Path, RawValue: "enabled", Fallback: false}}},
 		{false, false, []SecurityStatusNormalization{{Path: valid.Path, RawValue: "disabled", Fallback: false}}},
 		{false, false, []SecurityStatusNormalization{{Path: valid.Path, RawValue: "FUTURE", Fallback: true}}},
-		{false, false, []SecurityStatusNormalization{{Path: "repository.settings.advanced_security.private_vulnerability_reporting", RawValue: "FUTURE", Fallback: false}}},
+		{false, false, []SecurityStatusNormalization{{Path: "repository.settings.advanced_security.private_vulnerability_reporting.enabled", RawValue: "FUTURE", Fallback: false}}},
 		{false, true, []SecurityStatusNormalization{{Path: PushProtectionControl.Path(), RawValue: "FUTURE", Fallback: false}}},
 	} {
 		observed, err := NewSecretScanningObservationWithNormalizations(test.scanning, test.push, test.records)

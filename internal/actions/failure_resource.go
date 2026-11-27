@@ -33,6 +33,7 @@ var failureResources = []string{
 	"repository.settings.general.features.wikis",
 	"repository.settings.general.danger_zone.archive_this_repository",
 	"repository.settings.general.releases.enable_release_immutability",
+	settings.PrivateReportingEnabledPath,
 	"repository.settings.advanced_security.private_vulnerability_reporting",
 	"repository.settings.advanced_security",
 	"repository.settings.actions.general", "repository.settings.environments",
