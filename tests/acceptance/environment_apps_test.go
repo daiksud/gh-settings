@@ -53,7 +53,7 @@ func TestEnvironmentAppsBinaryValidationAndExport(t *testing.T) {
 	if err := setupOrdinaryOrigin(f.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {custom_rules: [101]}}]}\n")
+	input := repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {enable_custom_rules_with_github_apps: [101]}}]}\n")
 	t.Run("validate", func(t *testing.T) {
 		if err := writeSettingsFile(f.work, input); err != nil {
 			t.Fatal(err)
@@ -72,13 +72,13 @@ func TestEnvironmentAppsBinaryValidationAndExport(t *testing.T) {
 			t.Fatal(got, err)
 		}
 		data, err := os.ReadFile(filepath.Join(f.work, ".github/settings.yml"))
-		if err != nil || !strings.Contains(string(data), "custom_rules:") || !strings.Contains(string(data), "101") || strings.Contains(string(data), "rule91") {
+		if err != nil || !strings.Contains(string(data), "enable_custom_rules_with_github_apps:") || !strings.Contains(string(data), "101") || strings.Contains(string(data), "rule91") {
 			t.Fatalf("complete App selection missing: %s; %v", data, err)
 		}
 	})
 	t.Run("unavailable-retains-complete-family-without-debug-leak", func(t *testing.T) {
 		unavailable.Store(true)
-		prior := repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {wait_timer: 7, custom_rules: [101]}}]}\n")
+		prior := repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {wait_timer: 7, enable_custom_rules_with_github_apps: [101]}}]}\n")
 		if err := writeSettingsFile(f.work, prior); err != nil {
 			t.Fatal(err)
 		}
@@ -198,11 +198,11 @@ func TestEnvironmentAppsBinaryReconciliation(t *testing.T) {
 			if err := setupOrdinaryOrigin(f.work, env); err != nil {
 				t.Fatal(err)
 			}
-			controls := "custom_rules: [2]"
+			controls := "enable_custom_rules_with_github_apps: [2]"
 			if mode == "omitted" {
 				controls = "wait_timer: 5"
 			} else if mode == "parent-update-app-rejected" {
-				controls = "wait_timer: 5, custom_rules: [2]"
+				controls = "wait_timer: 5, enable_custom_rules_with_github_apps: [2]"
 			}
 			input := repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {" + controls + "}}]}\n")
 			if err := writeSettingsFile(f.work, input); err != nil {

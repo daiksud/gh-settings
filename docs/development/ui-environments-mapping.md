@@ -25,11 +25,11 @@ The UI prefix `E` means `repository.settings.environments[]`.
 | --- | --- | --- |
 | Environment variables / Name and Value | `variables[].name`, `variables[].value` | Independently scoped typed variable declarations; not Environment policy PUT members |
 | Selected Environment name | `name` | Name-addressed resource identity; never numeric environment ID |
-| Deployment protection rules / Installed custom App checkboxes | `deployment_protection_rules.custom_rules` | Unique positive App IDs; separate enabled-rule POST/DELETE, never parent PUT or binding-ID writeback |
+| Deployment protection rules / Required reviewers | `deployment_protection_rules.required_reviewers.reviewers` | Typed numeric principal list to API `reviewers`; explicit empty list encodes an unchecked group |
+| Required reviewers / people or teams | `deployment_protection_rules.required_reviewers.reviewers[].person` or `.team` | Exactly one positive ID; person → API `type=User`, team → `type=Team` |
+| Required reviewers / Prevent self-review | `deployment_protection_rules.required_reviewers.prevent_self_review` | `prevent_self_review` |
 | Deployment protection rules / Wait timer; Time to wait (minutes) | `deployment_protection_rules.wait_timer` | Integer `wait_timer`; zero encodes the unchecked group, positive values the displayed minutes |
-| Deployment protection rules / Required reviewers | `deployment_protection_rules.required_reviewers` | Typed numeric principal list to API `reviewers`; explicit empty list encodes an unchecked group |
-| Required reviewers / people or teams | `deployment_protection_rules.required_reviewers[].person` or `.team` | Exactly one positive ID; person → API `type=User`, team → `type=Team` |
-| Deployment protection rules / Prevent self-review | `deployment_protection_rules.prevent_self_review` | `prevent_self_review` |
+| Enable custom rules with GitHub Apps / Installed App checkboxes | `deployment_protection_rules.enable_custom_rules_with_github_apps` | Unique positive App IDs; separate enabled-rule POST/DELETE, never parent PUT or binding-ID writeback |
 | Deployment protection rules / Allow administrators to bypass configured protection rules | `deployment_protection_rules.allow_administrators_to_bypass_configured_protection_rules` | `can_admins_bypass` |
 | Deployment branches and tags | `deployment_branches_and_tags` | Explicit menu to null or two internal policy booleans |
 | Add deployment branch or tag rule / Ref type | `deployment_branch_or_tag_rules[].ref_type` | `branch` / `tag` to pattern endpoint `type` |

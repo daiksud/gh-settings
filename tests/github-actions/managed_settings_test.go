@@ -41,6 +41,7 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 		return fields[key]
 	}
 	repositorySettings := member(member(doc.Content[0], "repository"), "settings")
+	checkPinnedEnvironmentProtection(t, member(repositorySettings, "environments"))
 	for _, scope := range []string{"actions", "agents"} {
 		page := member(repositorySettings, scope)
 		variables := member(page, "variables")
@@ -85,6 +86,33 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 		t.Fatal(err)
 	}
 	return declaration
+}
+
+// The hosted v0.46.0 Action reads the flat Environment protection section.
+func checkPinnedEnvironmentProtection(t *testing.T, environments *yaml.Node) {
+	t.Helper()
+	if environments.Kind != yaml.SequenceNode || len(environments.Content) != 1 {
+		t.Fatal("expected one credential Environment")
+	}
+	entry := environments.Content[0]
+	fields, err := settingsYAMLMap(entry)
+	if err != nil || fields["deployment_protection_rules"] == nil {
+		t.Fatal("missing credential Environment protections", err)
+	}
+	rules := fields["deployment_protection_rules"]
+	var got map[string]any
+	want := map[string]any{
+		"required_reviewers":  []any{map[string]any{"person": 155234749}},
+		"prevent_self_review": false,
+		"wait_timer":          0,
+		"custom_rules":        []any{},
+		"allow_administrators_to_bypass_configured_protection_rules": false,
+	}
+	if err := rules.Decode(&got); err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected v0.46.0 credential Environment protections: %#v (%v)", got, err)
+	}
+	i := slices.Index(entry.Content, rules)
+	entry.Content = slices.Delete(entry.Content, i-1, i+1)
 }
 
 func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {

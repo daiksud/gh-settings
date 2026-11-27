@@ -10,13 +10,13 @@ import (
 
 func TestEnvironmentPolicyUI(t *testing.T) {
 	policy := settings.EnvironmentDeclaration{Name: "Production", WaitTimer: rulesetPtr(0), PreventSelfReview: rulesetPtr(false), CanAdminsBypass: rulesetPtr(true), Reviewers: rulesetPtr([]settings.EnvironmentReviewer{{Type: "Team", ID: 12}, {Type: "User", ID: 11}}), DeploymentBranchPolicyDeclared: true, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: rulesetPtr([]settings.EnvironmentPattern{{Type: "branch", Name: "Release/*"}, {Type: "tag", Name: "Release/*"}})}
-	want := uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: rulesetPtr(0), PreventSelfReview: rulesetPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: rulesetPtr(true), RequiredReviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Team: rulesetPtr(int64(12))}, {Person: rulesetPtr(int64(11))}})}, DeploymentBranchesAndTags: rulesetPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})}
+	want := uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Team: rulesetPtr(int64(12))}, {Person: rulesetPtr(int64(11))}}), PreventSelfReview: rulesetPtr(false)}, WaitTimer: rulesetPtr(0), AllowAdministratorsToBypassConfiguredProtectionRules: rulesetPtr(true)}, DeploymentBranchesAndTags: rulesetPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})}
 	got, err := EnvironmentPolicyUI(policy)
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("policy projection %#v; want %#v; error=%v", got, want, err)
 	}
 	*got.DeploymentProtectionRules.WaitTimer = 15
-	*(*got.DeploymentProtectionRules.RequiredReviewers)[0].Team = 99
+	*(*got.DeploymentProtectionRules.RequiredReviewers.Reviewers)[0].Team = 99
 	(*got.DeploymentBranchOrTagRules)[0].NamePattern = "changed"
 	if *policy.WaitTimer != 0 || (*policy.Reviewers)[0].ID != 12 || (*policy.DeploymentBranchPatterns)[0].Name != "Release/*" {
 		t.Fatal("policy projection aliases caller")

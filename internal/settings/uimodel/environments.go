@@ -27,12 +27,16 @@ type Environment struct {
 	DeploymentProtectionRules  *EnvironmentDeploymentProtectionRules
 }
 type EnvironmentDeploymentProtectionRules struct {
-	CustomRules *[]int64
+	RequiredReviewers *EnvironmentRequiredReviewers
 	// Zero represents the unchecked Wait timer group; positive values are minutes.
 	WaitTimer                                            *int
-	RequiredReviewers                                    *[]EnvironmentReviewer
-	PreventSelfReview                                    *bool
+	EnableCustomRulesWithGitHubApps                      *[]int64
 	AllowAdministratorsToBypassConfiguredProtectionRules *bool
+}
+
+type EnvironmentRequiredReviewers struct {
+	Reviewers         *[]EnvironmentReviewer
+	PreventSelfReview *bool
 }
 
 // The UI selects people or teams; transport principal types remain in adapters.

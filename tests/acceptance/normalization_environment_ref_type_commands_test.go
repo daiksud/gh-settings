@@ -118,9 +118,10 @@ repository:
       - name: production
         deployment_protection_rules:
           wait_timer: 0
-          prevent_self_review: false
+          required_reviewers:
+            reviewers: []
+            prevent_self_review: false
           allow_administrators_to_bypass_configured_protection_rules: false
-          required_reviewers: []
         deployment_branches_and_tags: selected_branches_and_tags
         deployment_branch_or_tag_rules:
           - {ref_type: branch, name_pattern: main}

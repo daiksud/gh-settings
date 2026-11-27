@@ -25,9 +25,10 @@ repository:
     environments:
       - name: production
         deployment_protection_rules:
+          required_reviewers:
+            reviewers: []
+            prevent_self_review: false
           wait_timer: 0
-          required_reviewers: []
-          prevent_self_review: false
           allow_administrators_to_bypass_configured_protection_rules: false
         deployment_branches_and_tags: selected_branches_and_tags
         deployment_branch_or_tag_rules:
@@ -39,7 +40,7 @@ For an existing policy-selected Environment, only declared built-in controls are
 
 ## Deployment protection rules
 
-`deployment_protection_rules` contains optional `wait_timer` (0–43200 minutes), up to six unique `required_reviewers` (each `{person: positive-id}` or `{team: positive-id}`), `prevent_self_review` and `allow_administrators_to_bypass_configured_protection_rules`. True prevent-self-review cannot accompany an explicitly empty reviewer set. An existing partial update that conflicts with freshly preserved reviewers or self-review fails before writing; apply never clears an unowned dependency implicitly. No null is accepted. Reviewer eligibility, grants and entitlement remain GitHub prerequisites; principals are not invited.
+Under `deployment_protection_rules.required_reviewers`, declare `reviewers`, `prevent_self_review`, or both. Each reviewer selects a person or team by positive ID. The list accepts up to six unique reviewers. Omitting `reviewers` preserves an existing list when changing self-review prevention. An explicit `reviewers: []` clears it. Other built-in controls are `wait_timer` (0–43200 minutes) and `allow_administrators_to_bypass_configured_protection_rules`. True prevent-self-review cannot accompany an explicitly empty reviewer set. An existing partial update that conflicts with freshly preserved reviewers or self-review fails before writing; apply never clears an unowned dependency implicitly. No null is accepted. Reviewer eligibility, grants and entitlement remain GitHub prerequisites; principals are not invited.
 
 ## Deployment branches and tags
 
@@ -55,7 +56,7 @@ Ordinary `export` observes supported Environment policy, active selected pattern
 
 ## Custom protection Apps
 
-`deployment_protection_rules.custom_rules` is an optional set of up to six unique
+`deployment_protection_rules.enable_custom_rules_with_github_apps` is an optional set of up to six unique
 positive GitHub App IDs. It selects the already installed Apps checked under
 **Deployment protection rules** in the Environment UI:
 
@@ -65,7 +66,7 @@ repository:
     environments:
       - name: production
         deployment_protection_rules:
-          custom_rules: [12345, 67890]
+          enable_custom_rules_with_github_apps: [12345, 67890]
 ```
 
 Omission preserves every freshly acquired binding. A present list owns the full

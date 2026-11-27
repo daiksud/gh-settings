@@ -2,34 +2,28 @@ package github
 
 import (
 	"fmt"
+	"slices"
+
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
-	"slices"
 )
 
 func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclaration, error) {
 	result := settings.EnvironmentDeclaration{Name: ui.Name}
 	if rules := ui.DeploymentProtectionRules; rules != nil {
-		if rules.CustomRules != nil {
-			ids := slices.Clone(*rules.CustomRules)
+		if rules.EnableCustomRulesWithGitHubApps != nil {
+			ids := slices.Clone(*rules.EnableCustomRulesWithGitHubApps)
 			result.CustomRules = &ids
 		}
 		result.WaitTimer = copyUIValue(rules.WaitTimer)
-		result.PreventSelfReview = copyUIValue(rules.PreventSelfReview)
 		result.CanAdminsBypass = copyUIValue(rules.AllowAdministratorsToBypassConfiguredProtectionRules)
-		if rules.RequiredReviewers != nil {
-			reviewers := make([]settings.EnvironmentReviewer, 0, len(*rules.RequiredReviewers))
-			for _, reviewer := range *rules.RequiredReviewers {
-				switch {
-				case reviewer.Person != nil && reviewer.Team == nil:
-					reviewers = append(reviewers, settings.EnvironmentReviewer{Type: "User", ID: *reviewer.Person})
-				case reviewer.Team != nil && reviewer.Person == nil:
-					reviewers = append(reviewers, settings.EnvironmentReviewer{Type: "Team", ID: *reviewer.Team})
-				default:
-					return settings.EnvironmentDeclaration{}, fmt.Errorf("environment reviewer requires exactly one person or team")
-				}
+		if group := rules.RequiredReviewers; group != nil {
+			result.PreventSelfReview = copyUIValue(group.PreventSelfReview)
+			reviewers, err := environmentReviewerSelection(group.Reviewers)
+			if err != nil {
+				return settings.EnvironmentDeclaration{}, err
 			}
-			result.Reviewers = &reviewers
+			result.Reviewers = reviewers
 		}
 	}
 	if ui.DeploymentBranchesAndTags != nil {
@@ -56,6 +50,24 @@ func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclara
 		return settings.EnvironmentDeclaration{}, err
 	}
 	return validated.Values()[0], nil
+}
+
+func environmentReviewerSelection(selection *[]uimodel.EnvironmentReviewer) (*[]settings.EnvironmentReviewer, error) {
+	if selection == nil {
+		return nil, nil
+	}
+	reviewers := make([]settings.EnvironmentReviewer, 0, len(*selection))
+	for _, reviewer := range *selection {
+		switch {
+		case reviewer.Person != nil && reviewer.Team == nil:
+			reviewers = append(reviewers, settings.EnvironmentReviewer{Type: "User", ID: *reviewer.Person})
+		case reviewer.Team != nil && reviewer.Person == nil:
+			reviewers = append(reviewers, settings.EnvironmentReviewer{Type: "Team", ID: *reviewer.Team})
+		default:
+			return nil, fmt.Errorf("environment reviewer requires exactly one person or team")
+		}
+	}
+	return &reviewers, nil
 }
 
 func EnvironmentDeclarations(entries []uimodel.Environment) (settings.EnvironmentDeclarations, error) {
@@ -108,13 +120,15 @@ func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 	ui := uimodel.Environment{Name: p.Name}
 	if p.CustomRules != nil || p.WaitTimer != nil || p.PreventSelfReview != nil || p.CanAdminsBypass != nil || p.Reviewers != nil {
 		protection := &uimodel.EnvironmentDeploymentProtectionRules{
-			WaitTimer:         copyUIValue(p.WaitTimer),
-			PreventSelfReview: copyUIValue(p.PreventSelfReview),
+			WaitTimer: copyUIValue(p.WaitTimer),
 			AllowAdministratorsToBypassConfiguredProtectionRules: copyUIValue(p.CanAdminsBypass),
 		}
 		if p.CustomRules != nil {
 			ids := slices.Clone(*p.CustomRules)
-			protection.CustomRules = &ids
+			protection.EnableCustomRulesWithGitHubApps = &ids
+		}
+		if p.PreventSelfReview != nil || p.Reviewers != nil {
+			protection.RequiredReviewers = &uimodel.EnvironmentRequiredReviewers{PreventSelfReview: copyUIValue(p.PreventSelfReview)}
 		}
 		if p.Reviewers != nil {
 			reviewers := make([]uimodel.EnvironmentReviewer, 0, len(*p.Reviewers))
@@ -128,7 +142,7 @@ func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 					return uimodel.Environment{}, fmt.Errorf("environment reviewer is outside UI identities")
 				}
 			}
-			protection.RequiredReviewers = &reviewers
+			protection.RequiredReviewers.Reviewers = &reviewers
 		}
 		ui.DeploymentProtectionRules = protection
 	}

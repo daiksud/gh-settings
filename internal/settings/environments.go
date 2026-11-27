@@ -149,7 +149,7 @@ func validateEnvironment(policy EnvironmentDeclaration, complete bool) error {
 			seen[key] = true
 		}
 		if policy.PreventSelfReview != nil && *policy.PreventSelfReview && len(*policy.Reviewers) == 0 {
-			return fmt.Errorf("environment prevent_self_review requires a nonempty reviewer set")
+			return fmt.Errorf("environment required_reviewers.prevent_self_review requires a nonempty reviewer set")
 		}
 	}
 	if policy.DeploymentBranchPolicy != nil {

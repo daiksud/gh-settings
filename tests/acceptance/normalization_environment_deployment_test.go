@@ -222,7 +222,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 				mu.Unlock()
 				entry := "{name: production}"
 				if choice != "name_only" {
-					entry = "{name: production, deployment_protection_rules: {wait_timer: 0, prevent_self_review: false, allow_administrators_to_bypass_configured_protection_rules: false, required_reviewers: []}"
+					entry = "{name: production, deployment_protection_rules: {required_reviewers: {reviewers: [], prevent_self_review: false}, wait_timer: 0, allow_administrators_to_bypass_configured_protection_rules: false}"
 					if choice != "omit" {
 						entry += ", deployment_branches_and_tags: " + choice
 					}

@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
@@ -15,8 +16,10 @@ repository:
       - name: Production
         deployment_protection_rules:
           wait_timer: 0
-          required_reviewers: [{person: 11}, {team: 12}]
-          prevent_self_review: false
+          required_reviewers:
+            reviewers: [{person: 11}, {team: 12}]
+            prevent_self_review: false
+          enable_custom_rules_with_github_apps: []
           allow_administrators_to_bypass_configured_protection_rules: true
         deployment_branches_and_tags: selected_branches_and_tags
         deployment_branch_or_tag_rules:
@@ -26,12 +29,12 @@ repository:
         deployment_branches_and_tags: protected_branches_only
       - name: Open
         deployment_branches_and_tags: no_restriction
-        deployment_protection_rules: {required_reviewers: []}
+        deployment_protection_rules: {required_reviewers: {reviewers: []}}
 `
 	want := []uimodel.Environment{
-		{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: uiConfigPtr(0), RequiredReviewers: uiConfigPtr([]uimodel.EnvironmentReviewer{{Person: uiConfigPtr(int64(11))}, {Team: uiConfigPtr(int64(12))}}), PreventSelfReview: uiConfigPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: uiConfigPtr(true)}, DeploymentBranchesAndTags: uiConfigPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: uiConfigPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})},
+		{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: uiConfigPtr([]uimodel.EnvironmentReviewer{{Person: uiConfigPtr(int64(11))}, {Team: uiConfigPtr(int64(12))}}), PreventSelfReview: uiConfigPtr(false)}, WaitTimer: uiConfigPtr(0), EnableCustomRulesWithGitHubApps: uiConfigPtr([]int64{}), AllowAdministratorsToBypassConfiguredProtectionRules: uiConfigPtr(true)}, DeploymentBranchesAndTags: uiConfigPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: uiConfigPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})},
 		{Name: "Staging", DeploymentBranchesAndTags: uiConfigPtr(uimodel.ProtectedBranchesOnly)},
-		{Name: "Open", DeploymentBranchesAndTags: uiConfigPtr(uimodel.NoRestriction), DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: uiConfigPtr([]uimodel.EnvironmentReviewer{})}},
+		{Name: "Open", DeploymentBranchesAndTags: uiConfigPtr(uimodel.NoRestriction), DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: uiConfigPtr([]uimodel.EnvironmentReviewer{})}}},
 	}
 	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(*got.Settings.Environments, want) {
@@ -40,6 +43,14 @@ repository:
 	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
+	}
+	remaining := string(encoded)
+	for _, field := range []string{"required_reviewers", "reviewers", "prevent_self_review", "wait_timer", "enable_custom_rules_with_github_apps", "allow_administrators_to_bypass_configured_protection_rules"} {
+		var found bool
+		_, remaining, found = strings.Cut(remaining, field+":")
+		if !found {
+			t.Fatalf("%s missing or out of UI order in %s", field, encoded)
+		}
 	}
 	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
@@ -59,7 +70,9 @@ func TestUIConfigEnvironmentCollectionPresence(t *testing.T) {
 func TestUIConfigEnvironmentsRejectsInvalidSyntax(t *testing.T) {
 	for _, entry := range []string{
 		"id: 7", "name: null", "wait_timer: 0", "reviewers: []", "deployment_branch_policy: null",
-		"deployment_protection_rules: {wait_timer: '0'}", "deployment_protection_rules: {required_reviewers: [{type: User, id: 11}]}",
+		"deployment_protection_rules: {wait_timer: '0'}", "deployment_protection_rules: {required_reviewers: {reviewers: [{type: User, id: 11}]}}",
+		"deployment_protection_rules: {required_reviewers: []}", "deployment_protection_rules: {prevent_self_review: false}",
+		"deployment_protection_rules: {custom_rules: []}", "deployment_protection_rules: {required_reviewers: {reviewers: null}}",
 		"deployment_protection_rules: {required_reviewers: null}", "deployment_branch_or_tag_rules: [{type: branch, name: main}]",
 	} {
 		if _, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{" + entry + "}]}}\n")); err == nil {

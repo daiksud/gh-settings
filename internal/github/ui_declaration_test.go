@@ -241,7 +241,7 @@ func TestDeclarationFromUIPagesInvalidIntentIsAtomic(t *testing.T) {
 
 func TestDeclarationFromUIEnvironments(t *testing.T) {
 	entries := []uimodel.Environment{
-		{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: rulesetPtr(0), RequiredReviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Person: rulesetPtr(int64(11))}, {Team: rulesetPtr(int64(12))}}), PreventSelfReview: rulesetPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: rulesetPtr(true)}, DeploymentBranchesAndTags: rulesetPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})},
+		{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Person: rulesetPtr(int64(11))}, {Team: rulesetPtr(int64(12))}}), PreventSelfReview: rulesetPtr(false)}, WaitTimer: rulesetPtr(0), AllowAdministratorsToBypassConfiguredProtectionRules: rulesetPtr(true)}, DeploymentBranchesAndTags: rulesetPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})},
 		{Name: "Open", DeploymentBranchesAndTags: rulesetPtr(uimodel.NoRestriction)},
 	}
 	want := []settings.EnvironmentDeclaration{
@@ -264,7 +264,7 @@ func TestDeclarationFromUIEnvironments(t *testing.T) {
 func TestDeclarationFromUIEnvironmentsInvalidIntentIsAtomic(t *testing.T) {
 	description := "valid About"
 	for _, entries := range [][]uimodel.Environment{
-		{{Name: "one", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Person: rulesetPtr(int64(11)), Team: rulesetPtr(int64(12))}})}}},
+		{{Name: "one", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: &uimodel.EnvironmentRequiredReviewers{Reviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Person: rulesetPtr(int64(11)), Team: rulesetPtr(int64(12))}})}}}},
 		{{Name: "Production"}, {Name: "production"}},
 		{{Name: "one", DeploymentBranchesAndTags: rulesetPtr(uimodel.NoRestriction), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{})}},
 	} {
