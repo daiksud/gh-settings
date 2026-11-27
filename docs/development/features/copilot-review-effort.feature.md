@@ -4,7 +4,7 @@ Ordinary `export` now follows the [automatic readable-settings contract](readabl
 
 ## Rule: Select effort independently
 
-- `repository.settings.copilot.code_review.review_effort_level` accepts only `default`, `lite`, `balanced` and `max`. Null, non-string, empty, API spelling `inherit` and unknown values fail local validation.
+- `repository.settings.copilot.code_review.general.review_effort_level` accepts only `default`, `lite`, `balanced` and `max`. Null, non-string, empty, API spelling `inherit` and unknown values fail local validation.
 - Omission and empty page mappings leave effort unmanaged. The custom-instructions and [MCP](copilot-mcp.feature.md) toggles are independently selectable. One declared effort counts as one managed scalar, even when matching.
 - Ordinary `export` independently observes the effort choice; unavailable observations retain prior intent with info.
 

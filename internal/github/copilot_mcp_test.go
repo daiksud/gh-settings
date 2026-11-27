@@ -3,6 +3,7 @@ package github
 import (
 	"encoding/json"
 	"errors"
+	"github.com/daiksud/gh-settings/internal/settings"
 	"net/http"
 	"reflect"
 	"strings"
@@ -67,7 +68,7 @@ func TestCopilotMCPRead(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			calls := 0
-			c := &CopilotMCPClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			c := &CopilotContextClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
 				if req.Method != "GET" || req.URL.Path != "/repos/owner/current/copilot/code-review/settings" {
 					t.Fatal(req.Method, req.URL)
@@ -75,7 +76,7 @@ func TestCopilotMCPRead(t *testing.T) {
 				return labelsResponse(req, tc.status, tc.body), nil
 			})).rest}
 			observation, err := c.Read(repository.Repository{Owner: "owner", Name: "current"})
-			value, valueErr := observation.Value()
+			value, valueErr := observation.Value(settings.CopilotMCPPath)
 			if (err != nil) != tc.fail || calls != 1 || (valueErr != nil) != tc.fail || !tc.fail && value != tc.enabled {
 				t.Fatalf("value=%v err=%v valueErr=%v calls=%d", value, err, valueErr, calls)
 			}
@@ -117,7 +118,7 @@ func TestCopilotMCPUpdate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var methods []string
-			c := &CopilotMCPClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			c := &CopilotContextClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				methods = append(methods, req.Method)
 				if req.URL.Path != "/repos/owner/current/copilot/code-review/settings" {
 					t.Fatal(req.URL)
@@ -135,7 +136,7 @@ func TestCopilotMCPUpdate(t *testing.T) {
 				}
 				return labelsResponse(req, tc.afterStatus, tc.after), nil
 			})).rest}
-			wrote, err := c.Update(repository.Repository{Owner: "owner", Name: "current"}, tc.desired)
+			wrote, err := c.UpdateMCP(repository.Repository{Owner: "owner", Name: "current"}, tc.desired)
 			var pre interface{ ReadFailedBeforeWrite() }
 			if (err != nil) != tc.fail || errors.As(err, &pre) != tc.pre || strings.Join(methods, " ") != tc.methods || wrote != (!tc.fail && strings.Contains(tc.methods, "PATCH")) {
 				t.Fatalf("wrote=%v err=%v methods=%v", wrote, err, methods)
@@ -151,17 +152,67 @@ func TestCopilotMCPTransportErrors(t *testing.T) {
 	for _, stage := range []string{"GET", "PATCH", "readback"} {
 		t.Run(stage, func(t *testing.T) {
 			calls := 0
-			c := &CopilotMCPClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			c := &CopilotContextClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
 				if stage == "GET" || stage == "PATCH" && req.Method == "PATCH" || stage == "readback" && calls == 3 {
 					return nil, errors.New("secret transport diagnostic")
 				}
 				return labelsResponse(req, 200, mcpBaseline), nil
 			})).rest}
-			wrote, err := c.Update(repository.Repository{Owner: "owner", Name: "current"}, false)
+			wrote, err := c.UpdateMCP(repository.Repository{Owner: "owner", Name: "current"}, false)
 			var pre interface{ ReadFailedBeforeWrite() }
 			if wrote || err == nil || errors.As(err, &pre) != (stage == "GET") || strings.Contains(err.Error(), "secret") {
 				t.Fatalf("wrote=%v err=%v", wrote, err)
+			}
+		})
+	}
+}
+
+func TestPublicSearchVerification(t *testing.T) {
+	withSearch := func(base, value string) string {
+		return strings.TrimSuffix(base, "}") + `,"cross_repo_context_enabled":` + value + "}"
+	}
+	before := withSearch(mcpBaseline, "false")
+	after := withSearch(mcpBaseline, "true")
+	for _, tc := range []struct {
+		name, before, after string
+		calls               int
+		failed              bool
+	}{
+		{"stored", before, after, 3, false},
+		{"already enabled", after, "", 1, false},
+		{"unavailable", mcpBaseline, "", 1, true},
+		{"null", withSearch(mcpBaseline, "null"), "", 1, true},
+		{"mistyped", withSearch(mcpBaseline, `"false"`), "", 1, true},
+		{"duplicate", withSearch(before, "true"), "", 1, true},
+		{"case alias", strings.Replace(before, "cross_repo_context_enabled", "CROSS_REPO_CONTEXT_ENABLED", 1), "", 1, true},
+		{"not retained", before, before, 3, true},
+		{"lost availability", before, mcpBaseline, 3, true},
+		{"MCP drift", before, withSearch(mcpDisabled(), "true"), 3, true},
+		{"instructions drift", before, strings.Replace(after, `"custom_instructions_enabled":true`, `"custom_instructions_enabled":false`, 1), 3, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+			c := &CopilotContextClient{rest: topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+				requests++
+				if req.Method == http.MethodPatch {
+					var changes map[string]any
+					if json.NewDecoder(req.Body).Decode(&changes) != nil || !reflect.DeepEqual(changes, map[string]any{"cross_repo_context_enabled": true}) {
+						t.Fatal(changes)
+					}
+					return labelsResponse(req, 200, after), nil
+				}
+				if req.Method != http.MethodGet {
+					t.Fatal(req.Method)
+				}
+				if requests == 1 {
+					return labelsResponse(req, 200, tc.before), nil
+				}
+				return labelsResponse(req, 200, tc.after), nil
+			})).rest}
+			wrote, err := c.UpdatePublicSearch(repository.Repository{Owner: "owner", Name: "current"}, true)
+			if requests != tc.calls || (err != nil) != tc.failed || wrote != (!tc.failed && tc.calls == 3) {
+				t.Fatal(requests, wrote, err)
 			}
 		})
 	}

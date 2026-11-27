@@ -4,7 +4,7 @@ Ordinary `export` now follows the [automatic readable-settings contract](readabl
 
 ## Rule: Select one stored boolean independently
 
-- `repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` is an optional boolean. Omission and empty page mappings leave it unmanaged; true and false are explicit intent. Null and non-booleans fail validation before target or API work.
+- `repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` is an optional boolean. Omission and empty page mappings leave it unmanaged; true and false are explicit intent. Null and non-booleans fail validation before target or API work.
 - One declared toggle counts as one managed scalar, including when unchanged. A complete typed acquisition is required; unread, missing or malformed state must not become false.
 - Custom instructions, review effort and MCP remain independent declared controls; ordinary export attempts all of them, including false.
 - Ordinary export attempts all supported code-review controls independently. Failed acquisition emits info and retains prior declarations.

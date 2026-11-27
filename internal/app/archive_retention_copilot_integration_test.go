@@ -18,7 +18,7 @@ func TestArchivedRetentionAndCopilotIntegration(t *testing.T) {
 			w := Writer{ReadArchive: func(repository.Repository) (settings.ArchiveState, error) {
 				archives++
 				return settings.ArchiveState{ID: 1, FullName: "owner/current", Archived: true}, nil
-			}, ReadArchivedCopilot: func(repository.Repository, bool, bool) (settings.ArchivedCopilotToggles, error) {
+			}, ReadArchivedCopilot: func(repository.Repository, settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error) {
 				copilotReads++
 				v := true
 				if scenario == "copilot differs" {

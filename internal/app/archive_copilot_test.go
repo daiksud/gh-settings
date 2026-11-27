@@ -9,11 +9,16 @@ import (
 )
 
 func TestArchivedCopilotMatchingRequiresEverySelectedValue(t *testing.T) {
-	for _, scenario := range []string{"both", "false", "instructions only", "mcp only", "instructions mismatch", "mcp mismatch", "missing", "denied", "second drift", "identity drift", "prune", "unsupported"} {
+	for _, scenario := range []string{"both", "search only", "search missing", "search drift", "false", "instructions only", "mcp only", "instructions mismatch", "mcp mismatch", "missing", "denied", "second drift", "identity drift", "prune", "unsupported"} {
 		t.Run(scenario, func(t *testing.T) {
 			repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			yes, no := true, false
 			d := settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &yes}, CopilotInstructions: &yes, CopilotMCP: &no}
+			if scenario == "search only" || scenario == "search missing" || scenario == "search drift" {
+				d.CopilotInstructions = nil
+				d.CopilotMCP = nil
+				d.CopilotPublicSearch = &yes
+			}
 			if scenario == "false" {
 				d.CopilotInstructions = &no
 			}
@@ -39,7 +44,8 @@ func TestArchivedCopilotMatchingRequiresEverySelectedValue(t *testing.T) {
 					}
 					return settings.ArchiveState{ID: id, FullName: "owner/current", Archived: true}, nil
 				},
-				ReadArchivedCopilot: func(_ repository.Repository, instructions, mcp bool) (settings.ArchivedCopilotToggles, error) {
+				ReadArchivedCopilot: func(_ repository.Repository, selected settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error) {
+					instructions, mcp := selected.Instructions != nil, selected.MCP != nil
 					reads++
 					if instructions != (d.CopilotInstructions != nil) || mcp != (d.CopilotMCP != nil) {
 						t.Fatal("incorrect selections")
@@ -55,6 +61,10 @@ func TestArchivedCopilotMatchingRequiresEverySelectedValue(t *testing.T) {
 						m = true
 					}
 					o := settings.ArchivedCopilotToggles{Instructions: &v, MCP: &m}
+					if selected.PublicSearch != nil && scenario != "search missing" {
+						v := scenario != "search drift" || reads == 1
+						o.PublicSearch = &v
+					}
 					if scenario == "missing" {
 						o.Instructions = nil
 					}
@@ -75,7 +85,7 @@ func TestArchivedCopilotMatchingRequiresEverySelectedValue(t *testing.T) {
 				options = append(options, prune)
 			}
 			result, err := Apply(func() (settings.Declaration, error) { return d, nil }, func() (repository.Repository, error) { return repo, nil }, w, options...)
-			success := scenario == "both" || scenario == "false" || scenario == "instructions only" || scenario == "mcp only"
+			success := scenario == "search only" || scenario == "both" || scenario == "false" || scenario == "instructions only" || scenario == "mcp only"
 			if (err == nil) != success || writes != 0 || success && (reads != 2 || archives != 2) {
 				t.Fatalf("outcome=%v err=%v reads=%d archives=%d writes=%d", result.Outcome, err, reads, archives, writes)
 			}

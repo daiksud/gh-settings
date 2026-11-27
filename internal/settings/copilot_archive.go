@@ -5,4 +5,5 @@ package settings
 type ArchivedCopilotToggles struct {
 	Instructions *bool
 	MCP          *bool
+	PublicSearch *bool
 }

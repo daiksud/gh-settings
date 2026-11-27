@@ -20,6 +20,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 	var mu sync.Mutex
 	enabled, denied, redirect, mismatch := true, false, false, false
 	responseMode := "complete"
+	publicSearch := false
 	var requests, all []string
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -49,13 +50,17 @@ func TestCopilotMCPProcess(t *testing.T) {
 					return
 				}
 				value, ok := body["mcp_enabled"].(bool)
-				if !ok {
-					t.Error("missing native boolean PATCH")
-					w.WriteHeader(400)
-					return
-				}
-				if !mismatch {
-					enabled = value
+				if search, hasSearch := body["cross_repo_context_enabled"].(bool); hasSearch {
+					publicSearch = search
+				} else {
+					if !ok {
+						t.Error("missing native boolean PATCH")
+						w.WriteHeader(400)
+						return
+					}
+					if !mismatch {
+						enabled = value
+					}
 				}
 			} else if r.Method != "GET" {
 				t.Errorf("unexpected method %s", r.Method)
@@ -63,6 +68,9 @@ func TestCopilotMCPProcess(t *testing.T) {
 				return
 			}
 			response := map[string]any{"mcp_enabled": enabled, "custom_instructions_enabled": false, "severity_filter": "no_filter", "review_effort": map[string]any{"configured": nil, "effective": "balanced"}, "available_review_efforts": []string{"lite", "balanced", "max"}}
+			if responseMode != "search unavailable" {
+				response["cross_repo_context_enabled"] = publicSearch
+			}
 			if responseMode == "missing" {
 				delete(response, "mcp_enabled")
 			} else if responseMode == "malformed" {
@@ -102,7 +110,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	declaration := func(value string) string {
-		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: " + value + "}}}}\n"
+		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {general: {allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: " + value + "}}}}}\n"
 	}
 	lastExport := false
 	run := func(args []string, want string, fail bool) (string, string) {
@@ -142,7 +150,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
-	run([]string{"plan"}, "repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: true → false\n", false)
+	run([]string{"plan"}, "repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: true → false\n", false)
 	expect("GET " + endpoint)
 	report := filepath.Join(fixture.root, "mcp-plan.json")
 	run([]string{"action", "plan", report}, "", false)
@@ -160,7 +168,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 		t.Fatal(string(raw))
 	}
 	change, ok := changes[0].(map[string]any)
-	if !ok || change["field"] != "repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests" || change["before"] != true || change["after"] != false {
+	if !ok || change["field"] != "repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests" || change["before"] != true || change["after"] != false {
 		t.Fatal(string(raw))
 	}
 	summary := filepath.Join(fixture.root, "mcp-summary.md")
@@ -171,7 +179,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 		t.Fatal(string(content), err)
 	}
 	// Each control remains independently managed even though all use one endpoint.
-	combined := "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {use_custom_instructions: false, review_effort_level: default, allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false}}}}\n"
+	combined := "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {general: {use_custom_instructions: false, review_effort_level: default, allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false}}}}}\n"
 	if err := writeSettingsFile(fixture.work, combined); err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +217,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 	}
 	_, diagnostic := run([]string{"apply"}, "", true)
 	expect("GET "+endpoint, "PATCH "+endpoint, "GET "+endpoint)
-	if !strings.Contains(diagnostic, "repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests") || !strings.Contains(diagnostic, "may already have applied") {
+	if !strings.Contains(diagnostic, "repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests") || !strings.Contains(diagnostic, "may already have applied") {
 		t.Fatal(diagnostic)
 	}
 	mu.Lock()
@@ -241,6 +249,51 @@ func TestCopilotMCPProcess(t *testing.T) {
 	if err != nil || !strings.Contains(string(output), "allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false") || !strings.Contains(string(output), "use_custom_instructions: false") || !strings.Contains(string(output), "review_effort_level: default") {
 		t.Fatal(string(output), err)
 	}
+	// Search is an independent General preference. Its false value is exported
+	// in UI order and an unavailable observation never becomes an implicit off.
+	fields := []string{"general:", "review_effort_level:", "allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests:", "search_public_repositories: false", "use_custom_instructions:"}
+	general := strings.Index(string(output), "code_review:")
+	if general < 0 {
+		t.Fatal(string(output))
+	}
+	previous := -1
+	for _, field := range fields {
+		pos := strings.Index(string(output)[general:], field)
+		if pos <= previous {
+			t.Fatalf("missing or misordered %s in %s", field, output)
+		}
+		previous = pos
+	}
+	searchInput := "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {general: {search_public_repositories: true}}}}}\n"
+	if err := writeSettingsFile(fixture.work, searchInput); err != nil {
+		t.Fatal(err)
+	}
+	run([]string{"plan"}, "repository.settings.copilot.code_review.general.search_public_repositories: false → true\n", false)
+	expect("GET " + endpoint)
+	run([]string{"action", "plan", report}, "", false)
+	expect("GET " + endpoint)
+	run([]string{"action", "summary", report, summary}, "", false)
+	content, err = os.ReadFile(summary)
+	if err != nil || !strings.Contains(string(content), "repository.settings.copilot.code_review.general.search_public_repositories: false → true") {
+		t.Fatal(string(content), err)
+	}
+	run([]string{"apply"}, "Applied repository settings.\n", false)
+	expect("GET "+endpoint, "PATCH "+endpoint, "GET "+endpoint)
+	run([]string{"apply"}, "Applied repository settings.\n", false)
+	expect("GET " + endpoint)
+	mu.Lock()
+	responseMode = "search unavailable"
+	mu.Unlock()
+	run([]string{"plan"}, "", true)
+	expect("GET " + endpoint)
+	run([]string{"apply"}, "", true)
+	expect("GET " + endpoint)
+	run([]string{"export"}, "", false)
+	expect()
+	output, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
+	if err != nil || !strings.Contains(string(output), "search_public_repositories: true") {
+		t.Fatal(string(output), err)
+	}
 	mu.Lock()
 	denied = true
 	mu.Unlock()
@@ -265,7 +318,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	wire = nil
-	if json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests" || wire["outcome"] != "read-failure" || wire["copilot_mcp"] != nil || wire["managed"] != float64(0) {
+	if json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.general.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests" || wire["outcome"] != "read-failure" || wire["copilot_mcp"] != nil || wire["managed"] != float64(0) {
 		t.Fatal(string(raw))
 	}
 	summary = filepath.Join(fixture.root, "private-summary.md")

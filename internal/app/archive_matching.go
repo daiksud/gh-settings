@@ -13,7 +13,7 @@ import (
 // type change in Declaration, including a nil nested field with owned defaults,
 // disables this path until its semantics and the digest are reviewed together.
 // This guards the schema shape; it is not a proof of comparator behavior.
-const archivedDeclarationShape = "ab2770cfad99c311e5dfeb70f009e0dffe367a695528ba2bc24ad7dd0b8f148f"
+const archivedDeclarationShape = "2f4b1dfb0b11157d52aa3dec63e48fad1b9d0cffbe612679a38da339a7e16204"
 
 func declarationShape(root reflect.Type) (string, error) {
 	return declarationShapeWithIdentity(root, canonicalDeclarationTypeIdentity)
@@ -119,6 +119,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.CopilotReviewEffort = nil
 	remaining.CopilotInstructions = nil
 	remaining.CopilotMCP = nil
+	remaining.CopilotPublicSearch = nil
 	remaining.Actions.RetentionDays = nil
 	remaining.Actions.CacheRetentionDays = nil
 	remaining.Actions.CacheSizeGB = nil
@@ -240,7 +241,7 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 	if err := verifyArchivedGroups(repo, desired, read); err != nil {
 		return err
 	}
-	if err := verifyArchivedCopilot(repo, desired.CopilotInstructions, desired.CopilotMCP, read.ReadArchivedCopilot); err != nil {
+	if err := verifyArchivedCopilot(repo, settings.ArchivedCopilotToggles{Instructions: desired.CopilotInstructions, MCP: desired.CopilotMCP, PublicSearch: desired.CopilotPublicSearch}, read.ReadArchivedCopilot); err != nil {
 		return err
 	}
 	if err := verifyArchivedVariables(repo, desired.Variables, desired.AgentsVariables, read); err != nil {

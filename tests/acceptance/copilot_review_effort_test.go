@@ -97,7 +97,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	declaration := func(value string) string {
-		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {review_effort_level: " + value + "}}}}\n"
+		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {general: {review_effort_level: " + value + "}}}}}\n"
 	}
 	lastExport := false
 	run := func(args []string, want string, fail bool) string {
@@ -129,7 +129,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 		}
 	}
 	write("max")
-	run([]string{"plan"}, "repository.settings.copilot.code_review.review_effort_level: default → max\n", false)
+	run([]string{"plan"}, "repository.settings.copilot.code_review.general.review_effort_level: default → max\n", false)
 	expect("GET " + endpoint)
 	report := filepath.Join(fixture.root, "effort-plan.json")
 	run([]string{"action", "plan", report, "status-only"}, "", false)
@@ -210,7 +210,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	run([]string{"action", "plan", report, "status-only"}, "", true)
 	expect("GET " + endpoint)
 	raw, err = os.ReadFile(report)
-	if err != nil || json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.review_effort_level" || wire["outcome"] != "read-failure" {
+	if err != nil || json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.general.review_effort_level" || wire["outcome"] != "read-failure" {
 		t.Fatal(string(raw), err)
 	}
 	for _, invalid := range []string{"null", "future", "inherit", "false"} {

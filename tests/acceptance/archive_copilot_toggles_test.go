@@ -79,7 +79,7 @@ func TestArchivedCopilotTogglesCLIReadOnly(t *testing.T) {
 			} else if scenario == "mcp only" {
 				controls = "allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false"
 			}
-			input := repositoryInput("settings: {general: {danger_zone: {archive_this_repository: true}}, copilot: {code_review: {" + controls + "}}}\n")
+			input := repositoryInput("settings: {general: {danger_zone: {archive_this_repository: true}}, copilot: {code_review: {general: {" + controls + "}}}}\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}

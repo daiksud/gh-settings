@@ -70,6 +70,7 @@ Write each specification in [Markdown with Gherkin](https://github.com/cucumber/
 | [Deploy keys](deploy-keys.feature.md) | Manage public-key creation, immutable ID binding and explicit guarded deletion. |
 | [Copilot custom instructions](copilot-custom-instructions.feature.md) | Manage the stored repository Use custom instructions toggle. |
 | [Copilot review effort](copilot-review-effort.feature.md) | Manage the observable repository review effort choice without enabling reviews. |
+| [Copilot public repository search](copilot-public-search.feature.md) | Select whether reviews can use public repository search for context. |
 | [Copilot MCP tools](copilot-mcp.feature.md) | Manage the stored MCP tools permission toggle without configuring servers or executing reviews. |
 | [Environments](environments.feature.md) | Manage supported named environment policies and explicitly selected non-sensitive variables. |
 | [Pages](pages.feature.md) | Manage Pages creation, configuration and explicit deletion. |

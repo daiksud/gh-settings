@@ -19,7 +19,7 @@ func TestBuiltCompositeArchivedCopilotToggles(t *testing.T) {
 			f := product.newFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
 
-			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, copilot: {code_review: {use_custom_instructions: true, allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false}}}}\n"
+			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {danger_zone: {archive_this_repository: true}}, copilot: {code_review: {general: {use_custom_instructions: true, allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false}}}}}\n"
 			config := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(config, input)
 			dir, err := os.MkdirTemp("/tmp", "ghs-archived-copilot-")

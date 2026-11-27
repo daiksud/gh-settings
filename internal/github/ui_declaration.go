@@ -127,10 +127,12 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 			}
 		}
 
-		if repository.Settings.Copilot != nil && repository.Settings.Copilot.CodeReview != nil {
-			result.CopilotInstructions = copyUIValue(repository.Settings.Copilot.CodeReview.UseCustomInstructions)
-			result.CopilotMCP = copyUIValue(repository.Settings.Copilot.CodeReview.AllowCopilotToUseMCPToolsWhenReviewingPullRequests)
-			result.CopilotReviewEffort = copyUIValue(repository.Settings.Copilot.CodeReview.ReviewEffortLevel)
+		if repository.Settings.Copilot != nil && repository.Settings.Copilot.CodeReview != nil && repository.Settings.Copilot.CodeReview.General != nil {
+			general := repository.Settings.Copilot.CodeReview.General
+			result.CopilotPublicSearch = copyUIValue(general.SearchPublicRepositories)
+			result.CopilotInstructions = copyUIValue(general.UseCustomInstructions)
+			result.CopilotMCP = copyUIValue(general.AllowCopilotToUseMCPToolsWhenReviewingPullRequests)
+			result.CopilotReviewEffort = copyUIValue(general.ReviewEffortLevel)
 			if result.CopilotReviewEffort != nil {
 				if err := settings.ValidateCopilotReviewEffort(*result.CopilotReviewEffort); err != nil {
 					return settings.Declaration{}, err

@@ -43,7 +43,8 @@ func TestArchivedRetentionLimitsAndCopilotMustAllMatch(t *testing.T) {
 					}
 					return settings.NewPullRequestLimitsObservation(settings.PullRequestLimitsValues{Enabled: scenario != "limits differ", Maximum: 5})
 				},
-				ReadArchivedCopilot: func(_ repository.Repository, instructions, mcp bool) (settings.ArchivedCopilotToggles, error) {
+				ReadArchivedCopilot: func(_ repository.Repository, selected settings.ArchivedCopilotToggles) (settings.ArchivedCopilotToggles, error) {
+					instructions, mcp := selected.Instructions != nil, selected.MCP != nil
 					copilotReads++
 					if !instructions || mcp {
 						t.Fatal("wrong Copilot selection")

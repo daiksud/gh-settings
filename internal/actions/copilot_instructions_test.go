@@ -19,7 +19,7 @@ func TestCopilotInstructionsPlanReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	comparison := settings.Comparison{Managed: 1, CopilotInstructions: []settings.CopilotInstructionsChange{change}}
-	line := "repository.settings.copilot.code_review.use_custom_instructions: true → false"
+	line := "repository.settings.copilot.code_review.general.use_custom_instructions: true → false"
 	if output := string(cli.RenderComparison(comparison)); output != line+"\n" {
 		t.Fatal(output)
 	}

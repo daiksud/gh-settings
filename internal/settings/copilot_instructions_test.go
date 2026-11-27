@@ -28,7 +28,7 @@ func TestCopilotInstructionsComparison(t *testing.T) {
 			}
 			if len(changes) > 0 {
 				before, after := changes[0].Values()
-				if before != tc.before || after != *tc.desired || changes[0].Field() != "repository.settings.copilot.code_review.use_custom_instructions" {
+				if before != tc.before || after != *tc.desired || changes[0].Field() != "repository.settings.copilot.code_review.general.use_custom_instructions" {
 					t.Fatal(changes[0])
 				}
 			}

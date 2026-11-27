@@ -53,10 +53,12 @@ type ActionsSettings struct {
 type SecurityAndQuality struct{ AdvancedSecurity *AdvancedSecurity }
 
 type CopilotSettings struct{ CodeReview *CopilotCodeReview }
-type CopilotCodeReview struct {
-	UseCustomInstructions                              *bool
-	AllowCopilotToUseMCPToolsWhenReviewingPullRequests *bool
+type CopilotCodeReview struct{ General *CopilotCodeReviewGeneral }
+type CopilotCodeReviewGeneral struct {
 	ReviewEffortLevel                                  *string
+	AllowCopilotToUseMCPToolsWhenReviewingPullRequests *bool
+	SearchPublicRepositories                           *bool
+	UseCustomInstructions                              *bool
 }
 
 // InteractionLimits contains only the persistent Pull request limits controls.

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func TestArchivedCopilotRead(t *testing.T) {
@@ -39,7 +40,14 @@ func TestArchivedCopilotRead(t *testing.T) {
 				}
 				return labelsResponse(req, tc.status, tc.body), nil
 			})).rest}
-			got, err := c.Read(repository.Repository{Owner: "owner", Name: "current"}, tc.instructions, tc.mcp)
+			selected := settings.ArchivedCopilotToggles{}
+			if tc.instructions {
+				selected.Instructions = &tc.instructions
+			}
+			if tc.mcp {
+				selected.MCP = &tc.mcp
+			}
+			got, err := c.Read(repository.Repository{Owner: "owner", Name: "current"}, selected)
 			if (err != nil) != tc.fail || calls != 1 {
 				t.Fatalf("got=%+v err=%v calls=%d", got, err, calls)
 			}

@@ -55,7 +55,7 @@ repository:
     moderation:
       interaction_limits:
         pull_request_limits: {limit_open_pull_requests_from_users_without_write_access: true, exemption_list: []}
-    copilot: {code_review: {review_effort_level: ` + effort + `}}
+    copilot: {code_review: {general: {review_effort_level: ` + effort + `}}}
     actions:
       general:
         check_workflow_run_status_artifact_and_log_retention: 30
