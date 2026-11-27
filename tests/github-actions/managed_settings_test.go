@@ -1,42 +1,16 @@
 package githubactions
 
 import (
-	"bytes"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
-	"go.yaml.in/yaml/v4"
 )
 
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
-	// The hosted workflows validate the original document with v0.47.0.
-	// Check the pinned scalars before decoding the remaining policy with current source.
-	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	var doc, extra yaml.Node
-	if err := decoder.Decode(&doc); err != nil || len(doc.Content) != 1 {
-		t.Fatal("expected an operational settings document", err)
-	}
-	if err := decoder.Decode(&extra); err != io.EOF {
-		t.Fatal("expected only one settings document", err)
-	}
-	wrapPinnedToggle(t, doc.Content[0], false, "repository", "settings", "general", "features", "wikis")
-	wrapPinnedToggle(t, doc.Content[0], true, "repository", "settings", "advanced_security", "private_vulnerability_reporting")
-	data, err = yaml.Marshal(&doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ui, err := workspace.DecodeConfig(data)
+	ui, err := workspace.ReadConfig(root())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,24 +22,6 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 		t.Fatal(err)
 	}
 	return declaration
-}
-
-func wrapPinnedToggle(t *testing.T, node *yaml.Node, want bool, path ...string) {
-	t.Helper()
-	for _, key := range path {
-		fields, err := settingsYAMLMap(node)
-		if err != nil || fields[key] == nil {
-			t.Fatalf("missing v0.47.0 toggle %s: %v", strings.Join(path, "."), err)
-		}
-		node = fields[key]
-	}
-	var got bool
-	if node.Kind != yaml.ScalarNode || node.Tag != "!!bool" || node.Decode(&got) != nil || got != want {
-		t.Fatalf("expected v0.47.0 %s to be boolean %t", strings.Join(path, "."), want)
-	}
-	if err := node.Encode(map[string]bool{"enabled": got}); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
@@ -130,6 +86,12 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				t.Fatalf("managed=%d, changes=%d, error=%v", managed, changes, err)
 			}
 		})
+	}
+	if desired.Repository.HasWiki == nil || *desired.Repository.HasWiki {
+		t.Fatal("the tracked declaration must explicitly disable the wiki")
+	}
+	if desired.Security.PrivateVulnerabilityReporting == nil || !*desired.Security.PrivateVulnerabilityReporting {
+		t.Fatal("the tracked declaration must explicitly enable private vulnerability reporting")
 	}
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")

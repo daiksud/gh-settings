@@ -170,14 +170,11 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 The [PR validator](../../.github/workflows/settings-pr.yml) and the
 [main apply workflow](../../.github/workflows/settings-apply.yml) pin the same
-published Action, `01cd465f5c4ff506b39de70261707d5c6fa22943` (v0.47.0).
+published Action, `92316567bcea660466937114e7a04df528de9eed` (v0.48.0).
 Review both pins and the tracked declaration together when adopting a new
-release. The tracked declaration uses the v0.47.0 scalars `features.wikis: false` and
-`advanced_security.private_vulnerability_reporting: true`. The
-[operational tests](../../tests/github-actions/managed_settings_test.go) verify both
-pinned values and wrap them in memory so current-source checks can read the
-declaration. When the callers adopt the new schema, move each boolean to its
-`enabled` field and remove the test translation.
+release. The [operational tests](../../tests/github-actions/operational_test.go)
+decode the tracked YAML directly. Wiki availability and private vulnerability
+reporting each use the corresponding group's `enabled` checkbox.
 
 Under `repository.settings`, the two empty repository variable lists belong to
 `secrets_and_variables.actions.variables` and `secrets_and_variables.agents.variables`.
