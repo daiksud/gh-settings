@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -53,14 +54,20 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 			repositorySettings.Content = slices.Delete(repositorySettings.Content, i-1, i+1)
 		}
 	}
-	codeSecurity := member(member(repositorySettings, "advanced_security"), "code_security")
-	codeQL := member(codeSecurity, "codeql_analysis")
-	suite := member(codeQL, "query_suites")
-	if suite.Kind != yaml.ScalarNode || suite.Tag != "!!str" || suite.Value != "extended" {
-		t.Fatal("the pinned CLI must select the extended CodeQL query suite")
+	codeQL := member(member(member(repositorySettings, "advanced_security"), "code_security"), "codeql_analysis")
+	for key, want := range map[string]any{
+		"query_suites": "extended",
+		"runner":       map[string]any{"type": "standard_github_runner"},
+		"threat_model": "remote_sources",
+	} {
+		node := member(codeQL, key)
+		var got any
+		if err := node.Decode(&got); err != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("unexpected pinned CodeQL %s: %v (%v)", key, got, err)
+		}
+		i := slices.Index(codeQL.Content, node)
+		codeQL.Content = slices.Delete(codeQL.Content, i-1, i+1)
 	}
-	i := slices.Index(codeSecurity.Content, codeQL)
-	codeSecurity.Content = slices.Delete(codeSecurity.Content, i-1, i+1)
 	data, err = yaml.Marshal(&doc)
 	if err != nil {
 		t.Fatal(err)
