@@ -1,4 +1,4 @@
-# Released v0.47.0 contract. Mappings in shape follow canonical export order.
+# Current-source contract. Mappings in shape follow canonical export order.
 # A one-element sequence describes its item type, not a required number of items.
 # Scalar names describe YAML types. Only the Pages custom domain also accepts null.
 # This is schema data for contributors, not a settings declaration.
@@ -23,25 +23,25 @@ shape:
         features:
           wikis: boolean
           issues: boolean
+          issue_permissions:
+            creation_allowed_by: string
           sponsorships: boolean
           discussions: boolean
           projects: boolean
           pull_requests: boolean
-          issue_permissions:
-            creation_allowed_by: string
           pull_request_permissions:
             creation_allowed_by: string
         pull_requests:
           allow_merge_commits: boolean
+          merge_commits:
+            default_commit_message: string
           allow_squash_merging: boolean
+          squash_merging:
+            default_commit_message: string
           allow_rebase_merging: boolean
           always_suggest_updating_pull_request_branches: boolean
           allow_auto_merge: boolean
           automatically_delete_head_branches: boolean
-          merge_commits:
-            default_commit_message: string
-          squash_merging:
-            default_commit_message: string
         commits:
           require_contributors_to_sign_off_on_web_based_commits: boolean
         danger_zone:
@@ -52,14 +52,21 @@ shape:
       moderation:
         interaction_limits:
           pull_request_limits:
-            exemption_list: [string]
             limit_open_pull_requests_from_users_without_write_access: boolean
             maximum_open_pull_requests_per_user: integer
             count_draft_pull_requests_toward_the_limit: boolean
+            exemption_list: [string]
       rulesets:
         - id: integer
           ruleset_name: string
           enforcement_status: string
+          bypass_list:
+            - role: string
+              team: integer
+              app: integer
+              user: integer
+              deploy_keys: boolean
+              bypass_mode: string
           target_branches:
             include_default_branch: boolean
             include_all_branches: boolean
@@ -69,37 +76,32 @@ shape:
             include_all_tags: boolean
             include_by_pattern: [string]
             exclude_by_pattern: [string]
-          bypass_list:
-            - role: string
-              team: integer
-              app: integer
-              user: integer
-              deploy_keys: boolean
-              bypass_mode: string
           rules:
             restrict_creations: boolean
-            restrict_deletions: boolean
-            block_force_pushes: boolean
-            require_linear_history: boolean
-            require_signed_commits: boolean
             restrict_updates:
               allow_fetch_and_merge: boolean
+            restrict_deletions: boolean
+            require_linear_history: boolean
+            require_deployments_to_succeed:
+              required_deployment_environments: [string]
+            require_signed_commits: boolean
             require_a_pull_request_before_merging:
-              require_an_additional_approval_for_unattributed_copilot_pull_requests: boolean
               required_approvals: integer
-              allowed_merge_methods: [string]
               dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: boolean
               require_review_from_code_owners: boolean
               require_approval_of_the_most_recent_reviewable_push: boolean
               require_conversation_resolution_before_merging: boolean
+              require_an_additional_approval_for_unattributed_copilot_pull_requests: boolean
+              allowed_merge_methods: [string]
             require_status_checks_to_pass:
+              require_branches_to_be_up_to_date_before_merging: boolean
+              do_not_require_status_checks_on_creation: boolean
               required_status_checks:
                 - check: string
                   source:
                     any_source: boolean
                     app: integer
-              require_branches_to_be_up_to_date_before_merging: boolean
-              do_not_require_status_checks_on_creation: boolean
+            block_force_pushes: boolean
             require_code_scanning_results:
               code_scanning_tools:
                 - tool_name: string
@@ -110,8 +112,6 @@ shape:
             restrict_code_coverage:
               minimum_line_coverage_percentage: number
               maximum_line_coverage_drop: number
-            require_deployments_to_succeed:
-              required_deployment_environments: [string]
             automatically_request_copilot_code_review:
               review_new_pushes: boolean
               review_draft_pull_requests: boolean
@@ -149,16 +149,16 @@ shape:
           allow_deletions: boolean
       actions:
         general:
-          cache:
-            cache_retention: integer
-            cache_size_eviction_limit: integer
           actions_permissions:
             policy: string
-            require_actions_to_be_pinned_to_a_full_length_commit_sha: boolean
             allow_actions_created_by_github: boolean
             allow_actions_by_marketplace_verified_creators: boolean
             allow_or_block_specified_actions_and_reusable_workflows: [string]
+            require_actions_to_be_pinned_to_a_full_length_commit_sha: boolean
           check_workflow_run_status_artifact_and_log_retention: integer
+          cache:
+            cache_retention: integer
+            cache_size_eviction_limit: integer
           approval_for_running_fork_pull_request_workflows_from_contributors: string
           workflow_permissions:
             default_permissions: string
@@ -192,8 +192,8 @@ shape:
           payload_url: string
           content_type: string
           ssl_verification: boolean
-          active: boolean
           events: [string]
+          active: boolean
       copilot:
         code_review:
           general:
@@ -202,14 +202,7 @@ shape:
             search_public_repositories: boolean
             use_custom_instructions: boolean
       environments:
-        - variables:
-            - name: string
-              value: string
-          deployment_branches_and_tags: string
-          deployment_branch_or_tag_rules:
-            - ref_type: string
-              name_pattern: string
-          name: string
+        - name: string
           deployment_protection_rules:
             required_reviewers:
               reviewers:
@@ -219,18 +212,26 @@ shape:
             wait_timer: integer
             enable_custom_rules_with_github_apps: [integer]
             allow_administrators_to_bypass_configured_protection_rules: boolean
+          deployment_branches_and_tags: string
+          deployment_branch_or_tag_rules:
+            - ref_type: string
+              name_pattern: string
+          variables:
+            - name: string
+              value: string
       pages:
-        custom_domain: string|null
-        enforce_https: boolean
         build_and_deployment:
           source: string
           branch: string
           select_folder: string
+        custom_domain: string|null
+        enforce_https: boolean
       advanced_security:
+        private_vulnerability_reporting: boolean
+        dependabot:
+          alerts: boolean
+          security_updates: boolean
         code_security:
-          ai_scan:
-            ai_scan_for_pull_requests: boolean
-            ai_scan_for_repositories: boolean
           codeql_analysis:
             default_setup: boolean
             languages: [string]
@@ -239,10 +240,9 @@ shape:
               runner_label: string
               query_suite: string
               threat_model: string
-        dependabot:
-          alerts: boolean
-          security_updates: boolean
-        private_vulnerability_reporting: boolean
+          ai_scan:
+            ai_scan_for_repositories: boolean
+            ai_scan_for_pull_requests: boolean
         secret_protection:
           enabled: boolean
           push_protection: boolean

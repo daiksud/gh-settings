@@ -58,12 +58,12 @@ repository:
             features:
                 wikis: true
                 issues: true
+                issue_permissions:
+                    creation_allowed_by: all_users
                 sponsorships: false
                 discussions: false
                 projects: true
                 pull_requests: false
-                issue_permissions:
-                    creation_allowed_by: all_users
             pull_requests:
                 allow_merge_commits: false
                 allow_squash_merging: false
@@ -86,10 +86,10 @@ repository:
     settings:
         general:
             features:
-                sponsorships: false
-                pull_requests: false
                 issue_permissions:
                     creation_allowed_by: all_users
+                sponsorships: false
+                pull_requests: false
             pull_requests:
                 allow_merge_commits: false
                 allow_squash_merging: false

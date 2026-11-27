@@ -14,25 +14,25 @@ repository:
             features:
                 wikis: false
                 issues: true
+                issue_permissions:
+                    creation_allowed_by: collaborators_only
                 sponsorships: false
                 discussions: false
                 projects: false
                 pull_requests: true
-                issue_permissions:
-                    creation_allowed_by: collaborators_only
                 pull_request_permissions:
                     creation_allowed_by: all_users
             pull_requests:
                 allow_merge_commits: true
+                merge_commits:
+                    default_commit_message: pull_request_title_and_description
                 allow_squash_merging: true
+                squash_merging:
+                    default_commit_message: pull_request_title_and_commit_details
                 allow_rebase_merging: false
                 always_suggest_updating_pull_request_branches: false
                 allow_auto_merge: false
                 automatically_delete_head_branches: false
-                merge_commits:
-                    default_commit_message: pull_request_title_and_description
-                squash_merging:
-                    default_commit_message: pull_request_title_and_commit_details
             commits:
                 require_contributors_to_sign_off_on_web_based_commits: false
             danger_zone:

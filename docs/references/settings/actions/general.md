@@ -14,10 +14,10 @@ All paths below are relative to `repository.settings.actions.general.actions_per
 | Field | Choice / type |
 | --- | --- |
 | `policy` | `allow_all_actions_and_reusable_workflows`, `disable_actions`, `allow_owner_actions_and_reusable_workflows`, `allow_owner_and_select_non_owner_actions_and_reusable_workflows` |
-| `require_actions_to_be_pinned_to_a_full_length_commit_sha` | boolean |
 | `allow_actions_created_by_github` | boolean; selected-policy companion |
 | `allow_actions_by_marketplace_verified_creators` | boolean; selected-policy companion |
 | `allow_or_block_specified_actions_and_reusable_workflows` | ordered string array; selected-policy companion |
+| `require_actions_to_be_pinned_to_a_full_length_commit_sha` | boolean |
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -27,10 +27,10 @@ repository:
       general:
         actions_permissions:
           policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows
-          require_actions_to_be_pinned_to_a_full_length_commit_sha: true
           allow_actions_created_by_github: true
           allow_actions_by_marketplace_verified_creators: false
           allow_or_block_specified_actions_and_reusable_workflows: ['my-org/*', '!my-org/blocked@*']
+          require_actions_to_be_pinned_to_a_full_length_commit_sha: true
 ```
 
 Selecting an allow policy explicitly enables Actions and selects its policy; `policy: disable_actions` declares only disabled execution, leaving latent allowed policy unmanaged. There are no separate public API-shaped enabled/allowed fields. Omitting `policy` does not implicitly enable Actions. SHA pinning is independent; reusable workflows can still use tags.

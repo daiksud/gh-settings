@@ -15,24 +15,28 @@ type Ruleset struct {
 	ID                *int64
 	RulesetName       string
 	EnforcementStatus *EnforcementStatus
+	BypassList        *[]BypassEntry
 	TargetBranches    *BranchTargets
 	TargetTags        *TagTargets
-	BypassList        *[]BypassEntry
 	Rules             RulesetRules
 }
 
 // RulesetRules describes checkbox states inside a whole owned Ruleset.
 // Omission does not retain a remote rule; false and nil both leave it unselected.
 type RulesetRules struct {
-	RestrictCreations, RestrictDeletions, BlockForcePushes, RequireLinearHistory, RequireSignedCommits *bool
-	RestrictUpdates                                                                                    *UpdateRule
-	RequireAPullRequestBeforeMerging                                                                   *PullRequestRule
-	RequireStatusChecksToPass                                                                          *StatusChecksRule
-	RequireCodeScanningResults                                                                         *CodeScanningRule
-	RequireCodeQualityResults                                                                          *CodeQualityRule
-	RestrictCodeCoverage                                                                               *CodeCoverageRule
-	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
-	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
+	RestrictCreations                     *bool
+	RestrictUpdates                       *UpdateRule
+	RestrictDeletions                     *bool
+	RequireLinearHistory                  *bool
+	RequireDeploymentsToSucceed           *DeploymentsRule
+	RequireSignedCommits                  *bool
+	RequireAPullRequestBeforeMerging      *PullRequestRule
+	RequireStatusChecksToPass             *StatusChecksRule
+	BlockForcePushes                      *bool
+	RequireCodeScanningResults            *CodeScanningRule
+	RequireCodeQualityResults             *CodeQualityRule
+	RestrictCodeCoverage                  *CodeCoverageRule
+	AutomaticallyRequestCopilotCodeReview *CopilotCodeReviewRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -67,9 +71,9 @@ type CopilotCodeReviewRule struct {
 }
 
 type StatusChecksRule struct {
-	RequiredStatusChecks                     *[]StatusCheck
 	RequireBranchesToBeUpToDateBeforeMerging *bool
 	DoNotRequireStatusChecksOnCreation       *bool
+	RequiredStatusChecks                     *[]StatusCheck
 }
 
 type StatusCheck struct {
@@ -94,13 +98,13 @@ const (
 func DefaultRulesetMergeMethods() []MergeMethod { return []MergeMethod{Merge, Squash, Rebase} }
 
 type PullRequestRule struct {
-	RequireAnAdditionalApprovalForUnattributedCopilotPullRequests *bool
 	RequiredApprovals                                             *int
-	AllowedMergeMethods                                           *[]MergeMethod
 	DismissStalePullRequestApprovalsWhenNewCommitsArePushed       *bool
 	RequireReviewFromCodeOwners                                   *bool
 	RequireApprovalOfTheMostRecentReviewablePush                  *bool
 	RequireConversationResolutionBeforeMerging                    *bool
+	RequireAnAdditionalApprovalForUnattributedCopilotPullRequests *bool
+	AllowedMergeMethods                                           *[]MergeMethod
 }
 
 type BypassRole string

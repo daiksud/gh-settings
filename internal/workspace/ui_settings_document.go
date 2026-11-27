@@ -32,19 +32,19 @@ type uiActionsDocument struct {
 }
 
 type uiActionsGeneralDocument struct {
-	Cache                                                      *uimodel.ActionsCache
 	ActionsPermissions                                         *uiActionsPermissionsDocument
 	CheckWorkflowRunStatusArtifactAndLogRetention              *int
+	Cache                                                      *uimodel.ActionsCache
 	ApprovalForRunningForkPullRequestWorkflowsFromContributors *uimodel.ForkApprovalChoice
 	WorkflowPermissions                                        *uiWorkflowPermissionsDocument
 }
 
 type uiActionsPermissionsDocument struct {
 	Policy                                           *uimodel.ActionsPermissionChoice
-	RequireActionsToBePinnedToAFullLengthCommitSHA   *bool
 	AllowActionsCreatedByGitHub                      *bool
 	AllowActionsByMarketplaceVerifiedCreators        *bool
 	AllowOrBlockSpecifiedActionsAndReusableWorkflows *[]string
+	RequireActionsToBePinnedToAFullLengthCommitSHA   *bool
 }
 
 type uiWorkflowPermissionsDocument struct {
@@ -58,9 +58,9 @@ type uiDependabotDocument struct {
 }
 
 type uiAdvancedSecurityDocument struct {
-	CodeSecurity                  *uimodel.CodeSecurity
-	Dependabot                    *uiDependabotDocument
 	PrivateVulnerabilityReporting *bool
+	Dependabot                    *uiDependabotDocument
+	CodeSecurity                  *uimodel.CodeSecurity
 	SecretProtection              *uiSecretProtectionDocument
 }
 

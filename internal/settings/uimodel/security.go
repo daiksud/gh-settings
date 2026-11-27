@@ -14,13 +14,13 @@ type SecuritySettings struct {
 }
 
 type AIScan struct {
-	AIScanForPullRequests *bool
 	AIScanForRepositories *bool
+	AIScanForPullRequests *bool
 }
 
 type CodeSecurity struct {
-	AIScan         *AIScan
 	CodeQLAnalysis *CodeQLAnalysis
+	AIScan         *AIScan
 }
 type CodeQLAnalysis struct {
 	DefaultSetup *bool

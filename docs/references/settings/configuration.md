@@ -51,6 +51,11 @@ Validation rejects unknown, duplicate or non-string keys, unsupported tags, mult
 
 ## Exported values
 
+You can write mapping keys in any order. Export writes supported controls in
+editor order for the pages listed in the [editor order table](../../development/settings-schema/export-order.yml).
+For example, the default commit message for each merge method follows its
+checkbox, and a Ruleset's bypass list precedes its targets and rules.
+
 Export writes the settings it could fully observe. An unavailable group is omitted on first export and can retain compatible prior declarations on re-export. Treat a retained value as unverified intent. Check the diagnostics and the resulting file before applying it. [Export behavior](../commands.md#export)
 
 Some GitHub APIs return values outside the choices shown in the UI. Where a resource defines a fallback, export writes its documented UI value and reports the normalization. Plan can still show a required change even when the displayed values match, because apply must verify the requested value against the raw state. Missing data and incomplete inventories never supply default values.

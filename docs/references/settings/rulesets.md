@@ -66,9 +66,9 @@ A bypass entry selects exactly one actor: `role` (`repository_admin`, `maintain`
 | Field | Default / accepted value |
 | --- | --- |
 | `required_approvals` | 0; UI integers 0–10 |
+| `dismiss_stale_pull_request_approvals_when_new_commits_are_pushed`, `require_review_from_code_owners`, `require_approval_of_the_most_recent_reviewable_push`, `require_conversation_resolution_before_merging` | false |
 | `require_an_additional_approval_for_unattributed_copilot_pull_requests` | true; explicit false disables the additional approval |
 | `allowed_merge_methods` | all three: `merge`, `squash`, `rebase`; nonempty unique selected choices |
-| `dismiss_stale_pull_request_approvals_when_new_commits_are_pushed`, `require_review_from_code_owners`, `require_approval_of_the_most_recent_reviewable_push`, `require_conversation_resolution_before_merging` | false |
 
 The additional-approval checkbox maps to the REST PR-rule parameter
 `require_extra_approval_for_unattributed_changes`. It adds one approval for
