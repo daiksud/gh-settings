@@ -19,6 +19,8 @@ Use the family tables to determine whether a proposed control belongs in scope, 
 
 The [product boundaries](#explicit-product-and-target-boundaries) explain exclusions, and the [observation records](#observation-records) identify where and when evidence was collected.
 
+The [v1 schema design](settings-schema/README.md) records the corresponding YAML shapes, including controls awaiting an API.
+
 ## Reading this inventory
 
 This contributor reference records coverage evidence for the [v1 goal][v1-goal],

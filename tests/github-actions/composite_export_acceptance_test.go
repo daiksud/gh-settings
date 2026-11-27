@@ -136,6 +136,42 @@ func TestBuiltCompositeExport(t *testing.T) {
 	}
 }
 
+func TestBuiltCompositeRejectsReservedHomePageControl(t *testing.T) {
+	product := suppliedCompositeProduct(t)
+	const input = "version: daiksud/gh-settings@v0\nrepository: {about: {include_in_the_home_page: {releases: false}}}\n"
+	for _, command := range []string{"validate", "plan", "apply", "export"} {
+		t.Run(command, func(t *testing.T) {
+			f := product.newFixture(t)
+			path := filepath.Join(f.caller, ".github/settings.yml")
+			f.write(path, input)
+			reads := startCompositeExportAPI(t, f, nil)
+			token := "export-fixture-read"
+			if command == "validate" {
+				token = ""
+			}
+			result := f.run(t, command, token, nil)
+			if result.status == 0 || len(result.outputs) != 0 || reads.Load() != 0 {
+				t.Fatalf("reserved setting produced success or API access: %+v, reads=%d", result, reads.Load())
+			}
+			if command == "plan" {
+				if !strings.Contains(result.summary, "repository.about: configuration validation failed") {
+					t.Fatalf("missing invalid configuration in plan summary: %q", result.summary)
+				}
+			} else if command == "export" {
+				if !strings.Contains(result.log, "existing .github/settings.yml is invalid") {
+					t.Fatalf("missing export preservation diagnostic: %q", result.log)
+				}
+			} else if !strings.Contains(result.log, "include_in_the_home_page") {
+				t.Fatalf("missing reserved field diagnostic: %q", result.log)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || string(data) != input {
+				t.Fatalf("configuration changed after rejection: %v", err)
+			}
+		})
+	}
+}
+
 func startCompositeExportAPI(t *testing.T, f *compositeFixture, beforeRead func()) *atomic.Int64 {
 	t.Helper()
 	state, err := os.MkdirTemp("/tmp", "ghs-export-")

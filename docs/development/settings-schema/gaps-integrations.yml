@@ -1,0 +1,29 @@
+# Personally owned public repository UI observations, 2026-11-27.
+- control: Codespaces / Prebuild configuration / resource lifecycle and recipients
+  evidence: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/managing-prebuilds
+  impact: additive
+  resolution: Verify read, selection and update of the same branch/configuration pair, available file and principal choices, and side effects before adoption. Disabling and deleting prebuilds are different operations. Creating or updating settings can trigger billable builds or prompt for extra access. These are independent of existing gh-settings resources.
+- control: Pages / Visibility
+  evidence: https://github.com/daiksud/gh-settings/settings/pages
+  impact: additive
+  resolution: The personal-public page showed an Enterprise promotion under Visibility. Reserve a separate optional visibility key only after observing a configurable personal-public control. Omission must preserve visibility.
+- control: Environments / Rename
+  evidence: https://github.com/daiksud/gh-settings/settings/environments
+  impact: additive
+  resolution: The inspected list and credential Environment editor exposed no rename field. Preserve the exact name identity of existing declarations. If an identity-preserving rename can be configured, introduce an opt-in operation or selector with independent verification. Never reinterpret a changed name as a rename or infer rename from deletion plus creation.
+- control: Integrations / GitHub Apps
+  evidence: https://github.com/daiksud/gh-settings/settings/installations
+  impact: additive
+  resolution: The surface displayed installed Apps. Confirm a repository-scoped persistent control before defining its configuration. Installing an App, changing grants or authorizing access are outside scope.
+- control: Integrations / Email notifications
+  evidence: https://github.com/daiksud/gh-settings/settings
+  impact: additive
+  resolution: This personal-public settings sidebar showed only GitHub Apps under Integrations. Establish a configurable repository email notification setting and its form before reserving a key. User notification preferences and Codespaces prebuild failure recipients have distinct scopes.
+- control: Secrets and variables / Codespaces and Dependabot
+  evidence: https://github.com/daiksud/gh-settings/settings/secrets/codespaces
+  impact: additive
+  resolution: In this repository Codespaces and Dependabot each showed only a repository secrets page. Actions and Agents had separate Variables tabs. Keep secret values excluded and do not infer analogous variable inventories for the other pages.
+- control: Existing Webhooks / Active and event subscriptions
+  evidence: https://github.com/daiksud/gh-settings/issues/855
+  impact: additive
+  resolution: Keep the existing YAML paths and selection semantics. Existing-hook updates require proof that an opaque Secret survives the operation. Webhooks and Deploy keys use their established stable IDs or identities; neither secret nor private key values belong in the schema.

@@ -58,6 +58,7 @@ func TestApplyAcceptance(t *testing.T) {
 		{name: "no-managed-fields", input: "version: daiksud/gh-settings@v0\n", noAPI: true, noAuth: true, noOrigin: true},
 		{name: "empty-settings", input: "version: daiksud/gh-settings@v0\nrepository: {settings: {}}\n", noAPI: true, noAuth: true, noOrigin: true},
 		{name: "empty-repository", input: "version: daiksud/gh-settings@v0\nrepository: {}\n", noAPI: true, noAuth: true, noOrigin: true},
+		{name: "reserved-home-page-control", input: aboutInput("include_in_the_home_page: {releases: false}\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "include_in_the_home_page"},
 		{name: "malformed-before-api", input: generalInput("features:\n  issues: [\n"), wantError: "decode YAML", noAPI: true},
 		{name: "invalid-before-origin-auth", input: generalInput("features:\n  issues: 'false'\n"), wantError: "must be a boolean", noAPI: true, noOrigin: true, noAuth: true},
 		{name: "unknown-key", input: generalInput("private: true\n"), wantError: "unknown repository.settings.general key", noAPI: true},

@@ -1,0 +1,139 @@
+# Ordered additions to the v0.47.0 contract. The English desktop UI was inspected
+# on 2026-11-27. Values that happen to be selected in that repository are not defaults.
+- path: repository.about.include_in_the_home_page
+  type: mapping
+  status: reserved
+  ui: About / Include in the home page
+  evidence: &about https://github.com/daiksud/gh-settings
+  after: topics
+  api: Unconfirmed read and update for the three display preferences.
+  ownership: Each checkbox is independently optional. Omitting the group manages nothing.
+- path: repository.about.include_in_the_home_page.releases
+  type: boolean
+  status: reserved
+  ui: Releases
+  evidence: *about
+  meaning: Show the Releases section on the repository home page.
+- path: repository.about.include_in_the_home_page.deployments
+  type: boolean
+  status: reserved
+  ui: Deployments
+  after: releases
+  evidence: *about
+  meaning: Show the Deployments section on the repository home page.
+- path: repository.about.include_in_the_home_page.packages
+  type: boolean
+  status: reserved
+  ui: Packages
+  after: deployments
+  evidence: *about
+  meaning: Show the Packages section on the repository home page.
+- path: repository.settings.general.social_preview
+  type: mapping
+  status: reserved
+  ui: Social preview
+  evidence: &general https://github.com/daiksud/test-gh-settings-public/settings
+  after: releases
+  before: features
+  api: Partial. GraphQL exposes the current image URL and whether it is custom. A complete update contract is unconfirmed.
+  meaning: Repository social media preview image. See the open asset representation decision.
+- path: repository.settings.general.features.wikis
+  type: mapping
+  status: reshape
+  ui: Features / Wikis
+  evidence: *general
+  from: boolean
+  migration: Move the existing boolean to wikis.enabled. The companion checkbox is inside the same Wikis panel.
+- path: repository.settings.general.features.wikis.enabled
+  type: boolean
+  status: reserved
+  ui: Wikis
+  evidence: *general
+  api: Read and update repository has_wiki.
+  meaning: Own only wiki availability. An empty Wikis mapping selects nothing.
+- path: repository.settings.general.features.wikis.restrict_editing_to_collaborators_only
+  type: boolean
+  status: reserved
+  ui: Restrict editing to collaborators only
+  evidence: *general
+  after: enabled
+  api: Complete read and update unconfirmed.
+  condition: The Wikis panel shows this checkbox when the wiki is enabled.
+  ownership: Omission preserves the edit restriction, including when configuring wiki availability alone.
+- path: repository.settings.general.features.preserve_this_repository
+  type: boolean
+  status: reserved
+  ui: Features / Preserve this repository
+  evidence: *general
+  after: sponsorships
+  before: discussions
+  api: Complete read and update unconfirmed.
+  meaning: Include this code in the GitHub Archive Program.
+- path: repository.settings.general.commits.allow_comments_on_individual_commits
+  type: boolean
+  status: reserved
+  ui: Commits / Allow comments on individual commits
+  evidence: *general
+  after: require_contributors_to_sign_off_on_web_based_commits
+  api: Complete repository-setting read and update unconfirmed.
+  meaning: Permit new comments on individual commits. Existing comments have a separate lifecycle.
+- path: repository.settings.general.archives
+  type: mapping
+  status: reserved
+  ui: Archives
+  evidence: *general
+  after: commits
+- path: repository.settings.general.archives.include_git_lfs_objects_in_archives
+  type: boolean
+  status: reserved
+  ui: Include Git LFS objects in archives
+  evidence: *general
+  api: Complete read and update unconfirmed.
+- path: repository.settings.general.pushes
+  type: mapping
+  status: reserved
+  ui: Pushes
+  evidence: *general
+  after: archives
+- path: repository.settings.general.pushes.limit_how_many_branches_and_tags_can_be_updated_in_a_single_push
+  type: boolean
+  status: reserved
+  ui: Limit how many branches and tags can be updated in a single push
+  evidence: *general
+  api: Complete read and update unconfirmed.
+  meaning: Enable the single-push limit. The Pushes mapping also has room for its numeric companion.
+- path: repository.settings.general.pushes.up_to
+  type: integer
+  status: reserved
+  ui: Up to
+  after: limit_how_many_branches_and_tags_can_be_updated_in_a_single_push
+  condition: The single-push limit is enabled.
+  evidence: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/managing-the-push-policy-for-your-repository
+  meaning: Maximum branch and tag updates per push. The documented minimum is two. A recommended number is not an omitted value.
+- path: repository.settings.general.issues
+  type: mapping
+  status: reserved
+  ui: Issues
+  evidence: *general
+  after: pushes
+  before: danger_zone
+- path: repository.settings.general.issues.auto_close_issues_with_merged_linked_pull_requests
+  type: boolean
+  status: reserved
+  ui: Auto-close issues with merged linked pull requests
+  evidence: *general
+  api: Complete read and update unconfirmed.
+  meaning: Auto-close a linked issue when its pull request merges. The separate Features checkbox controls issue availability.
+- path: repository.settings.moderation.code_review_limits
+  type: mapping
+  status: reserved
+  ui: Moderation / Code review limits
+  after: interaction_limits
+  evidence: &review https://github.com/daiksud/gh-settings/settings/code_review_limits
+- path: repository.settings.moderation.code_review_limits.limit_to_users_explicitly_granted_read_or_higher_access
+  type: boolean
+  status: reserved
+  ui: Limit to users explicitly granted read or higher access
+  evidence: *review
+  api: Complete repository-setting read and update unconfirmed.
+  meaning: Restrict approving and requesting changes. Comment-only reviews remain available.
