@@ -1,83 +1,19 @@
 package githubactions
 
 import (
-	"bytes"
-	"io"
-	"os"
-	"path/filepath"
-	"reflect"
-	"slices"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
-	"go.yaml.in/yaml/v4"
 )
 
-// settings-pr validates the original file with the pinned release. Check the
-// operational policy at pin-specific paths before using the current decoder
-// for the shared settings.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	ui, err := workspace.ReadConfig(root())
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	var doc, extra yaml.Node
-	if err := decoder.Decode(&doc); err != nil || len(doc.Content) != 1 {
-		t.Fatal("expected the operational settings document", err)
-	}
-	if err := decoder.Decode(&extra); err != io.EOF {
-		t.Fatal("expected a single operational settings document", err)
-	}
-	member := func(parent *yaml.Node, key string) *yaml.Node {
-		t.Helper()
-		fields, err := settingsYAMLMap(parent)
-		if err != nil || parent.Tag != "!!map" || fields[key] == nil {
-			t.Fatalf("expected operational settings field %q: %v", key, err)
-		}
-		return fields[key]
-	}
-	repositorySettings := member(member(doc.Content[0], "repository"), "settings")
-	checkPinnedEnvironmentProtection(t, member(repositorySettings, "environments"))
-	for _, scope := range []string{"actions", "agents"} {
-		page := member(repositorySettings, scope)
-		variables := member(page, "variables")
-		if variables.Kind != yaml.SequenceNode || variables.Tag != "!!seq" || len(variables.Content) != 0 {
-			t.Fatalf("expected an explicit empty v0.46.0 %s variable list", scope)
-		}
-		i := slices.Index(page.Content, variables)
-		page.Content = slices.Delete(page.Content, i-1, i+1)
-		if scope == "agents" && len(page.Content) == 0 {
-			i := slices.Index(repositorySettings.Content, page)
-			repositorySettings.Content = slices.Delete(repositorySettings.Content, i-1, i+1)
-		}
-	}
-	codeQL := member(member(member(repositorySettings, "advanced_security"), "code_security"), "codeql_analysis")
-	for key, want := range map[string]any{
-		"query_suites": "extended",
-		"runner":       map[string]any{"type": "standard_github_runner"},
-		"threat_model": "remote_sources",
-	} {
-		node := member(codeQL, key)
-		var got any
-		if err := node.Decode(&got); err != nil || !reflect.DeepEqual(got, want) {
-			t.Fatalf("unexpected pinned CodeQL %s: %v (%v)", key, got, err)
-		}
-		i := slices.Index(codeQL.Content, node)
-		codeQL.Content = slices.Delete(codeQL.Content, i-1, i+1)
-	}
-	data, err = yaml.Marshal(&doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ui, err := workspace.DecodeConfig(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The operational v0.46.0 pin still applies these keys when the cap is disabled.
 	if ui.Settings != nil && len(ui.Settings.IgnoredPullRequestLimitKeys) > 0 {
 		t.Fatalf("omit inactive pull request limit keys from the operational declaration: %v", ui.Settings.IgnoredPullRequestLimitKeys)
 	}
@@ -86,33 +22,6 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 		t.Fatal(err)
 	}
 	return declaration
-}
-
-// The hosted v0.46.0 Action reads the flat Environment protection section.
-func checkPinnedEnvironmentProtection(t *testing.T, environments *yaml.Node) {
-	t.Helper()
-	if environments.Kind != yaml.SequenceNode || len(environments.Content) != 1 {
-		t.Fatal("expected one credential Environment")
-	}
-	entry := environments.Content[0]
-	fields, err := settingsYAMLMap(entry)
-	if err != nil || fields["deployment_protection_rules"] == nil {
-		t.Fatal("missing credential Environment protections", err)
-	}
-	rules := fields["deployment_protection_rules"]
-	var got map[string]any
-	want := map[string]any{
-		"required_reviewers":  []any{map[string]any{"person": 155234749}},
-		"prevent_self_review": false,
-		"wait_timer":          0,
-		"custom_rules":        []any{},
-		"allow_administrators_to_bypass_configured_protection_rules": false,
-	}
-	if err := rules.Decode(&got); err != nil || !reflect.DeepEqual(got, want) {
-		t.Fatalf("unexpected v0.46.0 credential Environment protections: %#v (%v)", got, err)
-	}
-	i := slices.Index(entry.Content, rules)
-	entry.Content = slices.Delete(entry.Content, i-1, i+1)
 }
 
 func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
@@ -146,6 +55,23 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				return 0, 0, err
 			}
 			n, changes, err := settings.CompareForkApproval(observation, desired.Actions)
+			return n, len(changes), err
+		}},
+		{"CodeQL default setup", 1, func() (int, int, error) {
+			n, changes, err := settings.CompareCodeQLDefaultSetup(settings.NewCodeQLDefaultSetupObservation(true), desired.Security)
+			return n, len(changes), err
+		}},
+		{"CodeQL scan configuration", 4, func() (int, int, error) {
+			observed, err := settings.NewCodeQLConfigurationObservation(settings.CodeQLConfigurationState{
+				Languages:   []string{"github_actions", "go", "javascript_typescript", "python"},
+				Runner:      settings.CodeQLRunner{Type: "standard_github_runner"},
+				QuerySuite:  "extended",
+				ThreatModel: "remote_sources",
+			})
+			if err != nil {
+				return 0, 0, err
+			}
+			n, changes, err := settings.CompareCodeQLConfiguration(observed, desired.Security.CodeQLConfiguration)
 			return n, len(changes), err
 		}},
 		{"secret scanning", 2, func() (int, int, error) {

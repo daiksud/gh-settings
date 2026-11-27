@@ -8,38 +8,33 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-const operationalAction = "daiksud/gh-settings@e283ab6a65fd8ca342da41d742f104b289519a58"
+const operationalAction = "daiksud/gh-settings@01cd465f5c4ff506b39de70261707d5c6fa22943"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
 	declaration := readManagedDeclaration(t)
-	if len(declaration.EnvironmentVariables) != 0 ||
-		(declaration.Variables != nil && declaration.Variables.Len() != 0) ||
-		(declaration.AgentsVariables != nil && declaration.AgentsVariables.Len() != 0) {
-		t.Fatal("the public declaration must not contain repository or Environment variable payloads")
+	if len(declaration.EnvironmentVariables) != 0 {
+		t.Fatal("credential Environment variables must remain unmanaged")
 	}
-	if declaration.Environments == nil {
+	if declaration.Variables == nil || declaration.Variables.Len() != 0 ||
+		declaration.AgentsVariables == nil || declaration.AgentsVariables.Len() != 0 {
+		t.Fatal("repository Actions and Agents variables must both be explicitly empty")
+	}
+	if declaration.Environments == nil || declaration.Environments.Len() != 1 {
 		t.Fatal("only the settings credential Environment must be declared")
 	}
-	environments := declaration.Environments.Values()
-	if len(environments) != 1 {
-		t.Fatal("only the settings credential Environment must be declared")
+	want := settings.EnvironmentDeclaration{
+		Name:                           "gh-settings",
+		Reviewers:                      &[]settings.EnvironmentReviewer{{Type: "User", ID: 155234749}},
+		PreventSelfReview:              new(false),
+		WaitTimer:                      new(0),
+		CustomRules:                    &[]int64{},
+		CanAdminsBypass:                new(false),
+		DeploymentBranchPolicyDeclared: true,
+		DeploymentBranchPolicy:         &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true},
+		DeploymentBranchPatterns:       &[]settings.EnvironmentPattern{{Type: "branch", Name: "main"}},
 	}
-	seenNames := map[string]bool{}
-	for _, p := range environments {
-		identity := settings.EnvironmentIdentity(p.Name)
-		if seenNames[identity] {
-			t.Fatalf("duplicate managed Environment %q", p.Name)
-		}
-		seenNames[identity] = true
-		switch p.Name {
-		case "gh-settings":
-			want := []settings.EnvironmentPattern{{Type: "branch", Name: "main"}}
-			if p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
-				t.Fatal("settings credential Environment must retain main-only refs")
-			}
-		default:
-			t.Fatalf("unexpected Environment %q", p.Name)
-		}
+	if got := declaration.Environments.Values()[0]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("credential Environment protections or deployment refs changed: %+v", got)
 	}
 }
 

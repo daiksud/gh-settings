@@ -168,11 +168,20 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The [PR validator](../../.github/workflows/settings-pr.yml) and [main apply workflow](../../.github/workflows/settings-apply.yml) both pin `e283ab6a65fd8ca342da41d742f104b289519a58` (v0.46.0). The tracked declaration uses that package's Moderation namespace, Release immutability control, plural merge keys and CodeQL layout. Move its CodeQL runner, query suite and threat model into `scan_settings` when both workflow pins support that layout. [Operational fixtures](../../tests/github-actions/operational_test.go) read the tracked YAML directly. Check the pin and the actual declaration together when either changes.
+The [PR validator](../../.github/workflows/settings-pr.yml) and the
+[main apply workflow](../../.github/workflows/settings-apply.yml) pin the same
+published Action, `01cd465f5c4ff506b39de70261707d5c6fa22943` (v0.47.0).
+Review both pins and the tracked declaration together when adopting a new
+release. The [operational tests](../../tests/github-actions/operational_test.go)
+decode the tracked YAML directly.
 
-The two empty repository variable lists also use v0.46.0's `settings.actions.variables` and `settings.agents.variables` under `repository`. When a release supports `settings.secrets_and_variables`, update both workflow pins and move the two lists together in the same PR. Keep the credential Environment's internal variable values out of the tracked YAML.
-
-The credential Environment also uses the v0.46.0 flat reviewer list, self-review flag and `custom_rules` list. Move them to [the current Environment structure](../references/settings/environments.md#deployment-protection-rules) when both consumers upgrade. Preserve the selected reviewer and explicit empty App set.
+Under `repository.settings`, the two empty repository variable lists belong to
+`secrets_and_variables.actions.variables` and `secrets_and_variables.agents.variables`.
+The credential [Environment](../references/settings/environments.md#deployment-protection-rules)
+declares the reviewer and self-review flag under `required_reviewers`, and an
+empty App list under `enable_custom_rules_with_github_apps`. CodeQL declares
+its runner, query suite and threat model under `scan_settings`. The disabled
+pull request limit declares only its enable switch.
 
 The declaration records supported, applicable settings acquired through the
 published CLI's real read-only export and checked with a fresh local plan.
