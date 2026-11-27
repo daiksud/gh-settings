@@ -15,14 +15,21 @@ repository:
                 - id: 7
                   policy_name: Restrict workflow events
                   enforcement_status: disabled
-                  restrict_events:
-                    allowed_events:
+                  target_workflows:
+                    include: [ci.yml]
+                    exclude: []
+                  workflow_execution_protections:
+                    restrict_actors:
+                      enabled: false
+                    restrict_events:
+                      allowed_events:
                         - push
                         - pull_request
                 - policy_name: Another policy
                   enforcement_status: active
-                  restrict_events:
-                    allowed_events:
+                  workflow_execution_protections:
+                    restrict_events:
+                      allowed_events:
                         - workflow_dispatch
 `
 	value, err := DecodeConfig([]byte(input))
@@ -37,6 +44,15 @@ repository:
 	if err != nil {
 		t.Fatal(err)
 	}
+	fields := []string{"target_workflows:", "workflow_execution_protections:", "restrict_actors:", "restrict_events:"}
+	seen := -1
+	for _, field := range fields {
+		index := strings.Index(string(encoded), field)
+		if index <= seen {
+			t.Fatalf("field %s missing or out of UI order:\n%s", field, encoded)
+		}
+		seen = index
+	}
 	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(value, again) {
 		t.Fatalf("round trip lost policy values: %s, %v", encoded, err)
@@ -49,7 +65,7 @@ repository:
 }
 
 func TestUIActionsPoliciesPresence(t *testing.T) {
-	for _, body := range []string{"{}", "{policies: []}", "{policies: [{policy_name: '', enforcement_status: '', restrict_events: {allowed_events: []}}]}"} {
+	for _, body := range []string{"{}", "{policies: []}", "{policies: [{policy_name: '', enforcement_status: '', workflow_execution_protections: {restrict_events: {allowed_events: []}}}]}"} {
 		value, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {actions: " + body + "}}\n"))
 		if err != nil {
 			t.Fatal(err)
@@ -71,12 +87,14 @@ func TestUIActionsPoliciesPresence(t *testing.T) {
 func TestUIActionsPoliciesRejectUnsafeValues(t *testing.T) {
 	for _, body := range []string{
 		"null", "{}", "[null]", "[{id: '7'}]", "[{id: null}]", "[{policy_name: null}]", "[{policy_name: false}]",
-		"[{enforcement_status: null}]", "[{restrict_events: null}]", "[{restrict_events: []}]",
-		"[{restrict_events: {allowed_events: null}}]", "[{restrict_events: {allowed_events: [null]}}]",
-		"[{restrict_events: {allowed_events: [1]}}]", "[{restrict_events: {allowed_events: push}}]",
+		"[{enforcement_status: null}]", "[{workflow_execution_protections: {restrict_events: null}}]", "[{workflow_execution_protections: {restrict_events: []}}]",
+		"[{workflow_execution_protections: {restrict_events: {allowed_events: null}}}]", "[{workflow_execution_protections: {restrict_events: {allowed_events: [null]}}}]",
+		"[{workflow_execution_protections: {restrict_events: {allowed_events: [1]}}}]", "[{workflow_execution_protections: {restrict_events: {allowed_events: push}}}]",
+		"[{restrict_actors: {allowed_actors: []}}]", "[{restrict_events: {allowed_events: [push]}}]",
+		"[{workflow_execution_protections: null}]", "[{workflow_execution_protections: []}]",
 		"[{name: old}]", "[{enforcement: active}]", "[{target: all}]", "[{delete: true}]",
-		"[{target_patterns: ['*']}]", "[{restrict_events: {events: [push]}}]", "[{policy_name: one, policy_name: two}]",
-		"[{restrict_events: {allowed_events: !!str [push]}}]", "!!str []",
+		"[{target_patterns: ['*']}]", "[{workflow_execution_protections: {restrict_events: {events: [push]}}}]", "[{policy_name: one, policy_name: two}]",
+		"[{workflow_execution_protections: {restrict_events: {allowed_events: !!str [push]}}}]", "!!str []",
 	} {
 		t.Run(body, func(t *testing.T) {
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: " + body + "}}}\n"
@@ -95,7 +113,7 @@ func TestUIActionsPoliciesMergedUnknownKeyRejected(t *testing.T) {
 }
 
 func TestUIActionsWorkflowTargetRoundTripAndStrictTypes(t *testing.T) {
-	prefix := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [{policy_name: events, enforcement_status: disabled, restrict_events: {allowed_events: [push]}, target_workflows: "
+	prefix := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [{policy_name: events, enforcement_status: disabled, workflow_execution_protections: {restrict_events: {allowed_events: [push]}}, target_workflows: "
 	for _, target := range []string{`{include: ['.github/workflows/*.yml'], exclude: ['**/skip.yml']}`, `{include: [], exclude: ['skip.yml']}`, `{include: ['~ALL'], exclude: []}`} {
 		value, err := DecodeConfig([]byte(prefix + target + "}]}}}\n"))
 		if err != nil {
@@ -123,7 +141,7 @@ func TestUIActionsActorRestrictionsRoundTripAndPresence(t *testing.T) {
 		`{restrict_actors: {allowed_actors: []}}`, `{restrict_actors: {enabled: true, allowed_actors: []}}`,
 		`{restrict_actors: {allowed_actors: [{user: 123}, {role: write}, {role: maintain}, {role: repository_admin}]}, restrict_events: {allowed_events: [push]}}`,
 	} {
-		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [" + body + "]}}}\n"
+		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [{workflow_execution_protections: " + body + "}]}}}\n"
 		value, err := DecodeConfig([]byte(input))
 		if err != nil {
 			t.Fatal(body, err)
@@ -163,7 +181,7 @@ func TestUIActionsActorRestrictionsRejectUnsafeYAML(t *testing.T) {
 		`{restrict_actors: {allowed_actors: [{<<: {team: 1}}]}}`,
 	} {
 		t.Run(body, func(t *testing.T) {
-			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [" + body + "]}}}\n"
+			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [{workflow_execution_protections: " + body + "}]}}}\n"
 			if _, err := DecodeConfig([]byte(input)); err == nil {
 				t.Fatal("accepted unsafe actor shape")
 			}

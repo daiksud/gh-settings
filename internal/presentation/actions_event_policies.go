@@ -10,12 +10,12 @@ import (
 // ActionsEventPolicyLine renders complete event and actor policy ownership.
 func ActionsEventPolicyLine(change settings.ActionsEventPolicyChange) string {
 	value := func(policy settings.ActionsEventPolicy) string {
-		events := "restrict_events.enabled=false"
+		events := "workflow_execution_protections.restrict_events.enabled=false"
 		if policy.Events != nil {
 			data, _ := json.Marshal(policy.Events)
-			events = "restrict_events.allowed_events=" + string(data)
+			events = "workflow_execution_protections.restrict_events.allowed_events=" + string(data)
 		}
-		actors := "restrict_actors.enabled=false"
+		actors := "workflow_execution_protections.restrict_actors.enabled=false"
 		if policy.Actors != nil {
 			type actorValue struct {
 				User *int64 `json:"user,omitempty"`
@@ -40,14 +40,14 @@ func ActionsEventPolicyLine(change settings.ActionsEventPolicyChange) string {
 				values = append(values, value)
 			}
 			data, _ := json.Marshal(values)
-			actors = "restrict_actors.allowed_actors=" + string(data)
+			actors = "workflow_execution_protections.restrict_actors.allowed_actors=" + string(data)
 		}
 		target := ""
 		if policy.TargetWorkflows != nil {
 			data, _ := json.Marshal(settings.CanonicalActionsWorkflowTarget(policy.TargetWorkflows))
 			target = " target_workflows=" + string(data)
 		}
-		return fmt.Sprintf("policy_name=%q enforcement_status=%q %s %s", policy.Name, policy.Enforcement, events, actors) + target
+		return fmt.Sprintf("policy_name=%q enforcement_status=%q%s %s %s", policy.Name, policy.Enforcement, target, actors, events)
 	}
 	after := change.After()
 	identity := ""

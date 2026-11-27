@@ -10,7 +10,12 @@ import (
 
 func actionsPolicyUIPtr[T any](v T) *T { return &v }
 func validActionsPolicyUI() uimodel.ActionsEventPolicy {
-	return uimodel.ActionsEventPolicy{PolicyName: actionsPolicyUIPtr("Restrict events"), EnforcementStatus: actionsPolicyUIPtr("active"), RestrictEvents: &uimodel.ActionsRestrictEvents{AllowedEvents: actionsPolicyUIPtr([]string{"push", "pull_request"})}}
+	return uimodel.ActionsEventPolicy{
+		PolicyName: actionsPolicyUIPtr("Restrict events"), EnforcementStatus: actionsPolicyUIPtr("active"),
+		WorkflowExecutionProtections: &uimodel.WorkflowExecutionProtections{
+			RestrictEvents: &uimodel.ActionsRestrictEvents{AllowedEvents: actionsPolicyUIPtr([]string{"push", "pull_request"})},
+		},
+	}
 }
 
 func TestActionsPoliciesUIConversion(t *testing.T) {
@@ -33,7 +38,7 @@ func TestActionsPoliciesUIConversion(t *testing.T) {
 	if !reflect.DeepEqual(declared.Values(), []settings.ActionsEventPolicy{expected}) {
 		t.Fatalf("policy conversion: %#v", declared.Values())
 	}
-	(*values[0].RestrictEvents.AllowedEvents)[0] = "issues"
+	(*values[0].WorkflowExecutionProtections.RestrictEvents.AllowedEvents)[0] = "issues"
 	if !reflect.DeepEqual(declared.Values()[0], expected) {
 		t.Fatal("conversion leaked input event slice")
 	}
@@ -41,7 +46,7 @@ func TestActionsPoliciesUIConversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	(*ui.RestrictEvents.AllowedEvents)[0] = "issues"
+	(*ui.WorkflowExecutionProtections.RestrictEvents.AllowedEvents)[0] = "issues"
 	if expected.Events[0] != "pull_request" {
 		t.Fatal("UI conversion leaked native event slice")
 	}
@@ -61,14 +66,16 @@ func TestActionsPoliciesUIRejectsIncompleteOrInvalidDeclarations(t *testing.T) {
 		{"empty name", func(p *uimodel.ActionsEventPolicy) { p.PolicyName = actionsPolicyUIPtr("") }},
 		{"missing enforcement", func(p *uimodel.ActionsEventPolicy) { p.EnforcementStatus = nil }},
 		{"unsupported enforcement", func(p *uimodel.ActionsEventPolicy) { p.EnforcementStatus = actionsPolicyUIPtr("evaluate") }},
-		{"missing both restrictions", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents = nil }},
-		{"missing events", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents.AllowedEvents = nil }},
-		{"empty events", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{}) }},
+		{"missing both restrictions", func(p *uimodel.ActionsEventPolicy) { p.WorkflowExecutionProtections.RestrictEvents = nil }},
+		{"missing events", func(p *uimodel.ActionsEventPolicy) { p.WorkflowExecutionProtections.RestrictEvents.AllowedEvents = nil }},
+		{"empty events", func(p *uimodel.ActionsEventPolicy) {
+			p.WorkflowExecutionProtections.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{})
+		}},
 		{"unknown event", func(p *uimodel.ActionsEventPolicy) {
-			p.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{"invented"})
+			p.WorkflowExecutionProtections.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{"invented"})
 		}},
 		{"duplicate event", func(p *uimodel.ActionsEventPolicy) {
-			p.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{"push", "push"})
+			p.WorkflowExecutionProtections.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{"push", "push"})
 		}},
 		{"zero id", func(p *uimodel.ActionsEventPolicy) { p.ID = actionsPolicyUIPtr(int64(0)) }},
 		{"negative id", func(p *uimodel.ActionsEventPolicy) { p.ID = actionsPolicyUIPtr(int64(-1)) }},
@@ -172,7 +179,7 @@ func TestActionsPoliciesActorMappingAndOwnedValues(t *testing.T) {
 		{Role: actionsPolicyUIPtr("repository_admin")},
 	}
 	p := validActionsPolicyUI()
-	p.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: &actors}
+	p.WorkflowExecutionProtections.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: &actors}
 	policies := []uimodel.ActionsEventPolicy{p}
 	declared, err := ActionsPoliciesDeclaration(&policies)
 	if err != nil {
@@ -191,10 +198,10 @@ func TestActionsPoliciesActorMappingAndOwnedValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ui.RestrictActors.Enabled != nil || ui.RestrictEvents.Enabled != nil {
+	if ui.WorkflowExecutionProtections.RestrictActors.Enabled != nil || ui.WorkflowExecutionProtections.RestrictEvents.Enabled != nil {
 		t.Fatal("export needlessly enabled restrictions")
 	}
-	got := *ui.RestrictActors.AllowedActors
+	got := *ui.WorkflowExecutionProtections.RestrictActors.AllowedActors
 	if *got[0].Role != "maintain" || *got[1].Role != "write" || *got[2].Role != "repository_admin" || *got[3].User != 123 {
 		t.Fatalf("reverse mapping: %#v", got)
 	}
@@ -221,8 +228,8 @@ func TestActionsPoliciesRestrictionsPresence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			p := validActionsPolicyUI()
 			p.ID = actionsPolicyUIPtr(int64(17))
-			p.RestrictEvents = test.events
-			p.RestrictActors = test.actors
+			p.WorkflowExecutionProtections.RestrictEvents = test.events
+			p.WorkflowExecutionProtections.RestrictActors = test.actors
 			policies := []uimodel.ActionsEventPolicy{p}
 			result, err := ActionsPoliciesDeclaration(&policies)
 			if err != nil {
@@ -244,7 +251,7 @@ func TestActionsPoliciesRejectInvalidActorDeclarationsAtomically(t *testing.T) {
 	} {
 		bad := validActionsPolicyUI()
 		bad.PolicyName = actionsPolicyUIPtr("bad")
-		bad.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{actor})}
+		bad.WorkflowExecutionProtections.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{actor})}
 		policies := []uimodel.ActionsEventPolicy{validActionsPolicyUI(), bad}
 		result, err := ActionsPoliciesDeclaration(&policies)
 		if err == nil || result != nil {
@@ -258,14 +265,14 @@ func TestActionsPoliciesRejectInvalidActorDeclarationsAtomically(t *testing.T) {
 		{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{{Role: actionsPolicyUIPtr("write")}, {Role: actionsPolicyUIPtr("write")}})},
 	} {
 		p := validActionsPolicyUI()
-		p.RestrictActors = restriction
+		p.WorkflowExecutionProtections.RestrictActors = restriction
 		policies := []uimodel.ActionsEventPolicy{p}
 		if result, err := ActionsPoliciesDeclaration(&policies); err == nil || result != nil {
 			t.Fatal("accepted invalid restriction", restriction)
 		}
 	}
 	p := validActionsPolicyUI()
-	p.RestrictEvents.Enabled = actionsPolicyUIPtr(false)
+	p.WorkflowExecutionProtections.RestrictEvents.Enabled = actionsPolicyUIPtr(false)
 	policies := []uimodel.ActionsEventPolicy{p}
 	if _, err := ActionsPoliciesDeclaration(&policies); err == nil {
 		t.Fatal("accepted events with disabled restriction")
@@ -283,10 +290,10 @@ func TestActionsPolicyExportAbsentRestrictionsRoundTrips(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if (events == nil) != (ui.RestrictEvents.Enabled != nil && !*ui.RestrictEvents.Enabled) {
+			if (events == nil) != (ui.WorkflowExecutionProtections.RestrictEvents.Enabled != nil && !*ui.WorkflowExecutionProtections.RestrictEvents.Enabled) {
 				t.Fatal("lost event off state")
 			}
-			if (actors == nil) != (ui.RestrictActors.Enabled != nil && !*ui.RestrictActors.Enabled) {
+			if (actors == nil) != (ui.WorkflowExecutionProtections.RestrictActors.Enabled != nil && !*ui.WorkflowExecutionProtections.RestrictActors.Enabled) {
 				t.Fatal("lost actor off state")
 			}
 			values := []uimodel.ActionsEventPolicy{ui}

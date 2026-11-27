@@ -21,10 +21,11 @@ repository:
           target_workflows:
             include: [ci.yml]
             exclude: []
-          restrict_actors:
-            allowed_actors:
-              - user: 123
-              - role: repository_admin
+          workflow_execution_protections:
+            restrict_actors:
+              allowed_actors:
+                - user: 123
+                - role: repository_admin
 `
 
 func actorPolicyPayload(t *testing.T, raw string) map[string]any {
@@ -100,17 +101,18 @@ repository:
         - id: 17
           policy_name: policy-canary
           enforcement_status: disabled
-          restrict_events: {allowed_events: [push]}
+          workflow_execution_protections:
+            restrict_events: {allowed_events: [push]}
 `
 	f.write(t, selected)
 	f.run(t, false, "apply")
-	f.write(t, selected+"          restrict_actors: {allowed_actors: []}\n")
+	f.write(t, selected+"            restrict_actors: {allowed_actors: []}\n")
 	f.run(t, false, "apply")
 	f.run(t, false, "export")
 	if !strings.Contains(f.data(t), "allowed_actors: []") {
 		t.Fatal(f.data(t))
 	}
-	f.write(t, selected+"          restrict_actors: {enabled: false}\n")
+	f.write(t, selected+"            restrict_actors: {enabled: false}\n")
 	f.run(t, false, "apply")
 	f.run(t, false, "apply")
 	f.mu.Lock()

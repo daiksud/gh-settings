@@ -23,7 +23,8 @@ repository:
       policies:
         - policy_name: policy-canary # keep comment
           enforcement_status: active
-          restrict_events: {allowed_events: [push]}
+          workflow_execution_protections:
+            restrict_events: {allowed_events: [push]}
 `
 
 type actionsEventPoliciesFixture struct {

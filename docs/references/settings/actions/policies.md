@@ -7,7 +7,7 @@ title: "Workflow event and actor policies"
 
 `repository.settings.actions.policies` manages repository-owned policies in
 **Settings → Actions → Policies**, with **Target workflows** inclusion/exclusion
-patterns and the **Restrict events** and **Restrict actors** rules. These are separate objects from the
+patterns followed by **Workflow execution protections** with **Restrict actors** and **Restrict events**. These are separate objects from the
 [Actions execution policy](general.md#actions-execution-policy). Without prune, omission or
 `policies: []` selects nothing, makes no policy API request and deletes nothing.
 Unlisted policies remain untouched; removing an entry stops managing it.
@@ -25,8 +25,9 @@ repository:
           target_workflows:
             include: ['.github/workflows/ci*.yml']
             exclude: ['.github/workflows/ci-experimental.yml']
-          restrict_events:
-            allowed_events: [pull_request, push, workflow_dispatch]
+          workflow_execution_protections:
+            restrict_events:
+              allowed_events: [pull_request, push, workflow_dispatch]
 ```
 
 | Attribute | Contract |
@@ -35,10 +36,10 @@ repository:
 | `policy_name` | Required nonempty/non-whitespace string without control characters; identity and collisions use exact spelling |
 | `enforcement_status` | Required `disabled` or `active`; neither is inferred |
 | `target_workflows` | Optional object with required `include` and `exclude` string arrays; declares the complete workflow selection |
-| `restrict_events` | Optional object with `allowed_events`, or `enabled: false` to turn the rule off |
-| `restrict_events.allowed_events` | Required when the event rule is enabled; nonempty array of unique supported event strings, compared as a set and exported sorted |
-| `restrict_actors` | Optional object with `allowed_actors`, or `enabled: false` to turn the rule off |
-| `restrict_actors.allowed_actors` | Required when the actor rule is enabled; array of unique actor identities, including `[]` for checked with no allowed actors |
+| `workflow_execution_protections.restrict_actors` | Optional object with `allowed_actors`, or `enabled: false` to turn the rule off |
+| `workflow_execution_protections.restrict_actors.allowed_actors` | Required when the actor rule is enabled; array of unique actor identities, including `[]` for checked with no allowed actors |
+| `workflow_execution_protections.restrict_events` | Optional object with `allowed_events`, or `enabled: false` to turn the rule off |
+| `workflow_execution_protections.restrict_events.allowed_events` | Required when the event rule is enabled; nonempty array of unique supported event strings, compared as a set and exported sorted |
 
 Each allowed actor selects exactly one identity: `{user: 155234749}` for a
 positive REST user ID, or `{role: write}`, `{role: maintain}` or
@@ -61,12 +62,13 @@ Explicitly disabling the final rule fails before writing. The complete effective
 policy must contain at least one supported restriction. For example:
 
 ```yaml
-restrict_events:
-  enabled: false
-restrict_actors:
-  allowed_actors:
-    - role: repository_admin
-    - user: 155234749
+workflow_execution_protections:
+  restrict_actors:
+    allowed_actors:
+      - role: repository_admin
+      - user: 155234749
+  restrict_events:
+    enabled: false
 ```
 
 This changes only the supported restriction selections on that policy; omitted

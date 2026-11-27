@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreatedIDActionsPolicyWriteback(t *testing.T) {
-	input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      policies:\n        - policy_name: main # keep comment\n          enforcement_status: disabled\n          restrict_events: {allowed_events: [push]}\n        - policy_name: later\n          enforcement_status: active\n          restrict_events: {allowed_events: [workflow_dispatch]}\n"
+	input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      policies:\n        - policy_name: main # keep comment\n          enforcement_status: disabled\n          workflow_execution_protections:\n            restrict_events: {allowed_events: [push]}\n        - policy_name: later\n          enforcement_status: active\n          workflow_execution_protections:\n            restrict_events: {allowed_events: [workflow_dispatch]}\n"
 	root, path := writebackFixture(t, input)
 	record := createdIDRecorder(root, []byte(input))
 	if err := record("actions_policies", "main", 31); err != nil {
