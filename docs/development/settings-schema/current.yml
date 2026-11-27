@@ -228,7 +228,8 @@ shape:
         custom_domain: string|null
         enforce_https: boolean
       advanced_security:
-        private_vulnerability_reporting: boolean
+        private_vulnerability_reporting:
+          enabled: boolean
         dependabot:
           alerts: boolean
           security_updates: boolean

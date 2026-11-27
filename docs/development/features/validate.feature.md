@@ -92,11 +92,12 @@ Test mapping: the [Actions UI codec tests](../../../internal/workspace/ui_action
 ### Scenario: Keep Security controls at their UI locations
 
 - Given `repository.settings.advanced_security.secret_protection` declares independently optional `enabled` and `push_protection` booleans
-- And `private_vulnerability_reporting` is a sibling of Secret Protection
+- And `private_vulnerability_reporting.enabled` declares whether the repository accepts private reports
 - And release immutability is declared at `repository.settings.general.releases.enable_release_immutability`
 - When the document is read and exported
 - Then each explicit boolean stays at its UI location and omitted controls remain unmanaged
-- And navigation-category wrappers, scalar Secret Protection, flat push protection, API aliases and owner enforcement metadata are rejected
+- And an empty reporting mapping leaves enablement unmanaged
+- And navigation-category wrappers, scalar reporting or Secret Protection, unsupported reporting details, flat push protection, API aliases and owner enforcement metadata are rejected
 
 Test mapping: the [Security UI codec tests](../../../internal/workspace/ui_security_test.go) and [page/section fixtures](../../../internal/workspace/ui_page_sections_test.go).
 

@@ -10,7 +10,7 @@ func TestPageSectionPathsMatchPublicControls(t *testing.T) {
 	for field, want := range map[string]string{
 		"security.secret_scanning":                      "repository.settings.advanced_security.secret_protection.enabled",
 		"security.secret_scanning_push_protection":      "repository.settings.advanced_security.secret_protection.push_protection",
-		"security.private_vulnerability_reporting":      "repository.settings.advanced_security.private_vulnerability_reporting",
+		"security.private_vulnerability_reporting":      "repository.settings.advanced_security.private_vulnerability_reporting.enabled",
 		"security.immutable_releases":                   "repository.settings.general.releases.enable_release_immutability",
 		"actions.default_workflow_permissions":          "repository.settings.actions.general.workflow_permissions.default_permissions",
 		"actions.can_approve_pull_request_reviews":      "repository.settings.actions.general.workflow_permissions.allow_github_actions_to_create_and_approve_pull_requests",

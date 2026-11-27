@@ -1,22 +1,6 @@
 # Repository Advanced Security UI inspected 2026-11-27, including the unsaved
 # rule editor. A selected UI value is not a default for an omitted declaration.
 # Official REST description audited at github/rest-api-description@d560905bbf50d79e40d6a006ce2e5834cfd86a31.
-- path: repository.settings.advanced_security.private_vulnerability_reporting
-  type: mapping
-  status: reshape
-  ui: Private vulnerability reporting
-  evidence: &main https://github.com/daiksud/gh-settings/settings/security_analysis
-  before: dependency_scanning
-  from: boolean
-  migration: Move the existing boolean to enabled with the same value. Leave an omitted setting omitted.
-  ownership: Each selected control has independent intent. An empty mapping manages nothing.
-- path: repository.settings.advanced_security.private_vulnerability_reporting.enabled
-  type: boolean
-  status: reserved
-  ui: Enable or disable private vulnerability reporting
-  evidence: *main
-  api: The repository private-vulnerability-reporting GET exposes enabled. Bodyless PUT and DELETE set this switch.
-  meaning: Allow private reports for this repository.
 - path: repository.settings.advanced_security.private_vulnerability_reporting.submission_requirements
   type: mapping
   status: reserved
@@ -53,7 +37,7 @@
   type: mapping
   status: reserved
   ui: Dependency Scanning
-  evidence: *main
+  evidence: &main https://github.com/daiksud/gh-settings/settings/security_analysis
   after: private_vulnerability_reporting
   before: dependabot
   ownership: The graph checkbox and submission mode are independent settings.

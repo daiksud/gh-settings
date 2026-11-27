@@ -2,6 +2,8 @@ package settings
 
 import "fmt"
 
+const PrivateReportingEnabledPath = "repository.settings.advanced_security.private_vulnerability_reporting.enabled"
+
 // PrivateReportingObservation is acquired only after a public target and a
 // complete enabled boolean have been observed by the adapter.
 type PrivateReportingObservation struct{ acquired, enabled bool }

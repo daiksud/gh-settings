@@ -15,7 +15,8 @@ repository:
             releases:
                 enable_release_immutability: false
         advanced_security:
-            private_vulnerability_reporting: true
+            private_vulnerability_reporting:
+                enabled: true
             secret_protection:
                 enabled: true
                 push_protection: false

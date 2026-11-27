@@ -156,7 +156,41 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	const reporting = "repository.settings.advanced_security.private_vulnerability_reporting"
+	for _, invalid := range []struct{ value, diagnostic string }{
+		{"true", reporting + " must be a mapping"},
+		{"false", reporting + " must be a mapping"},
+		{"{enabled: 'true'}", reporting + ".enabled must be a boolean"},
+		{"{enabled: null}", reporting + ".enabled must not be null"},
+		{"{submission_requirements: {}}", "unknown " + reporting + " key \"submission_requirements\""},
+		{"{enabled: true, trusted_reporters: []}", "unknown " + reporting + " key \"trusted_reporters\""},
+	} {
+		write("{private_vulnerability_reporting: " + invalid.value + "}")
+		for _, command := range []string{"validate", "plan", "apply", "export"} {
+			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
+			want := invalid.diagnostic
+			if command == "export" {
+				want = "run validate first"
+			}
+			if err != nil || result.runErr == nil || !strings.Contains(result.stderr.String(), want) || fixture.reads.Load() != 0 {
+				t.Fatalf("%s accepted invalid reporting or contacted GitHub: %s, %v", command, result.stderr.String(), err)
+			}
+		}
+	}
+	for _, fields := range []string{"{}", "{private_vulnerability_reporting: {}}"} {
+		write(fields)
+		run("validate")
+		if got := run("plan"); got != "No managed repository settings.\n" {
+			t.Fatal(got)
+		}
+		if got := run("apply"); got != "No managed repository settings.\n" || fixture.reads.Load() != 0 {
+			t.Fatalf("empty group acquired reporting: %q, requests %d", got, fixture.reads.Load())
+		}
+	}
 	path := filepath.Join(fixture.work, ".github/settings.yml")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
 	run("export")
 	data, err := os.ReadFile(path)
 	if err != nil || !strings.Contains(string(data), "advanced_security:") {
@@ -171,15 +205,15 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	run("export")
 	run("validate")
 	data, err = os.ReadFile(path)
-	if err != nil || !strings.Contains(string(data), "private_vulnerability_reporting: false") || strings.Contains(string(data), "secret_protection:") {
+	if err != nil || !strings.Contains(string(data), "private_vulnerability_reporting:\n                enabled: false") || strings.Contains(string(data), "secret_protection:") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	write("{private_vulnerability_reporting: true}")
+	write("{private_vulnerability_reporting: {enabled: true}}")
 	plan := run("plan")
-	if !strings.Contains(plan, "repository.settings.advanced_security.private_vulnerability_reporting: false → true") {
+	if !strings.Contains(plan, "repository.settings.advanced_security.private_vulnerability_reporting.enabled: false → true") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "private-reporting-plan.json")
@@ -208,7 +242,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	write("{private_vulnerability_reporting: false}")
+	write("{private_vulnerability_reporting: {enabled: false}}")
 	run("apply")
 	run("apply")
 	mu.Lock()
@@ -228,7 +262,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 		original, _ := os.ReadFile(path)
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
 		after, _ := os.ReadFile(path)
-		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
+		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), reporting+".enabled") || string(after) != string(original) {
 			t.Fatal(failure, err, r.stderr.String(), string(after))
 		}
 		// Explicit false on a nonpublic target remains inapplicable, not a no-op.
@@ -249,7 +283,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	mode = "enforced"
 	before := len(writes)
 	mu.Unlock()
-	write("{private_vulnerability_reporting: true}")
+	write("{private_vulnerability_reporting: {enabled: true}}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "did not retain requested") {
 		t.Fatal("enforced no-change accepted", err, r.stderr.String())
@@ -266,7 +300,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 		mode = "write-redirect"
 		before = len(writes)
 		mu.Unlock()
-		write(fmt.Sprintf("{private_vulnerability_reporting: %t}", !current))
+		write(fmt.Sprintf("{private_vulnerability_reporting: {enabled: %t}}", !current))
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 		if err != nil || r.runErr == nil {
 			t.Fatal(current, err, r.stderr.String())
@@ -285,7 +319,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	for _, args := range [][]string{{"export"}, {"export"}} {
 		run(args...)
 		data, _ = os.ReadFile(path)
-		for _, field := range []string{"secret_protection:\n", "enabled: false", "push_protection: false", "private_vulnerability_reporting: false"} {
+		for _, field := range []string{"secret_protection:\n", "enabled: false", "push_protection: false", "private_vulnerability_reporting:\n                enabled: false"} {
 			if !strings.Contains(string(data), field) {
 				t.Fatal("selected family erased", field, string(data))
 			}
@@ -294,7 +328,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 			t.Fatal(got)
 		}
 	}
-	write("{secret_protection: {enabled: true}, private_vulnerability_reporting: true}")
+	write("{secret_protection: {enabled: true}, private_vulnerability_reporting: {enabled: true}}")
 	mu.Lock()
 	mode = "deny-write"
 	before = len(writes)

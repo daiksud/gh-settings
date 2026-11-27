@@ -107,7 +107,7 @@ func TestReadableSecurityExportFirstFileAndRetainedIntent(t *testing.T) {
 		return string(data)
 	}
 	first := run()
-	if strings.Contains(first, "secret_protection:") || strings.Contains(first, "code_security:") || strings.Contains(first, "dependabot:") || !strings.Contains(first, "private_vulnerability_reporting: false") || !strings.Contains(first, "enable_release_immutability: true") {
+	if strings.Contains(first, "secret_protection:") || strings.Contains(first, "code_security:") || strings.Contains(first, "dependabot:") || !strings.Contains(first, "private_vulnerability_reporting:\n                enabled: false") || !strings.Contains(first, "enable_release_immutability: true") {
 		t.Fatal(first)
 	}
 	prior := `version: daiksud/gh-settings@v0
@@ -118,7 +118,7 @@ repository:
     advanced_security:
       secret_protection: {enabled: true, push_protection: true}
       dependabot: {alerts: true, security_updates: false}
-      private_vulnerability_reporting: true
+      private_vulnerability_reporting: {enabled: true}
       code_security:
         ai_scan: {ai_scan_for_pull_requests: true}
         codeql_analysis:
@@ -135,7 +135,7 @@ repository:
 	mode = "existing"
 	mu.Unlock()
 	second := run()
-	for _, want := range []string{"enabled: false", "push_protection: false", "alerts: true", "security_updates: false", "ai_scan_for_pull_requests: true", "default_setup: true", "query_suite: default", "private_vulnerability_reporting: false", "enable_release_immutability: true"} {
+	for _, want := range []string{"enabled: false", "push_protection: false", "alerts: true", "security_updates: false", "ai_scan_for_pull_requests: true", "default_setup: true", "query_suite: default", "private_vulnerability_reporting:\n                enabled: false", "enable_release_immutability: true"} {
 		if !strings.Contains(second, want) {
 			t.Fatal(want, second)
 		}
