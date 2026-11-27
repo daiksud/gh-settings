@@ -11,6 +11,7 @@ func validateScenarios() []validateCase {
 		{name: "validate-all-fields", input: repositoryInput("about: {description: Example, website: https://example.com}\nsettings: {general: {features: {issues: true, projects: false, wikis: true}}}\n")},
 		{name: "validate-partial-zero-values", input: repositoryInput("about: {description: ''}\nsettings: {general: {features: {issues: false}}}\n")},
 		{name: "validate-unknown-key", input: generalInput("visibility: private\n"), wantError: "unknown repository.settings.general key"},
+		{name: "reserved-home-page-control", input: aboutInput("include_in_the_home_page: {releases: false}\n"), wantError: "include_in_the_home_page"},
 		{name: "validate-duplicate-key", input: generalInput("features: {issues: true, issues: false}\n"), wantError: "duplicate key"},
 		{name: "validate-alias", input: aboutInput("description: &text Example\nwebsite: *text\n")},
 		{name: "validate-merge", input: generalInput("features: {<<: {issues: false}}\n")},

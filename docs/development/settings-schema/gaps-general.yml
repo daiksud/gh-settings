@@ -1,0 +1,23 @@
+- control: General / Social preview / image
+  evidence: https://github.com/daiksud/test-gh-settings-public/settings
+  impact: additive
+  resolution: Decide how a reusable declaration identifies uploaded image content and restores the repository default. Export must represent a custom image without inventing a local filename. The separate social_preview mapping leaves existing settings intact.
+- control: General / Pushes / numeric branch and tag limit
+  evidence: https://github.com/daiksud/test-gh-settings-public/settings
+  impact: additive
+  resolution: Verify the documented Up to field and bounds in an already-enabled target repository. The live test repository has the limit disabled and the control auto-saves.
+- control: General / Danger Zone / Disable branch protection rules
+  evidence: https://github.com/daiksud/test-gh-settings-public/settings
+  impact: additive
+  resolution: Determine whether the action has a persistent reversible state before assigning a desired-state key. Never model this button as deletion of individual classic rules or Rulesets.
+- control: Collaborators / Add people / email-only invitation
+  evidence:
+    - docs/development/settings-coverage.md#bounded-follow-ups-on-2026-11-14
+    - https://docs.github.com/en/rest/collaborators/collaborators#add-a-repository-collaborator
+    - https://docs.github.com/en/rest/collaborators/invitations#list-repository-invitations
+  impact: blocking
+  resolution: Establish the identity of an unaccepted email-only invitation across observation, redeclaration, acceptance and removal. The existing username/User-ID binding and prune semantics must not match or revoke a different invitation. The current visit encountered GitHub's Confirm access screen; the older unsaved dialog established search by email only.
+- control: Moderation / Pull request limits / automatic exemption rules
+  evidence: https://github.com/daiksud/gh-settings/settings/interaction_limits
+  impact: additive
+  resolution: Inspect a repository with the cap already enabled. Reserve automatic rule conditions separately from the existing exemption_list of user logins. Omitting future rules must preserve them.

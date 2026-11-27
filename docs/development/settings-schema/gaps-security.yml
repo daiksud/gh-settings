@@ -1,0 +1,21 @@
+# UI observations from 2026-11-27 on the personally owned public repository.
+- control: Advanced Security / Private vulnerability reporting / Trusted reporters
+  evidence: https://github.com/daiksud/gh-settings/settings/security_analysis/private_vulnerability_reporting
+  impact: additive
+  resolution: Freeze the list's position. Confirm supported principal kinds, stable identity, safe removal and complete membership observation before freezing the element type. Enabling reporting selects no reporter.
+- control: Advanced Security / Dependabot / Dependabot auto-triage rules / Repository rules
+  evidence: https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/auto-triage-dependabot-alerts
+  impact: additive
+  resolution: Determine stable rule identity and canonical query observation before adoption. The unsaved editor exposed metadata filters and independent dismissal and PR actions. Creating configurations can change the state of existing and future alerts. Preserve both named presets and all unselected rules.
+- control: Advanced Security / Code Security / Tools
+  evidence: https://github.com/daiksud/gh-settings/settings/security_analysis
+  impact: additive
+  resolution: Retain code_security.codeql_analysis. The other Tools entry navigates to workflow authoring, an explicit exclusion. Additional independent tools can later have their own child mappings.
+- control: Advanced Security / Secret Protection / custom patterns and additional controls
+  evidence: https://github.com/daiksud/gh-settings/blob/a125e0fa111ce2156cbb6f980729a48e5c52b070/docs/development/settings-coverage.md#security-and-analysis
+  impact: additive
+  resolution: The inspected personal form showed the enable switch and Push protection. Confirm a personal-repository editable control before reserving a path for custom patterns, delegated bypass, notifications or other pattern options. Any new optional fields must preserve omitted controls and existing alerts.
+- control: Advanced Security / official API evidence boundary
+  evidence: https://github.com/github/rest-api-description/blob/d560905bbf50d79e40d6a006ce2e5834cfd86a31/descriptions/api.github.com/api.github.com.json
+  impact: additive
+  resolution: The audited reporting GET modeled only enabled and the AI Scan GET/PATCH modeled pr_scan and repository_scan. Graph snapshots and SBOM endpoints concern dependency data. Consult later official REST and GraphQL contracts for the separately reserved controls before enabling any of them.

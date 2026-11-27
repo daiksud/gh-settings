@@ -1,0 +1,225 @@
+# Repository Advanced Security UI inspected 2026-11-27, including the unsaved
+# rule editor. A selected UI value is not a default for an omitted declaration.
+# Official REST description audited at github/rest-api-description@d560905bbf50d79e40d6a006ce2e5834cfd86a31.
+- path: repository.settings.advanced_security.private_vulnerability_reporting
+  type: mapping
+  status: reshape
+  ui: Private vulnerability reporting
+  evidence: &main https://github.com/daiksud/gh-settings/settings/security_analysis
+  before: dependency_scanning
+  from: boolean
+  migration: Move the existing boolean to enabled with the same value. Leave an omitted setting omitted.
+  ownership: Each selected control has independent intent. An empty mapping manages nothing.
+- path: repository.settings.advanced_security.private_vulnerability_reporting.enabled
+  type: boolean
+  status: reserved
+  ui: Enable or disable private vulnerability reporting
+  evidence: *main
+  api: The repository private-vulnerability-reporting GET exposes enabled. Bodyless PUT and DELETE set this switch.
+  meaning: Allow private reports for this repository.
+- path: repository.settings.advanced_security.private_vulnerability_reporting.submission_requirements
+  type: mapping
+  status: reserved
+  ui: Submission requirements
+  evidence: &reports https://github.com/daiksud/gh-settings/settings/security_analysis/private_vulnerability_reporting
+  after: enabled
+  ownership: Each optional field selects only its own requirement.
+- path: repository.settings.advanced_security.private_vulnerability_reporting.submission_requirements.require_a_cwe_assignment
+  type: boolean
+  status: reserved
+  ui: Require a CWE assignment
+  evidence: *reports
+  api: Complete settings read and update unconfirmed.
+  meaning: Require at least one CWE assignment before submission.
+- path: repository.settings.advanced_security.private_vulnerability_reporting.submission_requirements.daily_advisory_limit
+  type: integer
+  status: reserved
+  ui: Daily advisory limit
+  evidence: *reports
+  after: require_a_cwe_assignment
+  api: Complete settings read and update unconfirmed.
+  meaning: Maximum private vulnerability reports received per day.
+- path: repository.settings.advanced_security.private_vulnerability_reporting.trusted_reporters
+  type: list
+  items: unconfirmed
+  status: reserved
+  ui: Trusted reporters
+  evidence: *reports
+  after: submission_requirements
+  api: Complete membership read and update unconfirmed.
+  identity: The picker searches for a trusted reporter. Stable member identity and supported principal types need confirmation before accepting list items.
+  ownership: Omission leaves membership alone. An explicit empty list requests an empty membership set.
+- path: repository.settings.advanced_security.dependency_scanning
+  type: mapping
+  status: reserved
+  ui: Dependency Scanning
+  evidence: *main
+  after: private_vulnerability_reporting
+  before: dependabot
+  ownership: The graph checkbox and submission mode are independent settings.
+- path: repository.settings.advanced_security.dependency_scanning.dependency_graph
+  type: boolean
+  status: reserved
+  ui: Dependency graph
+  evidence: *main
+  api: Independent graph enablement observation and setter are unconfirmed. Snapshot and SBOM operations concern dependency data.
+- path: repository.settings.advanced_security.dependency_scanning.automatic_dependency_submission
+  type: enum
+  status: reserved
+  ui: Automatic dependency submission
+  evidence: *main
+  after: dependency_graph
+  choices: [enabled, enabled_for_labeled_runners, disabled]
+  condition: The labeled choice requires a runner with the dependency-submission label.
+  api: Complete repository setting read and update unconfirmed.
+- path: repository.settings.advanced_security.dependabot.malware_alerts
+  type: boolean
+  status: reserved
+  ui: Malware alerts
+  evidence: *main
+  after: alerts
+  before: auto_triage_rules
+  api: Complete malware alert setting read and update unconfirmed.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules
+  type: mapping
+  status: reserved
+  ui: Dependabot auto-triage rules
+  evidence: &triage https://github.com/daiksud/gh-settings/settings/dependabot_rules
+  before: security_updates
+  after: malware_alerts
+  api: No complete applicable settings read and update established for either GitHub presets or repository-defined rules.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.github_presets
+  type: mapping
+  status: reserved
+  ui: GitHub presets
+  evidence: *triage
+  ownership: Each named preset independently manages its enabled state.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.github_presets.dismiss_low_impact_alerts_for_development_scoped_dependencies
+  type: boolean
+  status: reserved
+  ui: Dismiss low-impact alerts for development-scoped dependencies
+  evidence: *triage
+  meaning: Enable the GitHub-managed dismissal preset.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.github_presets.dismiss_package_malware_alerts
+  type: boolean
+  status: reserved
+  ui: Dismiss package malware alerts
+  evidence: *triage
+  after: dismiss_low_impact_alerts_for_development_scoped_dependencies
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules
+  type: list
+  items: mapping
+  status: reserved
+  ui: Repository rules / New rule
+  evidence: &newrule https://github.com/daiksud/gh-settings/settings/dependabot_rules/new
+  after: github_presets
+  identity: Rule name is editable. Confirm a stable binding for updates and renames before supporting this collection.
+  ownership: Manage the listed repository rules. Omission and an empty list leave unlisted rules and GitHub presets intact.
+  meaning: Creating or editing a rule can affect existing and future alerts.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].rule_name
+  type: string
+  status: reserved
+  ui: Rule name
+  evidence: *newrule
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].state
+  type: enum
+  status: reserved
+  ui: State
+  evidence: *newrule
+  after: rule_name
+  choices: [enabled, disabled]
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].target_alerts
+  type: string
+  status: reserved
+  ui: Target alerts
+  evidence: *newrule
+  after: state
+  meaning: The query builder accepts a single metadata filter expression. Preserve its operators and values.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].rules
+  type: mapping
+  status: reserved
+  ui: Rules
+  evidence: *newrule
+  after: target_alerts
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].rules.dismiss_alerts
+  type: mapping
+  status: reserved
+  ui: Dismiss alerts
+  evidence: *newrule
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].rules.dismiss_alerts.enabled
+  type: boolean
+  status: reserved
+  ui: Dismiss alerts checkbox
+  evidence: *newrule
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].rules.dismiss_alerts.duration
+  type: enum
+  status: reserved
+  ui: Until patch is available / Indefinitely
+  evidence: *newrule
+  after: enabled
+  choices: [until_patch_is_available, indefinitely]
+  condition: Dismiss alerts is enabled.
+- path: repository.settings.advanced_security.dependabot.auto_triage_rules.repository_rules[].rules.open_a_pull_request_to_resolve_alerts
+  type: boolean
+  status: reserved
+  ui: Open a pull request to resolve alerts
+  evidence: *newrule
+  after: dismiss_alerts
+  condition: The option is unavailable with indefinite dismissal or repository Dependabot security updates already enabled.
+- path: repository.settings.advanced_security.dependabot.grouped_security_updates
+  type: boolean
+  status: reserved
+  ui: Grouped security updates
+  evidence: *main
+  after: security_updates
+  api: Complete repository setting read and update unconfirmed. The version updates file editor is outside scope.
+- path: repository.settings.advanced_security.code_security.ai_scan.scan_for_ai_applications
+  type: boolean
+  status: reserved
+  ui: Scan for AI applications
+  evidence: *main
+  after: ai_scan_for_pull_requests
+  api: The repository AI Scan endpoint models pr_scan and repository_scan. Neither establishes this setting.
+- path: repository.settings.advanced_security.code_security.ai_scan.copilot_autofix
+  type: boolean
+  status: reserved
+  ui: Copilot Autofix
+  evidence: *main
+  after: scan_for_ai_applications
+  condition: CodeQL default or advanced setup is required for execution.
+  api: Repository configuration read and update unconfirmed. An alert-level fix operation is a different action.
+- path: repository.settings.advanced_security.code_security.ai_scan.agentic_autofix
+  type: boolean
+  status: reserved
+  ui: Agentic autofix
+  evidence: *main
+  after: copilot_autofix
+  api: Repository configuration read and update unconfirmed.
+- path: repository.settings.advanced_security.code_security.protection_rules
+  type: mapping
+  status: reserved
+  ui: Protection rules
+  evidence: *main
+  after: ai_scan
+  meaning: Repository-wide code scanning check run configuration.
+- path: repository.settings.advanced_security.code_security.protection_rules.check_runs_failure_threshold
+  type: mapping
+  status: reserved
+  ui: Check runs failure threshold
+  evidence: *main
+  ownership: The two severity menus are optional, independently owned settings.
+- path: repository.settings.advanced_security.code_security.protection_rules.check_runs_failure_threshold.security_alert_severity_level
+  type: enum
+  status: reserved
+  ui: Security alert severity level
+  evidence: *main
+  choices: [none, only_critical, high_or_higher, medium_or_higher, any]
+  api: Complete repository-wide read and update unconfirmed. Branch Ruleset thresholds apply to a different object.
+- path: repository.settings.advanced_security.code_security.protection_rules.check_runs_failure_threshold.standard_alert_severity_level
+  type: enum
+  status: reserved
+  ui: Standard alert severity level
+  evidence: *main
+  after: security_alert_severity_level
+  choices: [none, only_errors, errors_and_warnings, any]
+  api: Complete repository-wide read and update unconfirmed.

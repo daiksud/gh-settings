@@ -1,0 +1,314 @@
+# English personal-public forms inspected on 2026-11-27. Conditional Actions
+# controls were expanded in an unsaved new policy. Each mapping below groups
+# independently optional fields. API evidence for Cloud and Actions policies
+# uses the api.github.com.2026-03-10 OpenAPI document at github/rest-api-description
+# commit d560905bbf50d79e40d6a006ce2e5834cfd86a31. A reserved enum extension
+# applies only to the listed new choice of an already accepted field.
+- path: repository.settings.actions.policies[].enforcement_status
+  type: enum
+  status: reserved
+  extension: enum
+  ui: Enforcement status / Evaluate
+  evidence: &policy https://github.com/daiksud/gh-settings/settings/actions/rules/new?target=actions&enforcement=disabled
+  choices: [evaluate]
+  api: Repository policy GET, POST and PUT reference the shared enforcement enum including evaluate. Its description specifies an enterprise prerequisite. Successful persistence on this personal repository is unverified.
+  meaning: Evaluates a policy for its insights without enforcing it. Branch and tag Rulesets have a separate selector.
+- path: repository.settings.actions.policies[].workflow_execution_protections.require_lockfile
+  type: boolean
+  status: reserved
+  ui: Workflow execution protections / Require lockfile
+  evidence: *policy
+  after: restrict_events
+  api: The official repository Actions policy rule union lists actor and event restrictions. A lockfile rule read/update contract is unconfirmed.
+  ownership: On a selected policy, false disables this rule, true enables it, and omission preserves its observed state. Unknown protections must prevent a destructive full-policy write.
+
+- path: repository.settings.copilot.code_review.general.review_effort_level
+  type: enum
+  status: reserved
+  extension: enum
+  ui: General / Review effort level / Adaptive
+  evidence:
+    - &review https://github.com/daiksud/gh-settings/settings/copilot/code_review
+    - https://docs.github.com/en/rest/copilot/copilot-code-review#update-copilot-code-review-settings-for-a-repository
+  choices: [adaptive]
+  api: The repository GET listed adaptive among available_review_efforts on 2026-11-27. PATCH accepts repository-available efforts. No change was submitted.
+  meaning: An explicit adaptive effort is distinct from the existing default choice which requests inheritance.
+- path: repository.settings.copilot.code_review.general.maximum_review_effort
+  type: enum
+  status: reserved
+  ui: General / Maximum review effort
+  evidence:
+    - *review
+    - &reviewGuide https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review#configuring-copilot-code-review-with-the-api
+  choices: [no_limit, lite, balanced, max]
+  after: review_effort_level
+  before: allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests
+  api: The configuration guide explicitly excludes maximum effort from the API.
+  ownership: Omission leaves the ceiling unmanaged. The no_limit choice explicitly removes the repository ceiling.
+- path: repository.settings.copilot.code_review.security
+  type: mapping
+  status: reserved
+  ui: Code review / Security
+  evidence: *review
+  after: general
+- path: repository.settings.copilot.code_review.security.secret_protection_ai_scan
+  type: boolean
+  status: reserved
+  ui: Security / Secret Protection AI Scan
+  evidence: *review
+  api: An official repository read and setter for this Copilot review preference are unconfirmed.
+  meaning: Selects secret scanning during Copilot review. The Advanced Security page controls different scans.
+- path: repository.settings.copilot.code_review.approvals
+  type: mapping
+  status: reserved
+  ui: Code review / Approvals
+  evidence: [*review, *reviewGuide]
+  after: security
+  api: The official configuration guide excludes approvals from the API.
+- path: repository.settings.copilot.code_review.approvals.allow_copilot_to_approve_pull_requests
+  type: boolean
+  status: reserved
+  ui: Approvals / Allow Copilot to approve pull requests
+  evidence: *review
+- path: repository.settings.copilot.code_review.approvals.allow_copilot_approvals_to_count_toward_merge_requirements
+  type: boolean
+  status: unconfirmed
+  ui: Allow Copilot approvals to count toward merge requirements
+  evidence:
+    - *review
+    - https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review#configuring-automatic-code-review-for-a-repository
+  condition: Documented as a separate checkbox. The inspected personal repository showed a single approval switch and the optional file paths field.
+  after: allow_copilot_to_approve_pull_requests
+  api: The configuration guide excludes approvals from the API.
+  meaning: Confirm an independently selectable second control before accepting a separate key. No value can be inferred from the first switch.
+- path: repository.settings.copilot.code_review.approvals.limit_approvals_to_certain_file_paths
+  type: list
+  items: string
+  status: reserved
+  ui: Approvals / Limit approvals to certain file paths (optional)
+  evidence: *review
+  after: allow_copilot_to_approve_pull_requests
+  condition: The repository Approvals panel displays this input with approvals enabled.
+  ownership: At most 15 file-glob strings, one per UI line. An explicit empty list allows all file paths. Omission leaves the configured restrictions unmanaged.
+- path: repository.settings.copilot.code_review.access_and_licensing
+  type: mapping
+  status: reserved
+  ui: Code review / Access and licensing
+  after: approvals
+  evidence: *review
+- path: repository.settings.copilot.code_review.access_and_licensing.block_reviews_requested_with_an_external_copilot_license
+  type: boolean
+  status: reserved
+  ui: Access and licensing / Block reviews requested with an external Copilot license
+  evidence: *review
+  api: The guide excludes billing settings. A separate read/update contract for the repository restriction is unconfirmed.
+
+- path: repository.settings.copilot.cloud
+  type: mapping
+  status: reserved
+  ui: Copilot / Cloud
+  after: code_review
+  evidence: &cloud https://github.com/daiksud/gh-settings/settings/copilot/coding_agent
+  api: The repository cloud-agent/configuration GET exposes a subset of the controls. A complete official settings update path is unconfirmed.
+- path: repository.settings.copilot.cloud.sandbox_resources
+  type: mapping
+  status: reserved
+  ui: Cloud / Sandbox resources
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.sandbox_resources.sandbox_size
+  type: enum
+  status: reserved
+  ui: Sandbox resources / Sandbox size
+  evidence: *cloud
+  choices: [no_repository_default, small, medium, large]
+  ownership: The explicit no_repository_default choice clears the repository default for new sandboxes. Omission leaves it unmanaged.
+- path: repository.settings.copilot.cloud.policies
+  type: mapping
+  status: reserved
+  ui: Cloud / Policies
+  after: sandbox_resources
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.policies.require_approval_for_workflow_runs
+  type: boolean
+  status: reserved
+  ui: Policies / Require approval for workflow runs
+  evidence: *cloud
+  api: GET exposes require_actions_workflow_approval.
+- path: repository.settings.copilot.cloud.automations
+  type: mapping
+  status: reserved
+  ui: Cloud / Automations
+  after: policies
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.automations.allow_automations
+  type: boolean
+  status: reserved
+  ui: Automations / Allow automations
+  evidence: *cloud
+  api: GET exposes is_automations_enabled.
+- path: repository.settings.copilot.cloud.automations.allow_shared_automations
+  type: boolean
+  status: reserved
+  ui: Automations / Allow shared automations
+  after: allow_automations
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.automations.require_write_access_to_trigger_automations
+  type: boolean
+  status: reserved
+  ui: Automations / Require write access to trigger automations
+  after: allow_shared_automations
+  evidence: *cloud
+  api: GET exposes require_write_access_for_automation_triggers.
+- path: repository.settings.copilot.cloud.automations.only_allow_automations_to_update_the_resource_that_triggered_them
+  type: boolean
+  status: reserved
+  ui: Automations / Only allow automations to update the resource that triggered them
+  after: require_write_access_to_trigger_automations
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.automations.require_approval_for_workflows_on_automation_pull_requests
+  type: boolean
+  status: reserved
+  ui: Automations / Require approval for workflows on automation pull requests
+  after: only_allow_automations_to_update_the_resource_that_triggered_them
+  evidence: *cloud
+  meaning: Controls automation pull requests independently of the general Cloud workflow approval policy.
+- path: repository.settings.copilot.cloud.validation_tools
+  type: mapping
+  status: reserved
+  ui: Cloud / Validation tools
+  after: automations
+  evidence: *cloud
+  api: GET exposes four separate enabled_tools booleans.
+  ownership: Each omitted tool remains unmanaged.
+- path: repository.settings.copilot.cloud.validation_tools.codeql_code_scanning
+  type: boolean
+  status: reserved
+  ui: Validation tools / CodeQL code scanning
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.validation_tools.copilot_code_review
+  type: boolean
+  status: reserved
+  ui: Validation tools / Copilot code review
+  after: codeql_code_scanning
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.validation_tools.secret_scanning
+  type: boolean
+  status: reserved
+  ui: Validation tools / Secret scanning
+  after: copilot_code_review
+  evidence: *cloud
+- path: repository.settings.copilot.cloud.validation_tools.dependency_vulnerability_checks
+  type: boolean
+  status: reserved
+  ui: Validation tools / Dependency vulnerability checks
+  after: secret_scanning
+  evidence: *cloud
+
+- path: repository.settings.copilot.internet_access
+  type: mapping
+  status: reserved
+  ui: Copilot / Internet access
+  after: cloud
+  evidence: &internet https://github.com/daiksud/gh-settings/settings/copilot/internet_access
+- path: repository.settings.copilot.internet_access.copilot_in_the_cloud
+  type: mapping
+  status: reserved
+  ui: Internet access / Copilot in the cloud
+  evidence: *internet
+  api: Cloud GET exposes is_firewall_enabled, is_firewall_recommended_allowlist_enabled and custom_allowlist. A complete update path is unconfirmed.
+- path: repository.settings.copilot.internet_access.copilot_in_the_cloud.enable_firewall
+  type: boolean
+  status: reserved
+  ui: Copilot in the cloud / Enable firewall
+  evidence: *internet
+- path: repository.settings.copilot.internet_access.copilot_in_the_cloud.recommended_allowlist
+  type: boolean
+  status: reserved
+  ui: Copilot in the cloud / Recommended allowlist
+  after: enable_firewall
+  evidence: *internet
+- path: repository.settings.copilot.internet_access.copilot_in_the_cloud.custom_allowlist
+  type: list
+  items: string
+  status: reserved
+  ui: Custom allowlist for Copilot in the cloud
+  after: recommended_allowlist
+  evidence: https://github.com/daiksud/gh-settings/settings/copilot/internet_access/allowlist?product=cloud_agent
+  ownership: String rules for domains, IP addresses or URLs. An explicit empty list clears custom entries for this product. Omission preserves the custom list.
+- path: repository.settings.copilot.internet_access.copilot_code_review
+  type: mapping
+  status: reserved
+  ui: Internet access / Copilot code review
+  after: copilot_in_the_cloud
+  evidence: *internet
+  api: A complete read/update contract for the review-specific firewall and both allowlists is unconfirmed.
+- path: repository.settings.copilot.internet_access.copilot_code_review.enable_firewall
+  type: boolean
+  status: reserved
+  ui: Copilot code review / Enable firewall
+  evidence: *internet
+- path: repository.settings.copilot.internet_access.copilot_code_review.recommended_allowlist
+  type: boolean
+  status: reserved
+  ui: Copilot code review / Recommended allowlist
+  after: enable_firewall
+  evidence: *internet
+- path: repository.settings.copilot.internet_access.copilot_code_review.custom_allowlist
+  type: list
+  items: string
+  status: reserved
+  ui: Custom allowlist for Copilot code review
+  after: recommended_allowlist
+  evidence: https://github.com/daiksud/gh-settings/settings/copilot/internet_access/allowlist
+  ownership: String rules for domains, IP addresses or URLs. An explicit empty list clears review entries. Omission preserves them independently of the Cloud list.
+- path: repository.settings.copilot.mcp_servers
+  type: mapping
+  status: reserved
+  ui: Copilot / MCP servers
+  after: internet_access
+  evidence: &mcp https://github.com/daiksud/gh-settings/settings/copilot/mcp
+- path: repository.settings.copilot.mcp_servers.mcp_configuration
+  type: mapping
+  status: reserved
+  ui: MCP servers / MCP configuration
+  evidence: *mcp
+  api: Cloud GET returns a free-form JSON object or null. Complete ownership, secret handling and shared update behavior remain unconfirmed.
+  ownership: The editor is shared by multiple agents. The eventual declaration can select non-secret configuration. The safe member representation and behavior for an empty object require investigation before enabling this field.
+- path: repository.settings.copilot.dreaming
+  type: mapping
+  status: reserved
+  ui: Copilot / Dreaming
+  after: mcp_servers
+  evidence: &dream https://github.com/daiksud/gh-settings/settings/copilot/dreaming
+- path: repository.settings.copilot.dreaming.general_settings
+  type: mapping
+  status: reserved
+  ui: Dreaming / General settings
+  evidence: *dream
+- path: repository.settings.copilot.dreaming.general_settings.dreaming
+  type: boolean
+  status: unconfirmed
+  ui: General settings / Dreaming
+  evidence: *dream
+  condition: The rendered control was disabled for this account. Configurability on an entitled personal repository remains unverified.
+  api: A repository settings read/update contract is unconfirmed.
+
+- path: repository.settings.planning
+  type: mapping
+  status: reserved
+  ui: Planning
+  after: copilot
+  before: environments
+  evidence: &suggestions https://github.com/daiksud/gh-settings/settings/suggestions
+- path: repository.settings.planning.agent_suggestions_for_issues
+  type: mapping
+  status: reserved
+  ui: Planning / Agent suggestions for issues
+  evidence: *suggestions
+- path: repository.settings.planning.agent_suggestions_for_issues.automation_level
+  type: enum
+  status: reserved
+  ui: Agent suggestions for issues / Automation level
+  evidence: *suggestions
+  choices: [full_control, cautious, balanced, full_automation]
+  api: Issue suggestion read, approve and dismiss endpoints operate on suggestions. A read/update contract for the repository automation level is unconfirmed.

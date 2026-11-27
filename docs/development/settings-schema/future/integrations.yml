@@ -1,0 +1,136 @@
+# Personal public repository Codespaces editor, inspected without saving on
+# 2026-11-27. Official configuration guide: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds
+- path: repository.settings.codespaces
+  type: mapping
+  status: reserved
+  ui: Codespaces
+  evidence: &codespaces https://github.com/daiksud/gh-settings/settings/codespaces
+  after: environments
+  before: pages
+- path: repository.settings.codespaces.prebuild_configuration
+  type: list
+  items: mapping
+  status: reserved
+  ui: Prebuild configuration
+  evidence: *codespaces
+  identity: A branch and dev container configuration form a configuration pair. Distinguish the default configuration from an explicitly selected repository file.
+  ownership: Manage listed configurations. An omitted or empty list leaves existing configurations intact. No implicit run, deletion, file write or access grant.
+  api: A complete official settings observation and mutation contract remains unconfirmed. Codespace creation and prebuild provenance endpoints do not provide it.
+- path: repository.settings.codespaces.prebuild_configuration[].configuration
+  type: mapping
+  status: reserved
+  ui: Configuration
+  evidence: &form https://github.com/daiksud/gh-settings/settings/codespaces/prebuild_configurations/new
+- path: repository.settings.codespaces.prebuild_configuration[].configuration.branch
+  type: string
+  status: reserved
+  ui: Select branch
+  evidence: *form
+  meaning: Exact source branch name.
+- path: repository.settings.codespaces.prebuild_configuration[].configuration.configuration_file
+  type: string
+  status: reserved
+  ui: Configuration file
+  evidence: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds
+  after: branch
+  condition: Choose an existing branch to display its dev container configurations.
+  meaning: Use default for Default Codespaces Configuration or the repository-relative path to the selected devcontainer.json. Selection does not author the file.
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control
+  type: mapping
+  status: reserved
+  ui: Access and cost control
+  evidence: *form
+  after: configuration
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.prebuild_triggers
+  type: mapping
+  status: reserved
+  ui: Prebuild triggers
+  evidence: *form
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.prebuild_triggers.trigger
+  type: enum
+  status: reserved
+  ui: Every push / Configuration change / Scheduled
+  evidence: *form
+  choices: [every_push, configuration_change, scheduled]
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.prebuild_triggers.days
+  type: list
+  items: enum
+  status: reserved
+  ui: Days
+  evidence: *form
+  after: trigger
+  condition: The selected trigger is scheduled.
+  identity: Set of weekday names.
+  choices: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.prebuild_triggers.times
+  type: list
+  items: string
+  status: reserved
+  ui: Times
+  evidence: *form
+  after: days
+  condition: The selected trigger is scheduled.
+  identity: Set of local times written as quoted 24-hour HH:MM strings.
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.prebuild_triggers.time_zone
+  type: string
+  status: reserved
+  ui: Time zone
+  evidence: *form
+  after: times
+  condition: The selected trigger is scheduled.
+  meaning: The named time zone of the schedule, independently of the displayed GMT offset.
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.region_availability
+  type: mapping
+  status: reserved
+  ui: Region availability
+  evidence: *form
+  after: prebuild_triggers
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.region_availability.reduce_prebuild_availability_to_only_specific_regions
+  type: boolean
+  status: reserved
+  ui: Reduce prebuild availability to only specific regions
+  evidence: *form
+  meaning: False selects availability in all regions.
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.region_availability.regions
+  type: list
+  items: enum
+  status: reserved
+  ui: Region checkboxes
+  evidence: *form
+  after: reduce_prebuild_availability_to_only_specific_regions
+  condition: Availability is restricted to specific regions.
+  identity: Selected region names.
+  choices: [us_east, us_west, europe_west, southeast_asia, australia]
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.template_history
+  type: mapping
+  status: reserved
+  ui: Template history
+  evidence: *form
+  after: region_availability
+- path: repository.settings.codespaces.prebuild_configuration[].access_and_cost_control.template_history.template_versions
+  type: integer
+  status: reserved
+  ui: Template versions
+  evidence: *form
+  meaning: Number of template versions retained. The editor states a maximum of five.
+- path: repository.settings.codespaces.prebuild_configuration[].failure_notifications
+  type: list
+  items: unconfirmed
+  status: reserved
+  ui: Failure notifications
+  evidence: *form
+  after: access_and_cost_control
+  identity: Typed user or team references. The search box accepts usernames, full names or team names; personal-target team selection and stable identifiers need evidence.
+  ownership: Omission preserves notification recipients. An explicit empty list selects no recipients.
+- path: repository.settings.codespaces.prebuild_configuration[].advanced_options
+  type: mapping
+  status: reserved
+  ui: Advanced options
+  evidence: *form
+  after: failure_notifications
+- path: repository.settings.codespaces.prebuild_configuration[].advanced_options.disable_prebuild_optimization
+  type: boolean
+  status: reserved
+  ui: Disable prebuild optimization
+  evidence: *form
+  meaning: Disable use of an older image to speed up boot.

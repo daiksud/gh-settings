@@ -1,0 +1,62 @@
+# Personal-public read-only audit, 2026-11-27. API descriptions refer to
+# https://github.com/github/rest-api-description/blob/d560905bbf50d79e40d6a006ce2e5834cfd86a31/descriptions/api.github.com/api.github.com.2026-03-10.json
+- control: Actions / Policies / Restrict actors / AI and Automations
+  evidence: https://github.com/daiksud/gh-settings/settings/actions/rules/new?target=actions&enforcement=disabled
+  impact: additive
+  resolution: The picker offered named AI agents, integrations and bot accounts. Establish how each selected UI entry binds to an exact allowed_actors type and ID. Add mutually exclusive identities to the existing element mapping only with that evidence. Preserve unrepresentable actors or reject the selected-policy update before a write. Filtering by Teams alone does not establish an eligible team.
+- control: Actions / Runners / New self-hosted runner
+  evidence: https://github.com/daiksud/gh-settings/settings/actions/runners
+  impact: additive
+  resolution: The inventory was empty. The existing ID-selected custom-label and removal contracts are separately documented. Distinguish persistent configurable fields from machine installation, credential generation and execution before adding any keys. The registration flow was not executed.
+- control: Copilot / Code review / Separate approval eligibility
+  evidence: https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review#configuring-automatic-code-review-for-a-repository
+  impact: additive
+  resolution: The guide names two switches. The personal repository rendered one switch with eligibility helper text and one optional path field. Confirm a second editable switch on a personal target before interpreting two policies as independent values.
+- control: Copilot / Code review / Review severity filter
+  evidence: https://github.com/daiksud/gh-settings/settings/copilot/code_review
+  impact: additive
+  resolution: Find a configurable control on the personal target before reserving a UI label or order. The severity_filter API member is preserved by existing Copilot operations.
+- control: Copilot / Code review / Automatic code review
+  evidence: https://github.com/daiksud/gh-settings/settings/copilot/code_review
+  impact: excluded
+  resolution: The page lists Rulesets and offers a creation shortcut. The persistent policy is already represented once by rulesets[].rules.automatically_request_copilot_code_review.
+- control: Copilot / MCP servers / Non-secret configuration
+  evidence: https://github.com/daiksud/gh-settings/settings/copilot/mcp
+  impact: additive
+  resolution: Determine which editable JSON members can be observed, redeclared and updated safely without managing or disclosing literal credentials. Reserve the shared mapping without prescribing opaque free-form payloads or empty-object deletion. No saved configuration was collected.
+- control: Copilot / Dreaming
+  evidence: https://github.com/daiksud/gh-settings/settings/copilot/dreaming
+  impact: additive
+  resolution: Confirm the switch on an entitled personal repository and inspect conditional controls. The separate General settings group can grow independently of existing Copilot pages.
+- control: Rulesets / Unrepresented protections on a selected whole Ruleset
+  evidence: docs/references/settings/rulesets.md#identity-and-ownership
+  impact: additive
+  resolution: For each newly supported protection, an older declaration that omits it must preserve the acquired protection, including during changes to other members. Require fresh evidence for safe replay and compare on readback. When replay cannot be verified, retain rejection before any policy write. Add tests with an existing extra rule and an unrelated requested edit before enabling the new field. Current ownership of already-supported rules and explicit prune retain their documented meaning.
+- control: Rulesets / Require review from specific teams
+  evidence: https://github.com/daiksud/gh-settings/settings/rules/24911852
+  impact: additive
+  resolution: The expanded PR rule showed the team checkbox after stale dismissal. Prior personal-target search yielded no teams and the official rule guide restricts this feature on user-owned repositories. Require an eligible selector with stable team identity and complete path-pattern semantics before accepting a field. An acquired restriction must be preserved or block the update.
+- control: Rulesets / Secret scanning merge rule
+  evidence: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-secret-scanning-alerts-are-resolved
+  impact: additive
+  resolution: The guide describes policy selection of provider, custom and generic patterns. This control was absent from the personal branch/tag editors. Inspect an eligible populated editor and identify its pattern selectors before assigning the shape of this additional rule.
+- control: Rulesets / License compliance
+  evidence: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-license-compliance-results-before-merging
+  impact: additive
+  resolution: The documented rule checks an organization's license policy. Confirm a corresponding configurable control on a personal public repository before reserving a path. The repository rule schema alone cannot establish personal-target eligibility.
+- control: Rulesets / Evaluate enforcement
+  evidence: https://github.com/daiksud/gh-settings/settings/rules
+  impact: additive
+  resolution: The recorded branch selector and freshly inspected new tag selector offered Active and Disabled. A future personal-target Evaluate choice extends the existing enum. Continue rejecting acquired Evaluate for branch or tag decisions in the meantime. The Actions policy selector separately offered Evaluate.
+- control: Rulesets / Commit, branch and tag metadata restrictions
+  evidence: https://github.com/daiksud/gh-settings/settings/rules
+  impact: additive
+  resolution: Official rule schema entries are insufficient to establish a selectable repository form. Locate a qualifying personal target and record exact metadata fields, matching choices and target applicability before reserving each additional rule.
+- control: Rulesets / Review-dismissal restrictions
+  evidence: https://github.com/daiksud/gh-settings/settings/rules/24911852
+  impact: additive
+  resolution: The expanded PR group showed stale dismissal and review requirements. It did not expose a dismissal actor selector. Establish eligible identities before assigning a child field. Continue rejecting an acquired unrepresentable restriction.
+- control: Rulesets / Merge queue and push rulesets
+  evidence: docs/development/settings-coverage.md#rulesets
+  impact: excluded
+  resolution: The documented ownership boundary for merge queue is organization repositories. Push rulesets are private or internal with the documented entitlement. The current personal-public New ruleset menu offered branch and tag plus import; unsupported rules must remain protected against accidental loss.

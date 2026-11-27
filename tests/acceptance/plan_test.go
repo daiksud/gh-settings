@@ -43,6 +43,7 @@ func TestPlanAcceptance(t *testing.T) {
 		{name: "empty-repository", input: "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {}}}\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
 		{name: "null-strings", input: aboutInput("description: ''\nwebsite: ''\n"), body: `{"default_branch":"main","description":null,"homepage":null,"has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, want: "No differences for managed repository settings.\n"},
 		{name: "escaped-strings", input: aboutInput("description: \"new\\n\\\"\\\\\\u001b\"\n"), body: `{"default_branch":"main","description":"old\n\"\\\u001b","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, want: "repository.about.description: \"old\\n\\\"\\\\^[\" → \"new\\n\\\"\\\\\\x1b\"\n"},
+		{name: "reserved-home-page-control", input: aboutInput("include_in_the_home_page: {releases: false}\n"), noRead: true, noOrigin: true, noAuth: true, wantError: "include_in_the_home_page"},
 		{name: "malformed-before-api", input: generalInput("features: {issues: [\n"), wantError: "validate .github/settings.yml: decode YAML", noRead: true},
 		{name: "invalid-before-origin", input: generalInput("features: {issues: 'false'}\n"), wantError: "must be a boolean", noRead: true, noOrigin: true},
 		{name: "missing-file", wantError: "read .github/settings.yml", noRead: true},

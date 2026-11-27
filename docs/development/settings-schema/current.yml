@@ -1,0 +1,442 @@
+# Released v0.47.0 contract. Mappings in shape follow canonical export order.
+# A one-element sequence describes its item type, not a required number of items.
+# Scalar names describe YAML types. Only the Pages custom domain also accepts null.
+# This is schema data for contributors, not a settings declaration.
+shape:
+  version: string
+  repository:
+    about:
+      description: string
+      website: string
+      topics: [string]
+    labels:
+      - id: integer
+        name: string
+        description: string
+        color: string
+    settings:
+      general:
+        template_repository: boolean
+        default_branch: string
+        releases:
+          enable_release_immutability: boolean
+        features:
+          wikis: boolean
+          issues: boolean
+          sponsorships: boolean
+          discussions: boolean
+          projects: boolean
+          pull_requests: boolean
+          issue_permissions:
+            creation_allowed_by: string
+          pull_request_permissions:
+            creation_allowed_by: string
+        pull_requests:
+          allow_merge_commits: boolean
+          allow_squash_merging: boolean
+          allow_rebase_merging: boolean
+          always_suggest_updating_pull_request_branches: boolean
+          allow_auto_merge: boolean
+          automatically_delete_head_branches: boolean
+          merge_commits:
+            default_commit_message: string
+          squash_merging:
+            default_commit_message: string
+        commits:
+          require_contributors_to_sign_off_on_web_based_commits: boolean
+        danger_zone:
+          archive_this_repository: boolean
+      collaborators:
+        - username: string
+          id: integer
+      moderation:
+        interaction_limits:
+          pull_request_limits:
+            exemption_list: [string]
+            limit_open_pull_requests_from_users_without_write_access: boolean
+            maximum_open_pull_requests_per_user: integer
+            count_draft_pull_requests_toward_the_limit: boolean
+      rulesets:
+        - id: integer
+          ruleset_name: string
+          enforcement_status: string
+          target_branches:
+            include_default_branch: boolean
+            include_all_branches: boolean
+            include_by_pattern: [string]
+            exclude_by_pattern: [string]
+          target_tags:
+            include_all_tags: boolean
+            include_by_pattern: [string]
+            exclude_by_pattern: [string]
+          bypass_list:
+            - role: string
+              team: integer
+              app: integer
+              user: integer
+              deploy_keys: boolean
+              bypass_mode: string
+          rules:
+            restrict_creations: boolean
+            restrict_deletions: boolean
+            block_force_pushes: boolean
+            require_linear_history: boolean
+            require_signed_commits: boolean
+            restrict_updates:
+              allow_fetch_and_merge: boolean
+            require_a_pull_request_before_merging:
+              require_an_additional_approval_for_unattributed_copilot_pull_requests: boolean
+              required_approvals: integer
+              allowed_merge_methods: [string]
+              dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: boolean
+              require_review_from_code_owners: boolean
+              require_approval_of_the_most_recent_reviewable_push: boolean
+              require_conversation_resolution_before_merging: boolean
+            require_status_checks_to_pass:
+              required_status_checks:
+                - check: string
+                  source:
+                    any_source: boolean
+                    app: integer
+              require_branches_to_be_up_to_date_before_merging: boolean
+              do_not_require_status_checks_on_creation: boolean
+            require_code_scanning_results:
+              code_scanning_tools:
+                - tool_name: string
+                  security_alerts: string
+                  alerts: string
+            require_code_quality_results:
+              severity: string
+            restrict_code_coverage:
+              minimum_line_coverage_percentage: number
+              maximum_line_coverage_drop: number
+            require_deployments_to_succeed:
+              required_deployment_environments: [string]
+            automatically_request_copilot_code_review:
+              review_new_pushes: boolean
+              review_draft_pull_requests: boolean
+      branch_protection_rules:
+        - allow_fork_syncing: boolean
+          allow_force_pushes:
+            enabled: boolean
+            who_can_force_push: string
+            actors:
+              - type: string
+                id: string
+          require_a_pull_request_before_merging:
+            enabled: boolean
+            require_approvals: boolean
+            required_number_of_approvals_before_merging: integer
+            dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: boolean
+            require_review_from_code_owners: boolean
+            require_approval_of_the_most_recent_reviewable_push: boolean
+          require_status_checks_to_pass_before_merging:
+            enabled: boolean
+            require_branches_to_be_up_to_date_before_merging: boolean
+            status_checks:
+              - name: string
+                accept_updates_from: string
+          require_deployments_to_succeed_before_merging:
+            enabled: boolean
+            environments: [string]
+          id: integer
+          branch_name_pattern: string
+          require_conversation_resolution_before_merging: boolean
+          require_signed_commits: boolean
+          require_linear_history: boolean
+          do_not_allow_bypassing_the_above_settings: boolean
+          lock_branch: boolean
+          allow_deletions: boolean
+      actions:
+        general:
+          cache:
+            cache_retention: integer
+            cache_size_eviction_limit: integer
+          actions_permissions:
+            policy: string
+            require_actions_to_be_pinned_to_a_full_length_commit_sha: boolean
+            allow_actions_created_by_github: boolean
+            allow_actions_by_marketplace_verified_creators: boolean
+            allow_or_block_specified_actions_and_reusable_workflows: [string]
+          check_workflow_run_status_artifact_and_log_retention: integer
+          approval_for_running_fork_pull_request_workflows_from_contributors: string
+          workflow_permissions:
+            default_permissions: string
+            allow_github_actions_to_create_and_approve_pull_requests: boolean
+        runners:
+          - id: integer
+            custom_labels: [string]
+        policies:
+          - id: integer
+            policy_name: string
+            enforcement_status: string
+            target_workflows:
+              include: [string]
+              exclude: [string]
+            workflow_execution_protections:
+              restrict_actors:
+                enabled: boolean
+                allowed_actors:
+                  - user: integer
+                    role: string
+              restrict_events:
+                enabled: boolean
+                allowed_events: [string]
+        oidc:
+          subject_claim:
+            use_default_template: boolean
+            subject_claim_template: [string]
+            use_immutable_subject_claim: boolean
+      webhooks:
+        - id: integer
+          payload_url: string
+          content_type: string
+          ssl_verification: boolean
+          active: boolean
+          events: [string]
+      copilot:
+        code_review:
+          general:
+            review_effort_level: string
+            allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: boolean
+            search_public_repositories: boolean
+            use_custom_instructions: boolean
+      environments:
+        - variables:
+            - name: string
+              value: string
+          deployment_branches_and_tags: string
+          deployment_branch_or_tag_rules:
+            - ref_type: string
+              name_pattern: string
+          name: string
+          deployment_protection_rules:
+            required_reviewers:
+              reviewers:
+                - person: integer
+                  team: integer
+              prevent_self_review: boolean
+            wait_timer: integer
+            enable_custom_rules_with_github_apps: [integer]
+            allow_administrators_to_bypass_configured_protection_rules: boolean
+      pages:
+        custom_domain: string|null
+        enforce_https: boolean
+        build_and_deployment:
+          source: string
+          branch: string
+          select_folder: string
+      advanced_security:
+        code_security:
+          ai_scan:
+            ai_scan_for_pull_requests: boolean
+            ai_scan_for_repositories: boolean
+          codeql_analysis:
+            default_setup: boolean
+            languages: [string]
+            scan_settings:
+              runner_type: string
+              runner_label: string
+              query_suite: string
+              threat_model: string
+        dependabot:
+          alerts: boolean
+          security_updates: boolean
+        private_vulnerability_reporting: boolean
+        secret_protection:
+          enabled: boolean
+          push_protection: boolean
+      deploy_keys:
+        - id: integer
+          title: string
+          key: string
+          allow_write_access: boolean
+      secrets_and_variables:
+        actions:
+          variables:
+            - name: string
+              value: string
+        agents:
+          variables:
+            - name: string
+              value: string
+      autolinks:
+        - id: integer
+          reference_prefix: string
+          target_url: string
+          reference_format: string
+
+# Closed string choices. An item suffix [] applies each choice to one array item.
+# Remote availability, dependencies and numeric ranges are specified by the linked
+# family contracts below. Branches, App names/IDs, OIDC claims and webhook events
+# are open input sets even when the UI presents them in a picker.
+choices:
+  version: [daiksud/gh-settings@v0]
+  repository.settings.general.features.issue_permissions.creation_allowed_by: [all_users, collaborators_only]
+  repository.settings.general.features.pull_request_permissions.creation_allowed_by: [all_users, collaborators_only]
+  repository.settings.general.pull_requests.merge_commits.default_commit_message:
+    [default_message, pull_request_title, pull_request_title_and_description]
+  repository.settings.general.pull_requests.squash_merging.default_commit_message:
+    [default_message, pull_request_title, pull_request_title_and_commit_details, pull_request_title_and_description]
+  repository.settings.rulesets[].enforcement_status: [active, disabled]
+  repository.settings.rulesets[].bypass_list[].role: [repository_admin, maintain, write]
+  repository.settings.rulesets[].bypass_list[].bypass_mode: [always, exempt, for_pull_requests_only]
+  repository.settings.rulesets[].rules.require_a_pull_request_before_merging.allowed_merge_methods[]: [merge, squash, rebase]
+  repository.settings.rulesets[].rules.require_code_scanning_results.code_scanning_tools[].alerts:
+    [none, errors, errors_and_warnings, all]
+  repository.settings.rulesets[].rules.require_code_scanning_results.code_scanning_tools[].security_alerts:
+    [none, critical, high_or_higher, medium_or_higher, all]
+  repository.settings.rulesets[].rules.require_code_quality_results.severity: [errors, warnings_and_higher, notes_and_higher, all]
+  repository.settings.branch_protection_rules[].allow_force_pushes.who_can_force_push: [everyone, specified_actors]
+  repository.settings.branch_protection_rules[].allow_force_pushes.actors[].type: [user, app]
+  repository.settings.actions.general.actions_permissions.policy:
+    - allow_all_actions_and_reusable_workflows
+    - disable_actions
+    - allow_owner_actions_and_reusable_workflows
+    - allow_owner_and_select_non_owner_actions_and_reusable_workflows
+  repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors:
+    - require_approval_for_first_time_contributors_who_are_new_to_github
+    - require_approval_for_first_time_contributors
+    - require_approval_for_all_external_contributors
+  repository.settings.actions.general.workflow_permissions.default_permissions:
+    [read_and_write_permissions, read_repository_contents_and_packages_permissions]
+  repository.settings.actions.policies[].enforcement_status: [disabled, active]
+  repository.settings.actions.policies[].workflow_execution_protections.restrict_actors.allowed_actors[].role:
+    [write, maintain, repository_admin]
+  repository.settings.actions.policies[].workflow_execution_protections.restrict_events.allowed_events[]:
+    [branch_protection_rule, check_run, check_suite, create, delete, deployment, deployment_status, discussion,
+     discussion_comment, fork, gollum, image_version, issue_comment, issues, label, merge_group, milestone, page_build,
+     project, project_card, project_column, public, pull_request, pull_request_review, pull_request_review_comment,
+     pull_request_target, push, registry_package, release, repository_dispatch, schedule, status, watch,
+     workflow_call, workflow_dispatch, workflow_run]
+  repository.settings.webhooks[].content_type: [application/json, application/x-www-form-urlencoded]
+  repository.settings.copilot.code_review.general.review_effort_level: [default, lite, balanced, max]
+  repository.settings.environments[].deployment_branches_and_tags: [no_restriction, protected_branches_only, selected_branches_and_tags]
+  repository.settings.environments[].deployment_branch_or_tag_rules[].ref_type: [branch, tag]
+  repository.settings.pages.build_and_deployment.source: [deploy_from_a_branch, github_actions]
+  repository.settings.pages.build_and_deployment.select_folder: [root, docs]
+  repository.settings.advanced_security.code_security.codeql_analysis.languages[]:
+    [github_actions, c_cpp, csharp, go, java_kotlin, javascript_typescript, python, ruby, swift]
+  repository.settings.advanced_security.code_security.codeql_analysis.scan_settings.runner_type: [standard_github_runner, labeled_runner]
+  repository.settings.advanced_security.code_security.codeql_analysis.scan_settings.query_suite: [default, extended]
+  repository.settings.advanced_security.code_security.codeql_analysis.scan_settings.threat_model: [remote_sources, remote_and_local_sources]
+  repository.settings.autolinks[].reference_format: [numeric, alphanumeric]
+
+# The contract for the longest matching path supplies UI evidence, applicability,
+# omitted/empty semantics, prerequisite controls, defaults and resource identity.
+# Paths are relative to docs/references/settings/.
+contracts:
+  version: configuration.md
+  repository: configuration.md
+  repository.about: about.md
+  repository.labels: labels.md
+  repository.settings.general: general.md
+  repository.settings.collaborators: collaborators.md
+  repository.settings.moderation: moderation.md
+  repository.settings.rulesets: rulesets.md
+  repository.settings.branch_protection_rules: legacy-classic-protection.md
+  repository.settings.actions.general: actions/general.md
+  repository.settings.actions.runners: actions/runners.md
+  repository.settings.actions.policies: actions/policies.md
+  repository.settings.actions.oidc: actions/oidc.md
+  repository.settings.webhooks: webhooks.md
+  repository.settings.copilot: copilot.md
+  repository.settings.environments: environments.md
+  repository.settings.pages: pages.md
+  repository.settings.advanced_security: security.md
+  repository.settings.deploy_keys: deploy-keys.md
+  repository.settings.secrets_and_variables.actions: actions/variables.md
+  repository.settings.secrets_and_variables.agents: agents.md
+  repository.settings.autolinks: legacy-autolinks.md
+
+# Omitted top-level optional settings are unmanaged. A present empty inventory
+# selects no unlisted resources in ordinary apply. The prune scope additionally
+# makes an explicitly present inventory authoritative for retention.
+resources:
+  repository.labels:
+    identity: positive ID, create if omitted
+    ownership: selected label
+    prune: labels
+  repository.settings.collaborators:
+    identity: username, optional immutable user ID
+    ownership: direct access or a pending invitation for each selected user
+    prune: collaborators
+  repository.settings.rulesets:
+    identity: positive ID, create if omitted
+    ownership: whole selected ruleset including omitted rules and bypass actors
+    prune: rulesets
+  repository.settings.branch_protection_rules:
+    identity: positive ID, create if omitted
+    ownership: selected classic controls, with complete active subgroups
+    prune: branch-protection-rules
+  repository.settings.actions.runners:
+    identity: positive ID of an existing repository runner
+    ownership: selected runner custom labels, registration and host state unmanaged
+    prune: runners
+  repository.settings.actions.policies:
+    identity: positive ID, create if omitted
+    ownership: selected policy and declared restrictions and targets
+    prune: actions-policies
+  repository.settings.webhooks:
+    identity: positive ID, create if omitted
+    ownership: selected hook according to its creation or ID-bound contract
+    prune: webhooks
+  repository.settings.environments:
+    identity: Environment name
+    ownership: declared controls on the named Environment
+    prune: environments
+  repository.settings.environments[].variables:
+    identity: name within the named Environment
+    ownership: selected variable value
+    prune: environment-variables
+  repository.settings.deploy_keys:
+    identity: positive ID, create if omitted and canonical key material is absent
+    ownership: selected deploy key
+    prune: deploy-keys
+  repository.settings.secrets_and_variables.actions.variables:
+    identity: variable name within the repository Actions scope
+    ownership: selected variable value
+    prune: actions-variables
+  repository.settings.secrets_and_variables.agents.variables:
+    identity: variable name within the repository Agents scope
+    ownership: selected variable value
+    prune: agents-variables
+  repository.settings.autolinks:
+    identity: positive ID, create if omitted
+    ownership: selected immutable reference
+    prune: autolinks
+
+legacy_v0:
+  - repository.settings.branch_protection_rules
+  - repository.settings.autolinks
+
+# Owned list controls inside a selected resource. Omission within a whole
+# Ruleset follows its full-policy contract. Other sections use their family
+# reference for conditional validation when the parent is disabled or omitted.
+lists:
+  repository.about.topics: set of topic names, [] clears
+  repository.settings.moderation.interaction_limits.pull_request_limits.exemption_list: set of usernames when the cap is active
+  repository.settings.rulesets[].target_branches.include_by_pattern: set of literal patterns
+  repository.settings.rulesets[].target_branches.exclude_by_pattern: set of literal patterns
+  repository.settings.rulesets[].target_tags.include_by_pattern: set of literal patterns
+  repository.settings.rulesets[].target_tags.exclude_by_pattern: set of literal patterns
+  repository.settings.rulesets[].bypass_list: set identified by actor kind and ID or role
+  repository.settings.rulesets[].rules.require_a_pull_request_before_merging.allowed_merge_methods: nonempty set of merge methods
+  repository.settings.rulesets[].rules.require_status_checks_to_pass.required_status_checks: checks identified by context and selected source
+  repository.settings.rulesets[].rules.require_code_scanning_results.code_scanning_tools: tools identified by case-sensitive tool name
+  repository.settings.rulesets[].rules.require_deployments_to_succeed.required_deployment_environments: set of Environment names
+  repository.settings.branch_protection_rules[].allow_force_pushes.actors: set of typed opaque actor node IDs
+  repository.settings.branch_protection_rules[].require_status_checks_to_pass_before_merging.status_checks: checks identified by name, each with one source
+  repository.settings.branch_protection_rules[].require_deployments_to_succeed_before_merging.environments: set of Environment names
+  repository.settings.actions.general.actions_permissions.allow_or_block_specified_actions_and_reusable_workflows: patterns for the selected-actions policy
+  repository.settings.actions.runners[].custom_labels: authoritative custom label set, [] clears custom labels
+  repository.settings.actions.policies[].target_workflows.include: include patterns, [] selects all except exclusions
+  repository.settings.actions.policies[].target_workflows.exclude: exclude patterns, [] selects no exclusions
+  repository.settings.actions.policies[].workflow_execution_protections.restrict_actors.allowed_actors: set of selected user IDs or roles, [] enables with no allowed actors
+  repository.settings.actions.policies[].workflow_execution_protections.restrict_events.allowed_events: nonempty set of event names when the rule is enabled
+  repository.settings.actions.oidc.subject_claim.subject_claim_template: ordered list of claim keys in custom mode
+  repository.settings.webhooks[].events: event set, match-only for an ID-bound hook
+  repository.settings.environments[].deployment_protection_rules.required_reviewers.reviewers: set of typed principal IDs, [] clears
+  repository.settings.environments[].deployment_protection_rules.enable_custom_rules_with_github_apps: set of GitHub App IDs, [] clears
+  repository.settings.environments[].deployment_branch_or_tag_rules: set of typed branch or tag name patterns, [] clears in selected mode
+  repository.settings.advanced_security.code_security.codeql_analysis.languages: nonempty set of CodeQL language names
