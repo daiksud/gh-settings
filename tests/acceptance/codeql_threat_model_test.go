@@ -78,7 +78,7 @@ func TestCodeQLThreatModelProcess(t *testing.T) {
 	}
 	write := func(value, extra string) {
 		t.Helper()
-		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {threat_model: "+value+extra+"}}}}\n")); err != nil {
+		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {scan_settings: {threat_model: "+value+"}"+extra+"}}}}\n")); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -109,7 +109,7 @@ func TestCodeQLThreatModelProcess(t *testing.T) {
 	}
 	write("remote_and_local_sources", "")
 	out, _ := run(false, "plan")
-	if !strings.Contains(out, `codeql_analysis.threat_model: "remote_sources" → "remote_and_local_sources"`) {
+	if !strings.Contains(out, `codeql_analysis.scan_settings.threat_model: "remote_sources" → "remote_and_local_sources"`) {
 		t.Fatal(out)
 	}
 	expect("GET")
@@ -188,7 +188,7 @@ func TestCodeQLThreatModelProcess(t *testing.T) {
 	_, info = run(false, "export")
 	expect("GET")
 	output := readFile()
-	if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "threat_model:") || strings.Contains(output, "query_suites:") || strings.Contains(output, "runner:") || strings.Contains(output, "languages:") || !strings.Contains(info, "codeql_analysis") {
+	if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "threat_model:") || strings.Contains(output, "scan_settings:") || strings.Contains(output, "languages:") || !strings.Contains(info, "codeql_analysis") {
 		t.Fatal(output, info)
 	}
 	write("remote_sources", ", default_setup: true")

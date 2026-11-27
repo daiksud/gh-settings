@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -14,9 +15,9 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// settings-pr validates the original file with the pinned release. Until both
-// consumers adopt secrets_and_variables, check their two v0.46.0 inventories
-// directly and use the current decoder for the rest of the operational policy.
+// settings-pr validates the original file with the pinned release. Check the
+// operational policy at pin-specific paths before using the current decoder
+// for the shared settings.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
@@ -52,6 +53,20 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 			i := slices.Index(repositorySettings.Content, page)
 			repositorySettings.Content = slices.Delete(repositorySettings.Content, i-1, i+1)
 		}
+	}
+	codeQL := member(member(member(repositorySettings, "advanced_security"), "code_security"), "codeql_analysis")
+	for key, want := range map[string]any{
+		"query_suites": "extended",
+		"runner":       map[string]any{"type": "standard_github_runner"},
+		"threat_model": "remote_sources",
+	} {
+		node := member(codeQL, key)
+		var got any
+		if err := node.Decode(&got); err != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("unexpected pinned CodeQL %s: %v (%v)", key, got, err)
+		}
+		i := slices.Index(codeQL.Content, node)
+		codeQL.Content = slices.Delete(codeQL.Content, i-1, i+1)
 	}
 	data, err = yaml.Marshal(&doc)
 	if err != nil {
@@ -121,8 +136,8 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
 	}
-	if desired.Security.ImmutableReleases == nil || !*desired.Security.ImmutableReleases || desired.Security.CodeQLConfiguration.QuerySuite == nil || *desired.Security.CodeQLConfiguration.QuerySuite != "extended" {
-		t.Fatal("retain the independently observed immutable-release and CodeQL suite policy")
+	if desired.Security.ImmutableReleases == nil || !*desired.Security.ImmutableReleases {
+		t.Fatal("retain the independently observed immutable-release policy")
 	}
 	if !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
 		t.Fatal("inactive or inapplicable Actions controls must remain unmanaged")

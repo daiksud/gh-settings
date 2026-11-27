@@ -148,7 +148,7 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	presentation.RenderChanges(report.comparison.Environments, presentation.EnvironmentLine, writeLine)
 	presentation.RenderActionsPolicyChanges(&report.comparison, writeLine)
 	presentation.RenderChanges(report.comparison.Security, presentation.SecurityLine, writeLine)
-	presentation.RenderChanges(report.comparison.CodeQLConfiguration, presentation.CodeQLConfigurationLine, writeLine)
+	presentation.RenderCodeQLConfiguration(report.comparison.CodeQLConfiguration, writeLine)
 	presentation.RenderChanges(report.comparison.Pages, presentation.PagesLine, writeLine)
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String()

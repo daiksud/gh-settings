@@ -39,7 +39,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	presentation.RenderChanges(comparison.BranchProtectionRules, presentation.ClassicProtectionLine, writeLine)
 	presentation.RenderChanges(comparison.Environments, presentation.EnvironmentLine, writeLine)
 	presentation.RenderActionsPolicyChanges(&comparison, writeLine)
-	presentation.RenderChanges(comparison.CodeQLConfiguration, presentation.CodeQLConfigurationLine, writeLine)
+	presentation.RenderCodeQLConfiguration(comparison.CodeQLConfiguration, writeLine)
 	presentation.RenderChanges(comparison.Security, presentation.SecurityLine, writeLine)
 	presentation.RenderChanges(comparison.Pages, presentation.PagesLine, writeLine)
 	presentation.RenderChanges(comparison.Webhooks, presentation.WebhookLine, writeLine)

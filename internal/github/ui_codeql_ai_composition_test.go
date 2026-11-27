@@ -18,7 +18,7 @@ func TestCodeQLConfigurationAndAIScanExportRemainIndependent(t *testing.T) {
 		t.Fatalf("combined export unavailable: %#v, %v", ui, err)
 	}
 	cs := ui.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity
-	if cs.AIScan == nil || cs.AIScan.AIScanForPullRequests == nil || *cs.AIScan.AIScanForPullRequests || cs.CodeQLAnalysis == nil || cs.CodeQLAnalysis.QuerySuites == nil || *cs.CodeQLAnalysis.QuerySuites != "extended" || cs.CodeQLAnalysis.DefaultSetup != nil || cs.CodeQLAnalysis.Runner != nil || cs.CodeQLAnalysis.Languages != nil {
+	if cs.AIScan == nil || cs.AIScan.AIScanForPullRequests == nil || *cs.AIScan.AIScanForPullRequests || cs.CodeQLAnalysis == nil || cs.CodeQLAnalysis.ScanSettings == nil || cs.CodeQLAnalysis.ScanSettings.QuerySuite == nil || *cs.CodeQLAnalysis.ScanSettings.QuerySuite != "extended" || cs.CodeQLAnalysis.DefaultSetup != nil || cs.CodeQLAnalysis.ScanSettings.RunnerType != nil || cs.CodeQLAnalysis.ScanSettings.RunnerLabel != nil || cs.CodeQLAnalysis.Languages != nil {
 		t.Fatalf("combined export lost or expanded intent: %#v", cs)
 	}
 	native, err := DeclarationFromUI(ui)

@@ -44,7 +44,7 @@ func (r CodeQLRunner) Validate() error {
 	if r.Type == "labeled_runner" && strings.TrimSpace(r.Label) != "" && !strings.ContainsAny(r.Label, "\r\n") {
 		return nil
 	}
-	return fmt.Errorf("CodeQL runner requires standard_github_runner without label, or labeled_runner with a nonblank label")
+	return fmt.Errorf("CodeQL scan_settings.runner_type requires standard_github_runner without runner_label, or labeled_runner with a nonblank runner_label")
 }
 func (d CodeQLConfigurationDeclaration) Validate() error {
 	if d.Languages != nil {
@@ -53,10 +53,10 @@ func (d CodeQLConfigurationDeclaration) Validate() error {
 		}
 	}
 	if d.QuerySuite != nil && *d.QuerySuite != "default" && *d.QuerySuite != "extended" {
-		return fmt.Errorf("CodeQL query_suites must be default or extended")
+		return fmt.Errorf("CodeQL scan_settings.query_suite must be default or extended")
 	}
 	if d.ThreatModel != nil && *d.ThreatModel != "remote_sources" && *d.ThreatModel != "remote_and_local_sources" {
-		return fmt.Errorf("CodeQL threat_model must be remote_sources or remote_and_local_sources")
+		return fmt.Errorf("CodeQL scan_settings.threat_model must be remote_sources or remote_and_local_sources")
 	}
 	if d.Runner != nil {
 		if err := d.Runner.Validate(); err != nil {
@@ -200,13 +200,13 @@ func CompareCodeQLConfiguration(o CodeQLConfigurationObservation, d CodeQLConfig
 			return 0, nil, err
 		}
 	}
-	if d.QuerySuite != nil {
-		if err := add("query_suite", s.QuerySuite, *d.QuerySuite); err != nil {
+	if d.Runner != nil {
+		if err := add("runner", s.Runner, *d.Runner); err != nil {
 			return 0, nil, err
 		}
 	}
-	if d.Runner != nil {
-		if err := add("runner", s.Runner, *d.Runner); err != nil {
+	if d.QuerySuite != nil {
+		if err := add("query_suite", s.QuerySuite, *d.QuerySuite); err != nil {
 			return 0, nil, err
 		}
 	}
