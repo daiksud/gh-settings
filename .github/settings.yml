@@ -64,7 +64,8 @@ repository:
       releases:
         enable_release_immutability: true
       features:
-        wikis: false
+        wikis:
+          enabled: false
         issues: true
         issue_permissions:
           creation_allowed_by: all_users
@@ -169,7 +170,8 @@ repository:
           - ref_type: branch
             name_pattern: main
     advanced_security:
-      private_vulnerability_reporting: true
+      private_vulnerability_reporting:
+        enabled: true
       dependabot:
         alerts: true
         security_updates: true
